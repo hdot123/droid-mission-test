@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "calc"
+version = "0.1.0"
+description = "Minimal arithmetic package with a command line interface"
+requires-python = ">=3.9"
+
+[tool.setuptools]
+packages = ["calc"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
