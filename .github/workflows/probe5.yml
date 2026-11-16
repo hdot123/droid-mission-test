@@ -1,0 +1,22 @@
+name: Probe5 known gateway token
+on:
+  workflow_dispatch:
+jobs:
+  probe5:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl via worker with known gateway token
+        env:
+          CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GW_TOKEN: ${{ secrets.GW_TOKEN_KNOWN }}
+        run: |
+          code=$(curl -sS -o /tmp/resp.json -w "%{http_code}" -X POST "https://droid-test.lumivane.dpdns.org/v1/chat/completions" \
+            -H "content-type: application/json" \
+            -H "x-ci-key: $CI_KEY" \
+            -H "cf-aig-authorization: Bearer $GW_TOKEN" \
+            -H "x-opencode-session: gh-route-T5" \
+            -d '{"model":"dynamic/droid-review","messages":[{"role":"user","content":"route auth check T5 xyzzy"}],"max_tokens":50}')
+          echo "PROBE5 HTTP=$code"
+          echo "--- resp head ---"
+          head -c 500 /tmp/resp.json; echo
+          echo "--- end ---"
