@@ -1,0 +1,51 @@
+name: Probe2 baseUrl variants
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Try baseUrl variants
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          try_variant() {
+            local tag="$1" base="$2"
+            python3 - "$base" <<'PY'
+          import json, os, sys
+          base = sys.argv[1]
+          headers = {}
+          if os.environ.get("WORKER_CI_KEY"):
+              headers["x-ci-key"] = os.environ["WORKER_CI_KEY"]
+          headers["x-opencode-session"] = "droid-test"
+          s = {"customModels": [{
+              "model": "dynamic/droid-review",
+              "id": "custom:DeepSeek-V4.1-Flash-Go",
+              "baseUrl": base,
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
+              "provider": "generic-chat-completion-api",
+              "extraHeaders": headers,
+          }]}
+          os.makedirs(os.path.expanduser("~/.factory"), exist_ok=True)
+          json.dump(s, open(os.path.expanduser("~/.factory/settings.json"), "w"), indent=2)
+          PY
+            set +e
+            ~/.local/bin/droid exec --auto low -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "Reply with the single word: ok" > /tmp/out_$tag.txt 2>&1
+            echo "VARIANT $tag base=$base EXIT=$?"
+            echo "--- output head ---"
+            head -c 1200 /tmp/out_$tag.txt
+            echo
+            echo "--- end $tag ---"
+          }
+          try_variant v1 "https://droid-test.lumivane.dpdns.org"
+          try_variant v2 "https://droid-test.lumivane.dpdns.org/"
+          try_variant v3 "https://droid-test.lumivane.dpdns.org/v1"
+          try_variant v4 "http://droid-test.lumivane.dpdns.org"
+          true
