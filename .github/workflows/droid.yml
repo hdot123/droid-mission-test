@@ -36,7 +36,7 @@ jobs:
           s["customModels"] = [{
               "model": "dynamic/droid-review",
               "id": "custom:DeepSeek-V4.1-Flash-Go",
-              "baseUrl": "https://droid-test-gateway.3-0a1.workers.dev",
+              "baseUrl": "https://droid-test.lumivane.dpdns.org",
               "apiKey": "cf-route",
               "provider": "generic-chat-completion-api",
               "extraHeaders": headers,
