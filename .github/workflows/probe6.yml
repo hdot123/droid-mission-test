@@ -1,0 +1,51 @@
+name: Probe6 droid via replica worker
+on:
+  workflow_dispatch:
+jobs:
+  probe6:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+      - name: Write BYOM settings (replica pattern, caller-side gateway auth)
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GW_TOKEN_KNOWN: ${{ secrets.GW_TOKEN_KNOWN }}
+        run: |
+          mkdir -p ~/.factory
+          python3 - <<'PY'
+          import json, os
+          p = os.path.expanduser("~/.factory/settings.json")
+          s = {}
+          if os.path.exists(p):
+              s = json.load(open(p))
+          headers = {}
+          if os.environ.get("WORKER_CI_KEY"):
+              headers["x-ci-key"] = os.environ["WORKER_CI_KEY"]
+          headers["x-opencode-session"] = "droid-test"
+          if os.environ.get("GW_TOKEN_KNOWN"):
+              headers["cf-aig-authorization"] = "Bearer " + os.environ["GW_TOKEN_KNOWN"]
+          s["customModels"] = [{
+              "model": "dynamic/droid-review",
+              "id": "custom:DeepSeek-V4.1-Flash-Go",
+              "baseUrl": "https://droid-test.lumivane.dpdns.org",
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
+              "provider": "generic-chat-completion-api",
+              "extraHeaders": headers,
+          }]
+          json.dump(s, open(p, "w"), indent=2)
+          print("settings written | x-ci-key present:", "x-ci-key" in headers,
+                "| x-opencode-session present:", "x-opencode-session" in headers,
+                "| cf-aig-authorization present:", "cf-aig-authorization" in headers)
+          PY
+      - name: Run droid once
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set +e
+          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "Reply with the single word: ok" > /tmp/droid_out.txt 2>&1
+          echo "DROID PROBE6 EXIT=$?"
+          echo "--- output tail ---"
+          tail -c 800 /tmp/droid_out.txt; echo
+          echo "--- end ---"
