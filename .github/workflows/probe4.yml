@@ -1,0 +1,22 @@
+name: Probe4 caller-side gateway auth
+on:
+  workflow_dispatch:
+jobs:
+  probe4:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl via worker with caller-side cf-aig-authorization
+        env:
+          CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GW_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+        run: |
+          code=$(curl -sS -o /tmp/resp.json -w "%{http_code}" -X POST "https://droid-test.lumivane.dpdns.org/v1/chat/completions" \
+            -H "content-type: application/json" \
+            -H "x-ci-key: $CI_KEY" \
+            -H "cf-aig-authorization: Bearer $GW_TOKEN" \
+            -H "x-opencode-session: gh-route-T4" \
+            -d '{"model":"dynamic/droid-review","messages":[{"role":"user","content":"route auth check T4 xyzzy"}],"max_tokens":50}')
+          echo "PROBE4 HTTP=$code"
+          echo "--- resp head ---"
+          head -c 500 /tmp/resp.json; echo
+          echo "--- end ---"
