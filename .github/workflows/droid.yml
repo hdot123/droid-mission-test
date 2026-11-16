@@ -61,7 +61,7 @@ jobs:
           PY
           )
           echo "$PROMPT" | head -c 500
-          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$PROMPT" || true
+          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$PROMPT"
 
       - name: Commit and open PR if changed
         env:
