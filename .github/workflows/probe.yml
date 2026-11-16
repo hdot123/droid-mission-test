@@ -1,0 +1,25 @@
+name: Probe test worker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: A no ci key expect 401
+        run: |
+          code=$(curl -s -o /tmp/a.txt -w "%{http_code}" -X POST "https://droid-test.lumivane.dpdns.org/chat/completions" -H "Content-Type: application/json" -d '{"model":"dynamic/droid-review","messages":[{"role":"user","content":"ping"}],"max_tokens":8}')
+          echo "A_STATUS=$code"; echo "A_BODY_BEGIN"; cat /tmp/a.txt; echo; echo "A_BODY_END"
+      - name: B v1 path with key and session expect 200
+        env:
+          KEY: ${{ secrets.WORKER_CI_KEY }}
+        run: |
+          code=$(curl -s -o /tmp/b.txt -w "%{http_code}" -X POST "https://droid-test.lumivane.dpdns.org/v1/chat/completions" -H "Content-Type: application/json" -H "x-ci-key: $KEY" -H "x-opencode-session: probe" -d '{"model":"dynamic/droid-review","messages":[{"role":"user","content":"ping - reply with the single word: ok"}],"max_tokens":16}')
+          echo "B_STATUS=$code"; echo "B_BODY_BEGIN"; cat /tmp/b.txt; echo; echo "B_BODY_END"
+      - name: C no session header
+        env:
+          KEY: ${{ secrets.WORKER_CI_KEY }}
+        run: |
+          code=$(curl -s -o /tmp/c.txt -w "%{http_code}" -X POST "https://droid-test.lumivane.dpdns.org/chat/completions" -H "Content-Type: application/json" -H "x-ci-key: $KEY" -d '{"model":"dynamic/droid-review","messages":[{"role":"user","content":"ping"}],"max_tokens":8}')
+          echo "C_STATUS=$code"; echo "C_BODY_BEGIN"; cat /tmp/c.txt; echo; echo "C_BODY_END"
