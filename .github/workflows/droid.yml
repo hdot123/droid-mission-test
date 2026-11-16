@@ -4,92 +4,78 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   droid:
-    if: contains(github.event.comment.body, '@droid') && !github.event.issue.pull_request
+    if: >-
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '@droid')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Write BYOM settings (CF gateway)
+      - name: Write BYOM settings (CF test gateway)
         env:
-          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
-          WORKER_CI_KEY: ${{ secrets.CI_KEY }}
+          CI_KEY: ${{ secrets.CI_KEY }}
         run: |
           mkdir -p ~/.factory
-          python3 - <<'PYEOF'
+          python3 - <<'PY'
           import json, os
-          entry = {
+          p = os.path.expanduser("~/.factory/settings.json")
+          s = {}
+          if os.path.exists(p):
+              s = json.load(open(p))
+          headers = {}
+          if os.environ.get("CI_KEY"):
+              headers["x-ci-key"] = os.environ["CI_KEY"]
+          s["customModels"] = [{
               "model": "dynamic/droid-review",
               "id": "custom:DeepSeek-V4.1-Flash-Go",
-              "displayName": "DeepSeek V4.1 Flash (OpenCode Go)",
-              "baseUrl": "https://gh.lumivane.dpdns.org",
+              "baseUrl": "https://droid-test-gateway.3-0a1.workers.dev",
               "apiKey": "cf-route",
               "provider": "generic-chat-completion-api",
-              "maxOutputTokens": 65536,
-              "noImageSupport": True,
-              "extraHeaders": {
-                  "cf-aig-authorization": "Bearer " + os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
-              },
-          }
-          key = os.environ.get("WORKER_CI_KEY", "").strip()
-          if key:
-              entry["extraHeaders"]["x-ci-key"] = key
-          path = os.path.expanduser("~/.factory/settings.json")
-          try:
-              data = json.load(open(path))
-          except FileNotFoundError:
-              data = {}
-          models = [m for m in data.get("customModels", []) if m.get("id") != entry["id"]]
-          data["customModels"] = [entry] + models
-          json.dump(data, open(path, "w"), indent=2)
-          print("BYOM settings written:", entry["id"])
-          PYEOF
+              "extraHeaders": headers,
+          }]
+          json.dump(s, open(p, "w"), indent=2)
+          print("customModels written:", [m["id"] for m in s["customModels"]])
+          PY
 
       - name: Install droid CLI
         run: curl -fsSL https://app.factory.ai/cli | sh
 
-      - name: Run droid exec (named task)
+      - name: Run droid (named by comment)
         env:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
-          COMMENT_BODY: ${{ github.event.comment.body }}
-          ISSUE_BODY: ${{ github.event.issue.body }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          TASK_TEXT="${COMMENT_BODY#*@droid}"
-          {
-            echo "You are working in a checked-out git repository. Complete the following task in the working tree."
-            echo
-            echo "Instruction from the naming comment:"
-            echo "$TASK_TEXT"
-            echo
-            echo "Issue body for context:"
-            echo "$ISSUE_BODY"
-            echo
-            echo "Run the relevant tests when you are done and summarize what you changed. Do not commit or push; the workflow handles that."
-          } > /tmp/droid-prompt.txt
-          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" "$(cat /tmp/droid-prompt.txt)" --output-format stream-json | tee /tmp/droid-run.jsonl
+          PROMPT=$(python3 - <<'PY'
+          import json, os
+          ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
+          body = (ev.get("comment") or {}).get("body", "").replace("@droid", "", 1).strip()
+          issue = (ev.get("issue") or {}).get("body") or ""
+          print(body + "\n\n--- Issue context ---\n" + issue)
+          PY
+          )
+          echo "$PROMPT" | head -c 500
+          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$PROMPT" || true
 
-      - name: Commit and open PR if tree changed
+      - name: Commit and open PR if changed
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           if [ -n "$(git status --porcelain)" ]; then
-            BRANCH="droid/issue-${ISSUE_NUMBER}"
+            BR="droid/issue-${{ github.event.issue.number }}"
             git config user.name "droid-test"
             git config user.email "droid-test@localhost"
-            git checkout -b "$BRANCH"
+            git checkout -b "$BR"
             git add -A
-            git commit -m "droid: implement issue #${ISSUE_NUMBER} (naming test)"
-            git push origin "$BRANCH"
-            gh pr create --title "droid: issue #${ISSUE_NUMBER} implementation (naming test)" --body "Automated implementation for issue #${ISSUE_NUMBER} via @droid naming test through the CF BYOM gateway." --base main --head "$BRANCH"
+            git commit -m "droid: work on issue #${{ github.event.issue.number }}"
+            git push -u origin "$BR"
+            gh pr create --title "droid: issue #${{ github.event.issue.number }}" --body "Automated work from @droid naming on issue #${{ github.event.issue.number }}." --head "$BR" || true
           else
-            echo "Working tree unchanged; nothing to commit."
+            echo "no changes"
           fi
