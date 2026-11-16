@@ -1,0 +1,55 @@
+name: Probe droid exec
+
+on:
+  workflow_dispatch:
+
+jobs:
+  droid-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Write BYOM settings (same as droid.yml v5)
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+        run: |
+          mkdir -p ~/.factory
+          python3 - <<'PY'
+          import json, os
+          p = os.path.expanduser("~/.factory/settings.json")
+          s = {}
+          if os.path.exists(p):
+              s = json.load(open(p))
+          headers = {}
+          if os.environ.get("WORKER_CI_KEY"):
+              headers["x-ci-key"] = os.environ["WORKER_CI_KEY"]
+          headers["x-opencode-session"] = "droid-test"
+          s["customModels"] = [{
+              "model": "dynamic/droid-review",
+              "id": "custom:DeepSeek-V4.1-Flash-Go",
+              "baseUrl": "https://droid-test.lumivane.dpdns.org",
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
+              "provider": "generic-chat-completion-api",
+              "extraHeaders": headers,
+          }]
+          json.dump(s, open(p, "w"), indent=2)
+          m = s["customModels"][0]
+          print("customModels written:", m["id"], "| model:", m["model"], "| baseUrl:", m["baseUrl"],
+                "| apiKey present:", bool(m["apiKey"]), "| x-ci-key present:", "x-ci-key" in headers,
+                "| x-opencode-session present:", "x-opencode-session" in headers)
+          PY
+
+      - name: Run droid exec (trivial prompt)
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set +e
+          ~/.local/bin/droid exec --auto low -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "Reply with the single word: ok" > /tmp/droid_out.txt 2>&1
+          echo "DROID_EXIT=$?"
+          echo "DROID_OUTPUT_BEGIN"
+          head -c 6000 /tmp/droid_out.txt
+          echo
+          echo "DROID_OUTPUT_END"
+          true
