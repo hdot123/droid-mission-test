@@ -1,0 +1,72 @@
+name: Probe3 route vs direct
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Curl through Worker with three model strings
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+        run: |
+          send() {
+            local tag="$1" sess="$2" model="$3"
+            local code
+            code=$(curl -s -o /tmp/resp_$tag.json -w "%{http_code}" -X POST "https://droid-test.lumivane.dpdns.org/v1/chat/completions" \
+              -H "Content-Type: application/json" \
+              -H "x-ci-key: $WORKER_CI_KEY" \
+              -H "x-opencode-session: $sess" \
+              -d "{\"model\":\"$model\",\"messages\":[{\"role\":\"user\",\"content\":\"route shape check $tag xyzzy\"}],\"max_tokens\":50}")
+            echo "CURL $tag model=$model HTTP=$code"
+            echo "--- resp head $tag ---"
+            head -c 500 /tmp/resp_$tag.json
+            echo
+            echo "--- end $tag ---"
+          }
+          send T1 "gh-route-T1" "dynamic/droid-review"
+          send T2 "gh-route-T2" "custom-opencode-go/deepseek-v4.1-flash"
+          send T3 "gh-route-T3" "deepseek-v4.1-flash"
+          true
+
+      - name: Droid exec with route name vs direct provider string
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          try_droid() {
+            local tag="$1" mid="$2" model="$3"
+            python3 - "$mid" "$model" <<'PY'
+          import json, os, sys
+          mid, model = sys.argv[1], sys.argv[2]
+          headers = {}
+          if os.environ.get("WORKER_CI_KEY"):
+              headers["x-ci-key"] = os.environ["WORKER_CI_KEY"]
+          headers["x-opencode-session"] = "droid-test"
+          s = {"customModels": [{
+              "model": model,
+              "id": mid,
+              "baseUrl": "https://droid-test.lumivane.dpdns.org",
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
+              "provider": "generic-chat-completion-api",
+              "extraHeaders": headers,
+          }]}
+          os.makedirs(os.path.expanduser("~/.factory"), exist_ok=True)
+          json.dump(s, open(os.path.expanduser("~/.factory/settings.json"), "w"), indent=2)
+          PY
+            set +e
+            ~/.local/bin/droid exec --auto low -m "$mid" --output-format stream-json "Reply with the single word: ok" > /tmp/droid_$tag.txt 2>&1
+            echo "DROID $tag id=$mid model=$model EXIT=$?"
+            echo "--- output tail $tag ---"
+            tail -c 800 /tmp/droid_$tag.txt
+            echo
+            echo "--- end $tag ---"
+          }
+          try_droid B1 "custom:DeepSeek-V4.1-Flash-Go" "dynamic/droid-review"
+          try_droid B2 "custom:Direct-Bypass-Test" "custom-opencode-go/deepseek-v4.1-flash"
+          true
