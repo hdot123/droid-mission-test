@@ -19,9 +19,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Write BYOM settings (CF test gateway)
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Write BYOM settings (engine project config, mirrored)
         env:
-          CI_KEY: ${{ secrets.CI_KEY }}
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
         run: |
           mkdir -p ~/.factory
           python3 - <<'PY'
@@ -31,22 +35,21 @@ jobs:
           if os.path.exists(p):
               s = json.load(open(p))
           headers = {}
-          if os.environ.get("CI_KEY"):
-              headers["x-ci-key"] = os.environ["CI_KEY"]
+          if os.environ.get("WORKER_CI_KEY"):
+              headers["x-ci-key"] = os.environ["WORKER_CI_KEY"]
           s["customModels"] = [{
               "model": "dynamic/droid-review",
               "id": "custom:DeepSeek-V4.1-Flash-Go",
-              "baseUrl": "https://droid-test.lumivane.dpdns.org",
-              "apiKey": "cf-route",
+              "baseUrl": "https://gh.lumivane.dpdns.org",
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
               "provider": "generic-chat-completion-api",
               "extraHeaders": headers,
           }]
           json.dump(s, open(p, "w"), indent=2)
-          print("customModels written:", [m["id"] for m in s["customModels"]])
+          m = s["customModels"][0]
+          print("customModels written:", m["id"], "| model:", m["model"], "| baseUrl:", m["baseUrl"],
+                "| apiKey present:", bool(m["apiKey"]), "| x-ci-key present:", "x-ci-key" in headers)
           PY
-
-      - name: Install droid CLI
-        run: curl -fsSL https://app.factory.ai/cli | sh
 
       - name: Run droid (named by comment)
         env:
