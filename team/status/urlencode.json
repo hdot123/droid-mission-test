@@ -1,0 +1,21 @@
+{
+  "id": "urlencode",
+  "title": "Implement the urlencode module and its tests",
+  "state": "done",
+  "files": [
+    "urlencode.py",
+    "tests/test_urlencode.py",
+    "team/handoffs/urlencode.md",
+    "team/status/urlencode.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_urlencode.py",
+      "result": "PASS — 25 passed in 0.04s (exit 0). First run had 4 failures from a quote_plus encoding bug and one incorrect test expectation; both fixed, then all 25 passed."
+    },
+    {
+      "command": "python -c \"import urlencode; assert urlencode.quote('a b/中') == 'a%20b/%E4%B8%AD'; assert urlencode.unquote('a%20b%zz') == 'a b%zz'; assert urlencode.quote_plus('a b') == 'a+b'; assert urlencode.unquote_plus('a+b') == 'a b'; print('spec examples OK')\"",
+      "result": "PASS — printed 'spec examples OK' (exit 0)."
+    }
+  ]
+}
