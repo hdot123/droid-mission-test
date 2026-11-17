@@ -1,0 +1,17 @@
+{
+  "id": "base32-module",
+  "title": "Implement base32.py with tests",
+  "state": "done",
+  "files": [
+    "base32.py",
+    "tests/test_base32.py",
+    "team/handoffs/base32-module.md",
+    "team/status/base32-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_base32.py",
+      "result": "passed: 29 tests in 0.02s (exit 0)"
+    }
+  ]
+}
