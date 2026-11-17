@@ -1,0 +1,15 @@
+{
+  "id": "initials",
+  "title": "Implement initials module and tests",
+  "state": "done",
+  "files": [
+    "initials.py",
+    "tests/test_initials.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_initials.py",
+      "result": "exit 0: ..... [100%] / 5 passed in 0.01s (pytest 9.2.0 installed via pip; not present in environment initially)"
+    }
+  ]
+}
