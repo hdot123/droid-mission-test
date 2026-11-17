@@ -159,11 +159,12 @@ jobs:
           body = d.get("body") or ""
           if d.get("state") != "OPEN":
               print(f"FAIL\t工单完整\t工单状态 = {d.get('state')}（需要 OPEN）")
-          for kw, label in (("目标", "目标段"), ("交付物", "交付物段"), ("验收", "验收标准段")):
-              if kw in body:
-                  print(f"PASS\t工单完整\t正文含{label}")
+          headings = [ln.strip() for ln in body.splitlines() if ln.lstrip().startswith("##")]
+          for kw, label in (("目标", "目标段"), ("交付物", "交付物段"), ("验收标准", "验收标准段")):
+              if any(kw in h for h in headings):
+                  print(f"PASS\t工单完整\t正文含{label}（## 标题行）")
               else:
-                  print(f"FAIL\t工单完整\t正文缺{label}（未找到「{kw}」）")
+                  print(f"FAIL\t工单完整\t正文缺{label}（未找到含「{kw}」的 ## 标题行）")
           PY
               grep -q $'^FAIL\t工单完整' "$RESULTS" && HARD_FAIL=1
             else
