@@ -1,0 +1,19 @@
+{
+  "id": "collatz-module",
+  "title": "Implement collatz.py with tests",
+  "state": "done",
+  "files": [
+    "collatz.py",
+    "tests/test_collatz.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest -q tests/test_collatz.py",
+      "result": "18 passed in 0.02s (pytest installed first via pip install pytest)"
+    },
+    {
+      "command": "python3 -c \"from collatz import sequence, steps, peak; assert sequence(6)==[6,3,10,5,16,8,4,2,1]; assert steps(6)==8; assert peak(6)==16; assert sequence(1)==[1]\"",
+      "result": "passed"
+    }
+  ]
+}
