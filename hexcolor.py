@@ -1,38 +1,33 @@
-"""Hexadecimal color parsing and formatting helpers."""
+"""Hexadecimal color parsing and formatting helpers (stdlib only)."""
 
 
 def parse(s):
     """Parse "#RGB" or "#RRGGBB" (case-insensitive) into an (r, g, b) tuple.
 
-    Short form digits are expanded by doubling each digit.
-    Raises ValueError for invalid format.
+    Raises ValueError for missing "#", wrong length, or non-hex characters.
+    The short form is expanded by doubling each digit.
     """
     if not isinstance(s, str):
-        raise ValueError("expected a string")
+        raise ValueError("color must be a string")
     if not s.startswith("#"):
-        raise ValueError("missing leading '#'")
+        raise ValueError("color must start with '#'")
     body = s[1:]
     if len(body) == 3:
-        if any(c not in "0123456789abcdefABCDEF" for c in body):
-            raise ValueError("non-hex characters")
-        r = int(body[0] * 2, 16)
-        g = int(body[1] * 2, 16)
-        b = int(body[2] * 2, 16)
-        return (r, g, b)
-    if len(body) == 6:
-        if any(c not in "0123456789abcdefABCDEF" for c in body):
-            raise ValueError("non-hex characters")
-        r = int(body[0:2], 16)
-        g = int(body[2:4], 16)
-        b = int(body[4:6], 16)
-        return (r, g, b)
-    raise ValueError("length must be 3 or 6 hex digits")
+        body = "".join(ch * 2 for ch in body)
+    elif len(body) != 6:
+        raise ValueError("color must be 3 or 6 hex digits after '#'")
+    if any(ch not in "0123456789abcdefABCDEF" for ch in body):
+        raise ValueError("color contains non-hex characters")
+    r = int(body[0:2], 16)
+    g = int(body[2:4], 16)
+    b = int(body[4:6], 16)
+    return (r, g, b)
 
 
 def to_hex(r, g, b):
     """Return the uppercase "#RRGGBB" form of (r, g, b).
 
-    Each component must be an int in 0-255, else ValueError is raised.
+    Each component must be an int in 0-255, else ValueError.
     """
     for value in (r, g, b):
         if isinstance(value, bool) or not isinstance(value, int):
@@ -43,9 +38,9 @@ def to_hex(r, g, b):
 
 
 def is_valid(s):
-    """Boolean version of parse: True if s is valid, False otherwise."""
+    """Boolean version of parse: True when s is a valid color, else False."""
     try:
         parse(s)
-    except Exception:
+    except ValueError:
         return False
     return True
