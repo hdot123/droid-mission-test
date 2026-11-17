@@ -1,0 +1,17 @@
+{
+  "id": "palindrome-module",
+  "title": "Implement palindrome.py with text cleaning and palindrome check",
+  "state": "done",
+  "files": [
+    "palindrome.py",
+    "tests/test_palindrome.py",
+    "team/handoffs/palindrome-module.md",
+    "team/status/palindrome-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_palindrome.py",
+      "result": "7 passed in 0.01s"
+    }
+  ]
+}
