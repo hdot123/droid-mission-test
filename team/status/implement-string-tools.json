@@ -1,0 +1,21 @@
+{
+  "id": "implement-string-tools",
+  "title": "Implement string utilities module",
+  "state": "done",
+  "files": [
+    "string.py",
+    "test_string.py",
+    "team/handoffs/implement-string-tools.md",
+    "team/status/implement-string-tools.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest test_string.py -q",
+      "result": "passed: 16 passed in 0.02s"
+    },
+    {
+      "command": "python -c \"from string import Template, ascii_lowercase; from string import reverse_words, count_vowels, title_case; assert reverse_words('the quick fox') == 'fox quick the'; assert count_vowels('Abacus') == 3; assert title_case('hELLO wORLD') == 'Hello World'; print('ok')\"",
+      "result": "ok"
+    }
+  ]
+}
