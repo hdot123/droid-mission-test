@@ -1,0 +1,17 @@
+{
+  "id": "morse-module",
+  "title": "Implement morse.py with tests",
+  "state": "done",
+  "files": [
+    "morse.py",
+    "tests/test_morse.py",
+    "team/handoffs/morse-module.md",
+    "team/status/morse-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest tests/test_morse.py -q",
+      "result": "10 passed in 0.02s (exit 0); intermediate run had 1 failure in test_decode_illegal_input (invalid test tokens), fixed, then final run all green; pytest installed via pip because it was missing from the environment"
+    }
+  ]
+}
