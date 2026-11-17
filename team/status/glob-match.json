@@ -1,0 +1,15 @@
+{
+  "id": "glob-match",
+  "title": "Implement the glob_match module and its tests",
+  "state": "done",
+  "files": [
+    "glob_match.py",
+    "tests/test_glob_match.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_glob_match.py",
+      "result": "pass: 40 passed in 0.04s (exit code 0)"
+    }
+  ]
+}
