@@ -1,0 +1,29 @@
+{
+  "id": "caesar",
+  "title": "caesar 凯撒移位模块",
+  "state": "done",
+  "files": [
+    "caesar.py",
+    "tests/test_caesar.py",
+    "team/handoffs/caesar.md",
+    "team/status/caesar.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_caesar.py",
+      "result": "pass: 7 passed in 0.02s"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 7 passed in 0.01s"
+    },
+    {
+      "command": "python -c \"from caesar import encode, decode; assert encode('Abc XyZ!', 2) == 'Cde ZaB!'; assert encode('abc', -1) == 'zab'; assert decode('Cde', 2) == 'Abc'; print('caesar examples ok')\"",
+      "result": "pass: printed 'caesar examples ok'"
+    },
+    {
+      "command": "python -c \"import caesar, inspect; print(inspect.signature(caesar.encode)); print(inspect.signature(caesar.decode))\"",
+      "result": "pass: printed '(text, shift)' and '(text, shift)'"
+    }
+  ]
+}
