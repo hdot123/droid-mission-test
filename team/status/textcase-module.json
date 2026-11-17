@@ -1,0 +1,19 @@
+{
+  "id": "textcase-module",
+  "title": "Implement textcase module with tests",
+  "state": "done",
+  "files": [
+    "textcase.py",
+    "tests/test_textcase.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest tests/test_textcase.py -q",
+      "result": "pass: 14 passed in 0.01s"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 14 passed in 0.01s"
+    }
+  ]
+}
