@@ -1,0 +1,29 @@
+{
+  "id": "hexcolor",
+  "title": "hexcolor 十六进制颜色模块",
+  "state": "done",
+  "files": [
+    "hexcolor.py",
+    "tests/test_hexcolor.py",
+    "team/handoffs/hexcolor.md",
+    "team/status/hexcolor.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_hexcolor.py",
+      "result": "PASS (exit 0): 15 passed in 0.01s"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "PASS (exit 0): 15 passed in 0.01s"
+    },
+    {
+      "command": "python -c \"from hexcolor import parse, to_hex, is_valid; assert parse('#f80') == (255, 136, 0); assert parse('#FF8800') == (255, 136, 0); assert to_hex(255, 136, 0) == '#FF8800'; assert is_valid('#f80') is True; assert is_valid('f80') is False; print('hexcolor examples ok')\"",
+      "result": "PASS (exit 0): hexcolor examples ok"
+    },
+    {
+      "command": "python -c \"import hexcolor, inspect; print(inspect.signature(hexcolor.parse)); print(inspect.signature(hexcolor.to_hex)); print(inspect.signature(hexcolor.is_valid))\"",
+      "result": "PASS (exit 0): (s) / (r, g, b) / (s)"
+    }
+  ]
+}
