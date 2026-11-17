@@ -1,0 +1,521 @@
+name: Droid Team (split Mission pattern test)
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  lead:
+    name: lead (split into process cards)
+    if: >-
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '@team-droid')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      processes: ${{ steps.plan.outputs.processes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Write BYOM settings (lead session)
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GW_TOKEN_KNOWN: ${{ secrets.GW_TOKEN_KNOWN }}
+          SESSION_NAME: team-lead
+        run: |
+          mkdir -p ~/.factory
+          python3 - <<'PY'
+          import json, os
+          p = os.path.expanduser("~/.factory/settings.json")
+          s = {}
+          if os.path.exists(p):
+              s = json.load(open(p))
+          headers = {
+              "x-ci-key": os.environ.get("WORKER_CI_KEY", ""),
+              "x-opencode-session": os.environ.get("SESSION_NAME", "team-lead"),
+              "cf-aig-authorization": "Bearer " + os.environ.get("GW_TOKEN_KNOWN", ""),
+          }
+          s["customModels"] = [{
+              "model": "dynamic/droid-review",
+              "id": "custom:DeepSeek-V4.1-Flash-Go",
+              "baseUrl": "https://droid-test.lumivane.dpdns.org",
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
+              "provider": "generic-chat-completion-api",
+              "extraHeaders": headers,
+          }]
+          json.dump(s, open(p, "w"), indent=2)
+          m = s["customModels"][0]
+          print("settings check | model:", m["model"], "| baseUrl:", m["baseUrl"],
+                "| apiKey present:", bool(m["apiKey"]),
+                "| x-ci-key present:", bool(headers["x-ci-key"]),
+                "| x-opencode-session present:", bool(headers["x-opencode-session"]),
+                "| cf-aig-authorization present:", bool(headers["cf-aig-authorization"]))
+          PY
+
+      - name: Lead splits the order into process cards
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set -o pipefail
+          python3 - <<'PY'
+          import json, os
+          ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
+          issue = ev.get("issue") or {}
+          title = issue.get("title", "")
+          body = issue.get("body") or ""
+          prompt = f"""You are the LEAD of a development team. Your only job is to split the work order into process cards. Do not write application code. Do not edit any file except team-plan.json in the repository root.
+
+          Work order title: {title}
+
+          Work order body:
+          {body}
+
+          Create team-plan.json with exactly this JSON shape:
+          {{
+            "summary": "one short sentence",
+            "processes": [
+              {{
+                "id": "short-kebab-id",
+                "title": "process title",
+                "scope": "what this process owns and does not own",
+                "files": ["file this process may create or edit", "its test file"],
+                "task": "complete instructions for one worker",
+                "checks": ["one shell command that verifies this process"]
+              }}
+            ]
+          }}
+
+          Rules:
+          - Split along module boundaries into exactly 3 independent processes.
+          - Processes must not depend on each other and must not share files, except that every worker may also write its own handoff and status files under team/.
+          - Each process gets exactly one worker, one job, and a short lease.
+          - The checks must be runnable from the repository root.
+          - Write valid JSON only into team-plan.json. Do not wrap it in Markdown.
+          """
+          open("lead-prompt.txt", "w").write(prompt)
+          PY
+          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat lead-prompt.txt)" | tee lead-stream.jsonl
+
+      - name: Validate plan and publish process cards
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          plan = json.load(open("team-plan.json"))
+          processes = plan.get("processes") or []
+          if len(processes) != 3:
+              print(f"plan must contain exactly 3 processes, got {len(processes)}")
+              sys.exit(1)
+          seen_files = {}
+          for proc in processes:
+              for key in ("id", "title", "scope", "files", "task", "checks"):
+                  if not proc.get(key):
+                      print(f"process missing {key}: {proc}")
+                      sys.exit(1)
+              for f in proc["files"]:
+                  if f in seen_files:
+                      print(f"file owned by two processes: {f}")
+                      sys.exit(1)
+                  seen_files[f] = proc["id"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write("processes=" + json.dumps(processes, ensure_ascii=False) + "\n")
+          lines = ["## 领队派单卡", "", f"总述：{plan.get('summary','')}", ""]
+          for i, proc in enumerate(processes, 1):
+              lines += [f"### 工序 {i}：{proc['title']} (`{proc['id']}`)",
+                        f"- 范围：{proc['scope']}",
+                        f"- 文件：{', '.join(proc['files'])}",
+                        f"- 检查：{'; '.join(proc['checks'])}", ""]
+          lines.append("状态：领队已拆单，工人 job 将按以上工序卡独立执行。")
+          open("plan-comment.md", "w").write("\n".join(lines))
+          print("\n".join(lines))
+          PY
+          gh issue comment "$ISSUE_NUMBER" --body-file plan-comment.md
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-plan-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
+          path: team-plan.json
+
+  worker:
+    name: worker
+    needs: lead
+    if: needs.lead.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        process: ${{ fromJSON(needs.lead.outputs.processes) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Write BYOM settings (worker session)
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GW_TOKEN_KNOWN: ${{ secrets.GW_TOKEN_KNOWN }}
+          SESSION_NAME: team-worker-${{ matrix.process.id }}
+        run: |
+          mkdir -p ~/.factory
+          python3 - <<'PY'
+          import json, os
+          p = os.path.expanduser("~/.factory/settings.json")
+          s = {}
+          if os.path.exists(p):
+              s = json.load(open(p))
+          headers = {
+              "x-ci-key": os.environ.get("WORKER_CI_KEY", ""),
+              "x-opencode-session": os.environ.get("SESSION_NAME", "team-worker"),
+              "cf-aig-authorization": "Bearer " + os.environ.get("GW_TOKEN_KNOWN", ""),
+          }
+          s["customModels"] = [{
+              "model": "dynamic/droid-review",
+              "id": "custom:DeepSeek-V4.1-Flash-Go",
+              "baseUrl": "https://droid-test.lumivane.dpdns.org",
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
+              "provider": "generic-chat-completion-api",
+              "extraHeaders": headers,
+          }]
+          json.dump(s, open(p, "w"), indent=2)
+          m = s["customModels"][0]
+          print("settings check | model:", m["model"], "| baseUrl:", m["baseUrl"],
+                "| apiKey present:", bool(m["apiKey"]),
+                "| x-ci-key present:", bool(headers["x-ci-key"]),
+                "| x-opencode-session present:", bool(headers["x-opencode-session"]),
+                "| cf-aig-authorization present:", bool(headers["cf-aig-authorization"]))
+          PY
+
+      - name: Worker executes exactly one process card
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+          PROCESS_JSON: ${{ toJSON(matrix.process) }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -o pipefail
+          python3 - <<'PY'
+          import json, os
+          proc = json.loads(os.environ["PROCESS_JSON"])
+          ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
+          issue = ev.get("issue") or {}
+          prompt = f"""You are a WORKER on a development team. Execute exactly one process card. Do not do any other process. Do not expand scope.
+
+          Work order: #{os.environ['ISSUE_NUMBER']} {issue.get('title','')}
+          Work order body:
+          {issue.get('body') or ''}
+
+          Your process card:
+          {json.dumps(proc, ensure_ascii=False, indent=2)}
+
+          Instructions:
+          - Create or edit only these files: {', '.join(proc['files'])}
+          - Also write exactly these two team files:
+            1. team/handoffs/{proc['id']}.md — a self-contained handoff with: what was requested, what you did, what you did not do, checks you ran and their results, and anything the validator must pay attention to.
+            2. team/status/{proc['id']}.json — valid JSON with keys: id, title, state ("done"), files (array), checks (array of objects with command and result).
+          - Run your process checks before finishing: {'; '.join(proc['checks'])}
+          - Do not commit or push; the workflow will do that.
+          - Do not modify files owned by other processes.
+          """
+          open("worker-prompt.txt", "w").write(prompt)
+          PY
+          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
+
+      - name: Verify process checks and handoff
+        env:
+          PROCESS_JSON: ${{ toJSON(matrix.process) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          proc = json.loads(os.environ["PROCESS_JSON"])
+          handoff = f"team/handoffs/{proc['id']}.md"
+          status = f"team/status/{proc['id']}.json"
+          for path in [handoff, status] + proc["files"]:
+              if not os.path.exists(path):
+                  print(f"missing expected file: {path}")
+                  sys.exit(1)
+          json.load(open(status))
+          for cmd in proc["checks"]:
+              print(f"$ {cmd}")
+              result = subprocess.run(cmd, shell=True)
+              if result.returncode != 0:
+                  print(f"check failed: {cmd}")
+                  sys.exit(result.returncode)
+          print("worker verification passed")
+          PY
+
+      - name: Commit, push worker branch, and post handoff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+          PROCESS_ID: ${{ matrix.process.id }}
+          PROCESS_TITLE: ${{ matrix.process.title }}
+          PROCESS_JSON: ${{ toJSON(matrix.process) }}
+        run: |
+          BR="team/issue-${ISSUE_NUMBER}/run-${RUN_ID}/${PROCESS_ID}"
+          git config user.name "droid-team-worker"
+          git config user.email "droid-team-worker@localhost"
+          git checkout -b "$BR"
+          jq -r '.files[]' <<<"$PROCESS_JSON" | while IFS= read -r f; do git add -- "$f"; done
+          git add -- "team/handoffs/${PROCESS_ID}.md" "team/status/${PROCESS_ID}.json"
+          if git diff --cached --quiet; then
+            echo "worker produced no changes"
+            exit 1
+          fi
+          git commit -m "team worker ${PROCESS_ID}: ${PROCESS_TITLE}"
+          git push -u origin "$BR"
+          {
+            echo "## 工人交接：${PROCESS_TITLE} (\`${PROCESS_ID}\`)"
+            echo ""
+            echo "分支：\`$BR\`"
+            echo ""
+            cat "team/handoffs/${PROCESS_ID}.md"
+          } > handoff-comment.md
+          gh issue comment "$ISSUE_NUMBER" --body-file handoff-comment.md
+
+  validate:
+    name: validator (independent check)
+    needs: [lead, worker]
+    if: needs.lead.result == 'success' && needs.worker.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      candidate_branch: ${{ steps.candidate.outputs.candidate_branch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: team-plan-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
+          path: plan
+
+      - name: Merge worker branches into candidate
+        id: candidate
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          CANDIDATE="team/issue-${ISSUE_NUMBER}/candidate-${RUN_ID}"
+          echo "candidate_branch=$CANDIDATE" >> "$GITHUB_OUTPUT"
+          git config user.name "droid-team-validator"
+          git config user.email "droid-team-validator@localhost"
+          git checkout -b "$CANDIDATE"
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          plan = json.load(open("plan/team-plan.json"))
+          issue = os.environ["ISSUE_NUMBER"]
+          run_id = os.environ["RUN_ID"]
+          for proc in plan["processes"]:
+              branch = f"team/issue-{issue}/run-{run_id}/{proc['id']}"
+              print(f"merging {branch}")
+              subprocess.run(["git", "fetch", "origin", branch], check=True)
+              result = subprocess.run(["git", "merge", "--no-ff", "--no-edit", f"origin/{branch}"])
+              if result.returncode != 0:
+                  print(f"merge failed for {branch}")
+                  sys.exit(result.returncode)
+          PY
+          mkdir -p team
+          set +e
+          python3 -m pytest -q 2>&1 | tee team/pytest-output.txt
+          echo "${PIPESTATUS[0]}" > team/pytest-exit.txt
+          set -e
+          cat team/pytest-output.txt
+          echo "pytest exit: $(cat team/pytest-exit.txt)"
+
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Write BYOM settings (validator session)
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GW_TOKEN_KNOWN: ${{ secrets.GW_TOKEN_KNOWN }}
+          SESSION_NAME: team-validator
+        run: |
+          mkdir -p ~/.factory
+          python3 - <<'PY'
+          import json, os
+          p = os.path.expanduser("~/.factory/settings.json")
+          s = {}
+          if os.path.exists(p):
+              s = json.load(open(p))
+          headers = {
+              "x-ci-key": os.environ.get("WORKER_CI_KEY", ""),
+              "x-opencode-session": os.environ.get("SESSION_NAME", "team-validator"),
+              "cf-aig-authorization": "Bearer " + os.environ.get("GW_TOKEN_KNOWN", ""),
+          }
+          s["customModels"] = [{
+              "model": "dynamic/droid-review",
+              "id": "custom:DeepSeek-V4.1-Flash-Go",
+              "baseUrl": "https://droid-test.lumivane.dpdns.org",
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
+              "provider": "generic-chat-completion-api",
+              "extraHeaders": headers,
+          }]
+          json.dump(s, open(p, "w"), indent=2)
+          m = s["customModels"][0]
+          print("settings check | model:", m["model"], "| baseUrl:", m["baseUrl"],
+                "| apiKey present:", bool(m["apiKey"]),
+                "| x-ci-key present:", bool(headers["x-ci-key"]),
+                "| x-opencode-session present:", bool(headers["x-opencode-session"]),
+                "| cf-aig-authorization present:", bool(headers["cf-aig-authorization"]))
+          PY
+
+      - name: Validator judges each process
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+        run: |
+          set -o pipefail
+          python3 - <<'PY'
+          prompt = """You are the VALIDATOR on a development team. You only judge; you must not fix or modify application code or tests.
+
+          Read:
+          - plan/team-plan.json (the process cards)
+          - team/status/*.json and team/handoffs/*.md (worker handoffs)
+          - the merged application and test files
+          - team/pytest-output.txt and team/pytest-exit.txt (full test evidence)
+
+          Write exactly two files:
+          1. team/validation.json with this shape:
+          {
+            "overall": "pass" or "fail",
+            "processes": [
+              {"id": "process-id", "verdict": "pass" or "fail", "reason": "evidence-based reason"}
+            ]
+          }
+          It must contain one verdict for every process in the plan.
+          2. team/validation.md — a human-readable verdict report with one section per process and the evidence you relied on.
+
+          Rules:
+          - If pytest exit is not 0, overall must be fail.
+          - Pass a process only when its files, handoff, status, and checks line up with its process card.
+          - Do not modify any other file.
+          """
+          open("validator-prompt.txt", "w").write(prompt)
+          PY
+          git status --porcelain > /tmp/validator-before.txt
+          sha256sum plan/team-plan.json > /tmp/plan-before.sha
+          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
+          sha256sum -c /tmp/plan-before.sha
+          python3 - <<'PY'
+          import json, subprocess, sys
+          before = set(open("/tmp/validator-before.txt").read().splitlines())
+          changed = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=True).stdout.splitlines()
+          allowed_prefixes = ("team/validation.json", "team/validation.md", "team/pytest-output.txt", "team/pytest-exit.txt", "validator-prompt.txt", "validator-stream.jsonl")
+          bad = []
+          for line in changed:
+              if line in before:
+                  continue
+              path = line[3:].strip()
+              if not any(path == p or path.startswith(p) for p in allowed_prefixes):
+                  bad.append(path)
+          if bad:
+              print("validator modified non-validation files:", bad)
+              sys.exit(1)
+          plan = json.load(open("plan/team-plan.json"))
+          verdict = json.load(open("team/validation.json"))
+          expected = {p["id"] for p in plan["processes"]}
+          got = {p["id"] for p in verdict.get("processes", [])}
+          if got != expected:
+              print(f"validator verdict coverage mismatch: expected {expected}, got {got}")
+              sys.exit(1)
+          pytest_exit = int(open("team/pytest-exit.txt").read().strip())
+          if pytest_exit != 0 and verdict.get("overall") != "fail":
+              print("pytest failed but validator did not fail the candidate")
+              sys.exit(1)
+          print("validator output structurally valid; overall:", verdict.get("overall"), "| pytest exit:", pytest_exit)
+          PY
+
+      - name: Push candidate and post verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          CANDIDATE_BRANCH: ${{ steps.candidate.outputs.candidate_branch }}
+        run: |
+          git add team/pytest-output.txt team/pytest-exit.txt team/validation.json team/validation.md
+          git commit -m "team validation for issue #${ISSUE_NUMBER}"
+          git push -u origin "$CANDIDATE_BRANCH"
+          {
+            echo "## 验收判定"
+            echo ""
+            echo "候选分支：\`$CANDIDATE_BRANCH\`"
+            echo ""
+            cat team/validation.md
+          } > validation-comment.md
+          gh issue comment "$ISSUE_NUMBER" --body-file validation-comment.md
+          python3 - <<'PY'
+          import json, sys
+          verdict = json.load(open("team/validation.json"))
+          pytest_exit = int(open("team/pytest-exit.txt").read().strip())
+          if verdict.get("overall") != "pass" or pytest_exit != 0:
+              print("validation did not pass")
+              sys.exit(1)
+          PY
+
+  assemble:
+    name: assemble (status card and PR)
+    needs: validate
+    if: needs.validate.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.candidate_branch }}
+          fetch-depth: 0
+
+      - name: Render final status card and attempt PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          CANDIDATE_BRANCH: ${{ needs.validate.outputs.candidate_branch }}
+        run: |
+          set +e
+          gh pr create --base main --head "$CANDIDATE_BRANCH" --title "team: issue #${ISSUE_NUMBER}" --body "Team-mode result for issue #${ISSUE_NUMBER}. Candidate branch: $CANDIDATE_BRANCH" > pr-output.txt 2>&1
+          PR_CODE=$?
+          set -e
+          cat pr-output.txt
+          echo "gh pr create exit: $PR_CODE"
+          python3 - <<'PY'
+          import glob, json, os
+          candidate = os.environ["CANDIDATE_BRANCH"]
+          pr_output = open("pr-output.txt").read().strip() if os.path.exists("pr-output.txt") else ""
+          lines = ["## 团队状态卡（收口）", "", f"候选分支：`{candidate}`", "", "### 工序状态"]
+          for path in sorted(glob.glob("team/status/*.json")):
+              status = json.load(open(path))
+              lines.append(f"- `{status.get('id')}`：{status.get('state')} — {status.get('title')}")
+          verdict = json.load(open("team/validation.json"))
+          lines += ["", f"### 验收：{verdict.get('overall')}"]
+          for proc in verdict.get("processes", []):
+              lines.append(f"- `{proc.get('id')}`：{proc.get('verdict')} — {proc.get('reason')}")
+          lines += ["", "### PR", "", pr_output if pr_output else "(gh pr create produced no output)"]
+          open("final-comment.md", "w").write("\n".join(lines))
+          print("\n".join(lines))
+          PY
+          gh issue comment "$ISSUE_NUMBER" --body-file final-comment.md
