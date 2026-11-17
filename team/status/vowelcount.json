@@ -1,0 +1,15 @@
+{
+  "id": "vowelcount",
+  "title": "Implement vowelcount module and tests",
+  "state": "done",
+  "files": [
+    "vowelcount.py",
+    "tests/test_vowelcount.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_vowelcount.py",
+      "result": "PASS: 6 passed in 0.01s (exit code 0). Note: pytest was not preinstalled; installed via pip before running. Work order example conflict: body says count(\"banana\")==3 (implemented, tested); acceptance criteria says ==4 — flagged for validator."
+    }
+  ]
+}
