@@ -1,0 +1,21 @@
+{
+  "id": "implement-vigenere",
+  "title": "Implement Vigenere cipher module",
+  "state": "done",
+  "files": [
+    "vigenere.py",
+    "tests/test_vigenere.py",
+    "team/handoffs/implement-vigenere.md",
+    "team/status/implement-vigenere.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest tests/test_vigenere.py -q",
+      "result": "pass: 13 passed in 0.01s"
+    },
+    {
+      "command": "python -c \"import vigenere; assert vigenere.encrypt('ATTACKATDAWN','LEMON')=='LXFOPVEFRNHR'; assert vigenere.encrypt('Hello, World!','key')=='Rijvs, Uyvjn!'; assert vigenere.decrypt(vigenere.encrypt('Hello, World!','key'),'key')=='Hello, World!'\"",
+      "result": "pass: assertions succeeded (printed checks OK)"
+    }
+  ]
+}
