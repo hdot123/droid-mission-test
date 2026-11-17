@@ -1,0 +1,19 @@
+{
+  "id": "ini-parse",
+  "title": "Implement the ini_parse module and its tests",
+  "state": "done",
+  "files": [
+    "ini_parse.py",
+    "tests/test_ini_parse.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_ini_parse.py",
+      "result": "PASS: 18 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python -c \"import ini_parse; assert ini_parse.parse('[a]\\nX = 1\\n') == {'a': {'x': '1'}}; assert ini_parse.get('k = v', 'DEFAULT', 'K') == 'v'\"",
+      "result": "PASS: no output (exit 0)"
+    }
+  ]
+}
