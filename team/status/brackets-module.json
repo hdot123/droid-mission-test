@@ -1,0 +1,17 @@
+{
+  "id": "brackets-module",
+  "title": "实现括号平衡检查模块 brackets.py",
+  "state": "done",
+  "files": [
+    "brackets.py",
+    "tests/test_brackets.py",
+    "team/handoffs/brackets-module.md",
+    "team/status/brackets-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_brackets.py",
+      "result": "passed: 11 passed in 0.01s (exit 0)"
+    }
+  ]
+}
