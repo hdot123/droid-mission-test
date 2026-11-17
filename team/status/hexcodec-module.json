@@ -1,0 +1,17 @@
+{
+  "id": "hexcodec-module",
+  "title": "Implement hexcodec.py with tests",
+  "state": "done",
+  "files": [
+    "hexcodec.py",
+    "tests/test_hexcodec.py",
+    "team/handoffs/hexcodec-module.md",
+    "team/status/hexcodec-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_hexcodec.py",
+      "result": "passed: 8 passed in 0.01s (exit code 0)"
+    }
+  ]
+}
