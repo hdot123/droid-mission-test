@@ -1,0 +1,19 @@
+{
+  "id": "isbn-module",
+  "title": "Implement isbn.py with is_valid_isbn10 and tests",
+  "state": "done",
+  "files": [
+    "isbn.py",
+    "tests/test_isbn.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_isbn.py",
+      "result": "PASS: ........ [100%] / 8 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "python - <<'PY'\nfrom isbn import is_valid_isbn10\n# 0-306-40615-2 is a classic valid ISBN-10 (sum 10*0+9*3+8*0+7*6+6*4+5*0+4*6+3*1+2*5+1*2 = 132 = 11*12)\nassert is_valid_isbn10('0306406152')\nassert is_valid_isbn10('0-306-40615-2')\nassert is_valid_isbn10('0 306 40615 2')\nassert not is_valid_isbn10('0306406153')\nassert not is_valid_isbn10('030640615')\nassert not is_valid_isbn10('X306406152')\nassert not is_valid_isbn10('030640615X')\nassert is_valid_isbn10('080442957X')\nassert not is_valid_isbn10('0804429571')\nassert not is_valid_isbn10('')\nprint('isbn OK')\nPY",
+      "result": "PASS: printed 'isbn OK' (exit 0, all 10 assertions held)"
+    }
+  ]
+}
