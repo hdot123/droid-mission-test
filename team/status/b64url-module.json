@@ -1,0 +1,25 @@
+{
+  "id": "b64url-module",
+  "title": "Implement b64url.py with tests",
+  "state": "done",
+  "files": [
+    "b64url.py",
+    "tests/test_b64url.py",
+    "team/handoffs/b64url-module.md",
+    "team/status/b64url-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_b64url.py",
+      "result": "pass: 8 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "python -m pytest -q  (full suite from repo root)",
+      "result": "pass: 8 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "python -c \"from b64url import encode, decode; assert encode(b'\\xfb\\xff')=='-_8'; assert encode(b'')==''; assert decode('') == b''; assert decode(encode(b'\\xfb\\xff')) == b'\\xfb\\xff'\"",
+      "result": "pass: all four assertions held; executed equivalently via python heredoc because shell quoting mangled the one-liner (same imports, asserts, and code path)"
+    }
+  ]
+}
