@@ -1,0 +1,25 @@
+{
+  "id": "isbn-module",
+  "title": "Implement ISBN validation and ISBN-10 to ISBN-13 conversion",
+  "state": "done",
+  "files": [
+    "isbn.py",
+    "tests/test_isbn.py",
+    "team/handoffs/isbn-module.md",
+    "team/status/isbn-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_isbn.py",
+      "result": "initially blocked: /usr/bin/python: No module named pytest (pytest not installed in environment)"
+    },
+    {
+      "command": "python3 -m pip install --quiet pytest",
+      "result": "passed: pytest installed into environment (environment setup, not a repo change)"
+    },
+    {
+      "command": "python3 -m pytest -q tests/test_isbn.py",
+      "result": "passed: 17 passed in 0.03s (exit code 0)"
+    }
+  ]
+}
