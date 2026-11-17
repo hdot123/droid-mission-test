@@ -1,20 +1,24 @@
-"""Caesar cipher: encode/decode with case preservation."""
+"""Caesar cipher: shift letters A-Z / a-z, leave everything else unchanged."""
 
 
 def encode(text, shift):
-    """Shift A-Z and a-z by `shift` (mod 26); other characters unchanged."""
-    shift %= 26
-    out = []
+    """Shift letters in `text` by `shift` positions (mod 26, negatives legal).
+
+    Case is preserved; non-letter characters are returned unchanged.
+    """
+    result = []
     for ch in text:
-        if "A" <= ch <= "Z":
-            out.append(chr((ord(ch) - ord("A") + shift) % 26 + ord("A")))
-        elif "a" <= ch <= "z":
-            out.append(chr((ord(ch) - ord("a") + shift) % 26 + ord("a")))
+        if "a" <= ch <= "z":
+            base = ord("a")
+        elif "A" <= ch <= "Z":
+            base = ord("A")
         else:
-            out.append(ch)
-    return "".join(out)
+            result.append(ch)
+            continue
+        result.append(chr(base + (ord(ch) - base + shift) % 26))
+    return "".join(result)
 
 
 def decode(text, shift):
-    """Inverse of encode: shift by -shift."""
+    """Inverse of `encode(text, shift)`."""
     return encode(text, -shift)
