@@ -1,6 +1,6 @@
-name: Droid Team v2 (foreman pattern test)
+name: Droid Team v2.6.1 (foreman pattern test)
 
-# Foreman pattern （领班制）, v2:
+# Foreman pattern （领班制）, v2.6.1:
 #   env-check (reusable gate, GitHub side only)
 #   -> lead/foreman splits the order and files the [计划] issue + sub-issues
 #   -> workers (one process card each, parallel)
@@ -49,14 +49,54 @@ jobs:
     outputs:
       processes: ${{ steps.plan.outputs.processes }}
       plan_issue_number: ${{ steps.plan.outputs.plan_issue_number }}
+      duplicate: ${{ steps.dup.outputs.duplicate }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Duplicate check (work order already closed out with pass?)
+        id: dup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          repo = os.environ["GITHUB_REPOSITORY"]
+          issue = os.environ["ISSUE_NUMBER"]
+          comments = []
+          page = 1
+          while True:
+              r = subprocess.run(["gh", "api", f"repos/{repo}/issues/{issue}/comments?per_page=100&page={page}"],
+                                 capture_output=True, text=True)
+              if r.returncode != 0:
+                  print("comment list failed; treating as not duplicate:", (r.stderr or "")[:300])
+                  comments = []
+                  break
+              batch = json.loads(r.stdout or "[]")
+              comments += batch
+              if len(batch) < 100:
+                  break
+              page += 1
+          duplicate = any((c.get("user") or {}).get("login") == "github-actions[bot]" and
+                          "## 团队状态卡（收口）" in (c.get("body") or "") and
+                          "总判定：**pass**" in (c.get("body") or "")
+                          for c in comments)
+          if duplicate:
+              subprocess.run(["gh", "issue", "comment", issue, "--body",
+                              "## 重复点名\n\n重复点名：本工单已由先前 run 处理完毕（pass），不重复派队。"],
+                             check=False)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"duplicate={'true' if duplicate else 'false'}\n")
+          print("duplicate:", duplicate)
+          PY
+
       - name: Install droid CLI
+        if: steps.dup.outputs.duplicate != 'true'
         run: curl -fsSL https://app.factory.ai/cli | sh
 
       - name: Write BYOM settings (lead session)
+        if: steps.dup.outputs.duplicate != 'true'
         env:
           WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
           GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
@@ -93,6 +133,7 @@ jobs:
           PY
 
       - name: Foreman splits the order into process cards
+        if: steps.dup.outputs.duplicate != 'true'
         env:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
         run: |
@@ -126,17 +167,19 @@ jobs:
           }}
 
           Rules:
-          - Split along module boundaries into exactly 3 independent processes.
+          - Split along module boundaries into 1 to 6 independent processes (typically 3).
           - Processes must not depend on each other and must not share files, except that every worker may also write its own handoff and status files under team/.
           - Each process gets exactly one worker, one job, and a short lease.
           - The checks must be runnable from the repository root.
           - Write valid JSON only into team-plan.json. Do not wrap it in Markdown.
+          - Be efficient: at most 8 tool calls, then write team-plan.json.
           """
           open("lead-prompt.txt", "w").write(prompt)
           PY
-          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat lead-prompt.txt)" | tee lead-stream.jsonl
+          timeout --signal=TERM --kill-after=30s 600s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat lead-prompt.txt)" | tee lead-stream.jsonl
 
       - name: Validate plan, file [计划] issue and sub-issues
+        if: steps.dup.outputs.duplicate != 'true'
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
@@ -144,7 +187,7 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           python3 - <<'PY'
-          import json, os, subprocess, sys
+          import json, os, re, subprocess, sys
 
           repo = os.environ["GITHUB_REPOSITORY"]
           issue_number = os.environ["ISSUE_NUMBER"]
@@ -159,20 +202,52 @@ jobs:
 
           plan = json.load(open("team-plan.json"))
           processes = plan.get("processes") or []
-          if len(processes) != 3:
-              print(f"plan must contain exactly 3 processes, got {len(processes)}")
+          if not 1 <= len(processes) <= 6:
+              print(f"plan must contain 1-6 processes, got {len(processes)}")
               sys.exit(1)
+
+          def norm(p):
+              return os.path.normpath(str(p).strip())
+
+          def protected_hits(files):
+              hits = []
+              for f in files:
+                  nf = norm(f)
+                  parts = nf.split("/")
+                  if os.path.isabs(str(f)) or ".." in parts or nf == ".github" or nf.startswith(".github/") or nf == "team" or nf.startswith("team/"):
+                      hits.append(f)
+              return hits
+
+          seen_ids = set()
           seen_files = {}
+          protected = []
           for proc in processes:
               for key in ("id", "title", "scope", "files", "task", "checks"):
                   if not proc.get(key):
                       print(f"process missing {key}: {proc}")
                       sys.exit(1)
+              pid = proc["id"]
+              if not re.fullmatch(r"^[a-z0-9][a-z0-9-]*$", str(pid)):
+                  print(f"process id has illegal characters (allowed: ^[a-z0-9][a-z0-9-]*$): {pid}")
+                  sys.exit(1)
+              if pid in seen_ids:
+                  print(f"duplicate process id: {pid}")
+                  sys.exit(1)
+              seen_ids.add(pid)
+              proc["files"] = [norm(f) for f in proc["files"]]
+              protected += [(pid, f) for f in protected_hits(proc["files"])]
               for f in proc["files"]:
                   if f in seen_files:
                       print(f"file owned by two processes: {f}")
                       sys.exit(1)
-                  seen_files[f] = proc["id"]
+                  seen_files[f] = pid
+          if protected:
+              detail = "; ".join(f"`{pid}`: {f}" for pid, f in protected)
+              print("plan claims protected paths:", detail)
+              gh("issue", "comment", issue_number, "--body",
+                 "## 领班计划校验失败（受保护路径）\n\n计划卡面命中受保护路径黑名单（.github/**、team/**、绝对路径或含 ..），计划被拒：\n\n" + detail,
+                 check=False)
+              sys.exit(1)
           plan["plan_version"] = 1
           plan["iteration"] = 1
 
@@ -258,15 +333,17 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" --body-file plan-comment.md
 
       - name: Upload plan artifact
+        if: steps.dup.outputs.duplicate != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: team-plan-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
           path: team-plan.json
+          overwrite: true
 
   worker:
     name: worker
     needs: lead
-    if: needs.lead.result == 'success'
+    if: needs.lead.result == 'success' && needs.lead.outputs.duplicate != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -279,6 +356,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Record base SHA (session self-commit guard)
+        run: echo "BASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Install droid CLI
         run: curl -fsSL https://app.factory.ai/cli | sh
@@ -351,10 +431,11 @@ jobs:
           - Run your process checks before finishing: {'; '.join(proc['checks'])}
           - Do not commit or push; the workflow will do that.
           - Do not modify files owned by other processes.
+          - Be efficient: at most 20 tool calls.
           """
           open("worker-prompt.txt", "w").write(prompt)
           PY
-          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
+          timeout --signal=TERM --kill-after=30s 900s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
 
       - name: Verify process checks and handoff
         env:
@@ -362,10 +443,20 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os, subprocess, sys
+          if subprocess.run(["python3", "-m", "pytest", "--version"],
+                            capture_output=True).returncode != 0:
+              print("pytest missing; installing deterministically (v2.1)")
+              if subprocess.run(["python3", "-m", "pip", "install", "-q", "pytest"]).returncode != 0:
+                  print("pytest install failed; cannot verify")
+                  sys.exit(1)
+              if subprocess.run(["python3", "-m", "pytest", "--version"],
+                                capture_output=True).returncode != 0:
+                  print("pytest still unavailable after install; cannot verify")
+                  sys.exit(1)
           proc = json.loads(os.environ["PROCESS_JSON"])
           handoff = f"team/handoffs/{proc['id']}.md"
           status = f"team/status/{proc['id']}.json"
-          for path in [handoff, status] + proc["files"]:
+          for path in [handoff, status] + [os.path.normpath(p) for p in proc["files"]]:
               if not os.path.exists(path):
                   print(f"missing expected file: {path}")
                   sys.exit(1)
@@ -394,6 +485,51 @@ jobs:
           BR="team/issue-${ISSUE_NUMBER}/run-${RUN_ID}/${PROCESS_ID}${SUFFIX}"
           git config user.name "droid-team-worker"
           git config user.email "droid-team-worker@localhost"
+          if [ -z "${BASE_SHA:-}" ]; then
+            echo "BASE_SHA not recorded; refusing to commit"
+            exit 1
+          fi
+          # The worker session is told not to commit, but a prompt is not a
+          # mechanism: squash any commits it made past the recorded base
+          # back into the worktree, then verify the whole changed-file set
+          # against the card before anything is staged (F-1).
+          git reset --soft "$BASE_SHA"
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          proc = json.loads(os.environ["PROCESS_JSON"])
+          pid = proc["id"]
+          def norm(p):
+              return os.path.normpath(p.strip().strip('"'))
+          allowed = {norm(f) for f in proc["files"]}
+          allowed |= {f"team/handoffs/{pid}.md", f"team/status/{pid}.json"}
+          scratch = {"worker-prompt.txt", "worker-stream.jsonl"}
+          out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"],
+                               capture_output=True, text=True).stdout
+          changed = set()
+          for line in out.splitlines():
+              path = line[3:]
+              if " -> " in path:
+                  path = path.split(" -> ")[-1]
+              np = norm(path)
+              parts = np.split("/")
+              if parts[-1] in scratch or "__pycache__" in parts or ".pytest_cache" in parts or np.endswith(".pyc"):
+                  continue
+              changed.add(np)
+          extras = sorted(changed - allowed)
+          if extras:
+              print("worker session changed files outside its card:", extras)
+              sp = f"team/status/{pid}.json"
+              try:
+                  st = json.load(open(sp))
+                  st["out_of_bounds"] = extras
+                  json.dump(st, open(sp, "w"), ensure_ascii=False, indent=2)
+              except Exception as exc:
+                  print("could not annotate status.json:", exc)
+              with open(f"team/handoffs/{pid}.md", "a") as fh:
+                  fh.write("\n\n## 越界文件（工作流校验）\n\n本工序会话改动了卡外文件，提交被工作流拒绝：" + ", ".join(extras) + "\n")
+              sys.exit(1)
+          print("changed files within card scope:", sorted(changed))
+          PY
           git checkout -b "$BR"
           jq -r '.files[]' <<<"$PROCESS_JSON" | while IFS= read -r f; do git add -- "$f"; done
           git add -- "team/handoffs/${PROCESS_ID}.md" "team/status/${PROCESS_ID}.json"
@@ -418,11 +554,12 @@ jobs:
   prep:
     name: prep (merge and pack evidence)
     needs: [lead, worker]
-    if: ${{ !cancelled() && needs.lead.result == 'success' && needs.worker.result != 'cancelled' }}
+    if: ${{ !cancelled() && needs.lead.result == 'success' && needs.worker.result != 'cancelled' && needs.lead.outputs.duplicate != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
       candidate_branch: ${{ steps.prep.outputs.candidate_branch }}
+      manifest_sha256: ${{ steps.prep.outputs.manifest_sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -443,10 +580,30 @@ jobs:
         run: |
           python3 - <<'PY'
           import hashlib, json, os, subprocess, sys
+          import atexit, tarfile
+
+          def _pack_evidence_tar():
+              # v2.5: evidence.tar.gz must exist under ANY exit code of this
+              # script (the Upload step runs if: always() but needs a file).
+              # atexit covers normal returns, sys.exit() and exceptions.
+              try:
+                  if os.path.isdir("evidence"):
+                      with tarfile.open("evidence.tar.gz", "w:gz") as tf:
+                          for root, _dirs, files in os.walk("evidence"):
+                              for name in files:
+                                  path = os.path.join(root, name)
+                                  tf.add(path, arcname=os.path.relpath(path, "evidence"))
+              except Exception as exc:
+                  print(f"evidence tar packing failed: {exc}")
+
+          atexit.register(_pack_evidence_tar)
 
           issue = os.environ["ISSUE_NUMBER"]
           run_id = os.environ["RUN_ID"]
           plan = json.load(open("plan/team-plan.json"))
+
+          def normp(p):
+              return os.path.normpath(str(p).strip())
 
           def run(cmd, **kw):
               return subprocess.run(cmd, capture_output=True, text=True, **kw)
@@ -458,6 +615,15 @@ jobs:
           run(["git", "checkout", "-b", candidate])
 
           os.makedirs("evidence/packs", exist_ok=True)
+          # v2.5: minimal manifest first (plan read, before any merging),
+          # so an interrupted prep still leaves a readable manifest; the
+          # full manifest overwrites it at the end of this script, and the
+          # always() prep report renders a "prep incomplete" card from
+          # this one instead of crashing.
+          json.dump({"issue": issue, "run_id": run_id, "iteration": 1,
+                     "candidate_branch": candidate, "pytest_exit": None,
+                     "pytest_note": "", "packs": {}, "sha256": {}},
+                    open("evidence/manifest.json", "w"), ensure_ascii=False, indent=2)
           packs = {}
           merged_any = False
           for proc in plan["processes"]:
@@ -469,9 +635,17 @@ jobs:
               info = {"branch": branch, "branch_present": False, "merged": False,
                       "merge_conflict": False}
               exists = run(["git", "ls-remote", "--exit-code", "origin", branch]).returncode == 0
+              info["out_of_bounds"] = []
               if exists:
                   info["branch_present"] = True
                   run(["git", "fetch", "origin", branch])
+                  allowed = {normp(f) for f in proc["files"]}
+                  allowed |= {f"team/handoffs/{pid}.md", f"team/status/{pid}.json"}
+                  full = run(["git", "diff", "--name-only", f"{base}...origin/{branch}"])
+                  extras = sorted({normp(p) for p in full.stdout.splitlines() if p.strip()} - allowed)
+                  if extras:
+                      info["out_of_bounds"] = extras
+                      print(f"out-of-bounds files in {branch}: {extras}")
                   diff = run(["git", "diff", f"{base}...origin/{branch}", "--"] + proc["files"])
                   open(f"{pack_dir}/diff.patch", "w").write(diff.stdout)
                   merge = run(["git", "merge", "--no-ff", "--no-edit", f"origin/{branch}"])
@@ -484,11 +658,34 @@ jobs:
                       print(f"merge conflict for {branch}: {merge.stdout} {merge.stderr}")
               packs[pid] = info
 
-          pytest = subprocess.run(["python3", "-m", "pytest", "-q"],
-                                  capture_output=True, text=True)
-          open("evidence/pytest-output.txt", "w").write(pytest.stdout + pytest.stderr)
-          open("evidence/pytest-exit.txt", "w").write(str(pytest.returncode))
-          print(f"full pytest exit: {pytest.returncode}")
+          pytest_available = True
+          pytest_install_note = ""
+          if subprocess.run(["python3", "-m", "pytest", "--version"],
+                            capture_output=True).returncode != 0:
+              print("pytest missing; installing deterministically (v2.1)")
+              install_rc = subprocess.run(["python3", "-m", "pip", "install", "-q", "pytest"]).returncode
+              if install_rc != 0:
+                  pytest_available = False
+                  pytest_install_note = f"pytest install failed (pip exit {install_rc}); full test run not executed"
+              elif subprocess.run(["python3", "-m", "pytest", "--version"],
+                                  capture_output=True).returncode != 0:
+                  pytest_available = False
+                  pytest_install_note = "pytest still unavailable after install; full test run not executed"
+          if pytest_available:
+              pytest_rc = subprocess.run(["python3", "-m", "pytest", "-q"],
+                                         capture_output=True, text=True)
+              pytest_output = pytest_rc.stdout + pytest_rc.stderr
+              pytest_exit = pytest_rc.returncode
+          else:
+              # Sentinel 127 (v2.4): pytest could not be installed. Evidence,
+              # manifest and the prep report are still produced below; this
+              # step exits non-zero only at the very end (failure on record).
+              print(pytest_install_note)
+              pytest_output = pytest_install_note + "\n"
+              pytest_exit = 127
+          open("evidence/pytest-output.txt", "w").write(pytest_output)
+          open("evidence/pytest-exit.txt", "w").write(str(pytest_exit))
+          print(f"full pytest exit: {pytest_exit}")
 
           for proc in plan["processes"]:
               pid = proc["id"]
@@ -500,7 +697,12 @@ jobs:
                       open(f"{pack_dir}/{dst}", "w").write(open(src).read())
               exits = []
               out_lines = []
-              if info["merged"]:
+              if info["merged"] and not pytest_available:
+                  out_lines.append("pytest unavailable (install failed); process checks not run, recorded as exit 127")
+                  for cmd in proc["checks"]:
+                      out_lines.append(f"$ {cmd}\n[exit 127] pytest unavailable: install failed")
+                      exits.append({"command": cmd, "exit": 127})
+              elif info["merged"]:
                   for cmd in proc["checks"]:
                       r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
                       out_lines.append(f"$ {cmd}\n{r.stdout}{r.stderr}\n[exit {r.returncode}]")
@@ -516,14 +718,15 @@ jobs:
                   "diff": os.path.exists(f"{pack_dir}/diff.patch"),
                   "checks_output": True,
               }
-              info["complete"] = all(info["pack"].values()) and info["merged"]
+              info["complete"] = all(info["pack"].values()) and info["merged"] and not info.get("out_of_bounds")
 
           json.dump(plan, open("evidence/plan.json", "w"), ensure_ascii=False, indent=2)
           open("evidence/candidate-branch.txt", "w").write(candidate if merged_any else "")
 
           manifest = {"issue": issue, "run_id": run_id, "iteration": 1,
                       "candidate_branch": candidate if merged_any else "",
-                      "pytest_exit": pytest.returncode, "packs": packs, "sha256": {}}
+                      "pytest_exit": pytest_exit,
+                      "pytest_note": pytest_install_note, "packs": packs, "sha256": {}}
           for root, _dirs, files in os.walk("evidence"):
               for name in files:
                   path = os.path.join(root, name)
@@ -533,40 +736,61 @@ jobs:
           json.dump(manifest, open("evidence/manifest.json", "w"), ensure_ascii=False, indent=2)
           print(json.dumps({pid: p["complete"] for pid, p in packs.items()}, indent=2))
 
+          manifest_sha = hashlib.sha256(open("evidence/manifest.json", "rb").read()).hexdigest()
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"candidate_branch={candidate if merged_any else ''}\n")
+              out.write(f"manifest_sha256={manifest_sha}\n")
+          print("manifest sha256:", manifest_sha)
           if merged_any:
               push = run(["git", "push", "-u", "origin", candidate])
               if push.returncode != 0:
                   print("candidate push failed:", push.stdout, push.stderr)
                   sys.exit(1)
+          if not pytest_available:
+              print("prep finishing as failure: pytest install failed (evidence and manifest already written)")
+              sys.exit(1)
           PY
-          tar -czf evidence.tar.gz -C evidence .
 
       - name: Upload evidence artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: team-evidence-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
           path: evidence.tar.gz
+          overwrite: true
 
       - name: Post prep report
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           PLAN_ISSUE_NUMBER: ${{ needs.lead.outputs.plan_issue_number }}
         run: |
           python3 - <<'PY'
-          import json
-          manifest = json.load(open("evidence/manifest.json"))
+          import json, os
+          manifest_missing = not os.path.exists("evidence/manifest.json")
+          if manifest_missing:
+              print("evidence/manifest.json missing (prep script died early); posting fallback report")
+              manifest = {"candidate_branch": "", "pytest_exit": None, "pytest_note": "", "packs": {}}
+          else:
+              manifest = json.load(open("evidence/manifest.json"))
+          packs = manifest.get("packs") or {}
           lines = ["## 备料报告（脚本 job）", "",
                    f"候选分支：`{manifest.get('candidate_branch') or '（无可合并分支）'}`",
                    f"全量 pytest 退出码：{manifest.get('pytest_exit')}", "",
                    "| 工序 | 料齐 | 缺件 |", "|---|---|---|"]
-          for pid, info in manifest["packs"].items():
-              missing = [k for k, v in info["pack"].items() if not v]
-              if not info["merged"]:
+          if manifest.get("pytest_note"):
+              lines.insert(4, f"⚠ pytest 环境：{manifest['pytest_note']}（退出码 127 为安装失败哨兵，全量测试未执行）")
+          if not packs:
+              lines.append("| — | 否 | 备料未完成（备料脚本未产出清单，脚本早段失败） |" if manifest_missing else "| — | 否 | 备料未完成（备料脚本未跑完，仅有最小清单） |")
+          for pid, info in packs.items():
+              info = info or {}
+              missing = [k for k, v in (info.get("pack") or {}).items() if not v]
+              if not info.get("merged"):
                   missing.append("未合并")
-              lines.append(f"| `{pid}` | {'是' if info['complete'] else '否'} | {', '.join(missing) if missing else '—'} |")
+              if info.get("out_of_bounds"):
+                  missing.append("越界文件：" + ", ".join(info["out_of_bounds"]))
+              lines.append(f"| `{pid}` | {'是' if info.get('complete') else '否'} | {', '.join(missing) if missing else '—'} |")
           lines += ["", "料不齐的工序不予验收（没料不验收）：验收将对缺料工序直接判 blocked，理由记为料不齐。"]
           open("prep-comment.md", "w").write("\n".join(lines))
           print("\n".join(lines))
@@ -586,6 +810,7 @@ jobs:
     env:
       GITHUB_TOKEN: ""
       GH_TOKEN: ""
+      EXPECTED_MANIFEST_SHA: ${{ needs.prep.outputs.manifest_sha256 }}
     outputs:
       overall: ${{ steps.verdict.outputs.overall }}
       failed_processes: ${{ steps.verdict.outputs.failed_processes }}
@@ -597,11 +822,18 @@ jobs:
 
       - name: Extract and precheck evidence packs
         id: pre
+        timeout-minutes: 2
         run: |
           mkdir -p work
           tar -xzf evidence.tar.gz -C work
           python3 - <<'PY'
           import hashlib, json, os, sys
+          expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
+          actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
+          if not expected_sha or actual_sha != expected_sha:
+              print(f"manifest sha256 mismatch: expected {expected_sha!r}, actual {actual_sha}; refusing to judge")
+              sys.exit(1)
+          print("manifest sha256 verified against prep output:", actual_sha)
           manifest = json.load(open("work/manifest.json"))
           bad = []
           for path, digest in manifest["sha256"].items():
@@ -619,6 +851,8 @@ jobs:
                   missing = [k for k, v in info["pack"].items() if not v]
                   if not info["merged"]:
                       missing.append("未合并")
+                  if info.get("out_of_bounds"):
+                      missing.append("越界文件：" + ", ".join(info["out_of_bounds"]))
                   blocked[pid] = missing
           json.dump(judgeable, open("work/judgeable.json", "w"))
           json.dump(blocked, open("work/blocked.json", "w"))
@@ -711,9 +945,15 @@ jobs:
 
       - name: Merge verdict, enforce gates, verify evidence untouched
         id: verdict
+        timeout-minutes: 3
         run: |
           python3 - <<'PY'
           import hashlib, json, os, sys
+          expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
+          actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
+          if not expected_sha or actual_sha != expected_sha:
+              print(f"manifest sha256 changed since precheck: expected {expected_sha!r}, actual {actual_sha}; verdict refused")
+              sys.exit(1)
           manifest = json.load(open("work/manifest.json"))
           plan = json.load(open("work/plan.json"))
           judgeable = json.load(open("work/judgeable.json"))
@@ -731,10 +971,11 @@ jobs:
                   print("validator produced no verdict-droid.json")
                   sys.exit(1)
               droid = json.load(open("work/verdict-droid.json"))
-              got = {p["id"]: p for p in droid.get("processes", [])}
-              if set(got) != set(judgeable):
-                  print(f"verdict coverage mismatch: judged {sorted(got)}, expected {sorted(judgeable)}")
+              entries = droid.get("processes", [])
+              if sorted(p.get("id") for p in entries) != sorted(judgeable):
+                  print(f"verdict coverage mismatch (multiset): judged {sorted(p.get('id') for p in entries)}, expected {sorted(judgeable)}")
                   sys.exit(1)
+              got = {p["id"]: p for p in entries}
               for pid, entry in got.items():
                   if entry.get("verdict") not in ("pass", "fail"):
                       print("invalid verdict value:", entry)
@@ -743,11 +984,11 @@ jobs:
                                    "reason": entry.get("reason", "")}
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing)}
+                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
 
-          expected = {p["id"] for p in plan["processes"]}
-          if set(verdicts) != expected:
-              print(f"final coverage mismatch: {sorted(verdicts)} vs {sorted(expected)}")
+          expected_ids = sorted(p["id"] for p in plan["processes"])
+          if sorted(verdicts) != expected_ids:
+              print(f"final coverage mismatch (multiset): {sorted(verdicts)} vs {expected_ids}")
               sys.exit(1)
 
           pytest_exit = manifest.get("pytest_exit", 1)
@@ -763,7 +1004,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}")
+              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
           lines += ["", f"总判定：**{overall}**"]
           open("verdict.md", "w").write("\n".join(lines))
 
@@ -775,6 +1016,7 @@ jobs:
           PY
 
       - name: Upload verdict artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: team-verdict-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
@@ -782,16 +1024,20 @@ jobs:
             verdict.json
             verdict.md
             work/validator-stream.jsonl
+          overwrite: true
 
   replan:
     name: replan (foreman revises plan or re-dispatches)
     needs: [lead, prep, validate]
-    if: needs.validate.result == 'success' && needs.validate.outputs.overall != 'pass'
+    if: needs.validate.result == 'success' && needs.validate.outputs.overall != 'pass' && needs.validate.outputs.failed_processes != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
       processes2: ${{ steps.replan.outputs.processes2 }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download plan, verdict, and evidence
         uses: actions/download-artifact@v4
         with:
@@ -872,6 +1118,7 @@ jobs:
           The changes list must cover every failed or blocked process exactly once, and no passed process.
           A revised card must not claim files owned by a passed process.
           Write valid JSON only. Do not wrap it in Markdown.
+          Be efficient: at most 10 tool calls; decide from the verdict and the failed processes' evidence first; write team-plan-v2.json as soon as your decisions are made, do not re-read everything.
           """
           open("replan-prompt.txt", "w").write(prompt)
           PY
@@ -886,7 +1133,7 @@ jobs:
           PLAN_ISSUE_NUMBER: ${{ needs.lead.outputs.plan_issue_number }}
         run: |
           python3 - <<'PY'
-          import json, os, subprocess, sys
+          import json, os, re, subprocess, sys
 
           repo = os.environ["GITHUB_REPOSITORY"]
           issue_number = os.environ["ISSUE_NUMBER"]
@@ -904,17 +1151,54 @@ jobs:
           verdict = json.load(open("stage/verdict.json"))
           v2 = json.load(open("team-plan-v2.json"))
           failed = {p["id"] for p in verdict["processes"] if p["verdict"] != "pass"}
+          def normp(p):
+              return os.path.normpath(str(p).strip())
+
           passed_files = {}
           for proc in plan["processes"]:
               if proc["id"] not in failed:
                   for f in proc["files"]:
-                      passed_files[f] = proc["id"]
+                      passed_files[normp(f)] = proc["id"]
 
           changes = v2.get("changes") or []
-          if {c.get("process_id") for c in changes} != failed:
-              print(f"plan v2 must cover exactly the failed processes {sorted(failed)}")
+          change_ids = [c.get("process_id") for c in changes]
+          if len(change_ids) != len(set(change_ids)):
+              print("plan v2 has duplicate process_id entries in changes")
               sys.exit(1)
+          if sorted(change_ids) != sorted(failed):
+              print(f"plan v2 must cover exactly the failed processes {sorted(failed)} (multiset comparison)")
+              sys.exit(1)
+          for pid in change_ids:
+              if not re.fullmatch(r"^[a-z0-9][a-z0-9-]*$", str(pid)):
+                  print(f"plan v2 change has illegal process id (allowed: ^[a-z0-9][a-z0-9-]*$): {pid}")
+                  sys.exit(1)
           originals = {p["id"]: p for p in plan["processes"]}
+          # Full-graph claim check (F+J): the effective round-2 plan is the
+          # passed processes (original cards) plus every change (redispatch
+          # keeps the original card, revise brings a new one). Claims of ALL
+          # of them must be pairwise disjoint after normalization, and none
+          # may hit a protected path. Checking only revise-vs-passed lets
+          # two failed processes claim the same file.
+          claims = dict(passed_files)
+          for change in changes:
+              pid = change.get("process_id")
+              mode = change.get("mode")
+              if mode == "redispatch":
+                  claim_files = [normp(f) for f in originals[pid]["files"]]
+              elif mode == "revise":
+                  claim_files = [normp(f) for f in (change.get("card") or {}).get("files") or []]
+              else:
+                  print("invalid mode:", change)
+                  sys.exit(1)
+              for f in claim_files:
+                  parts = f.split("/")
+                  if os.path.isabs(f) or ".." in parts or f == ".github" or f.startswith(".github/") or f == "team" or f.startswith("team/"):
+                      print(f"plan v2 claims protected path: {f} ({pid})")
+                      sys.exit(1)
+                  if f in claims:
+                      print(f"plan v2 file claimed by two processes in the effective plan: {f} ({claims[f]} and {pid})")
+                      sys.exit(1)
+                  claims[f] = pid
           processes2 = []
           seen_files = dict(passed_files)
           comment_lines = ["## 计划改版 v1 → v2（领班改计划）", "",
@@ -937,6 +1221,7 @@ jobs:
                   if card["id"] != pid:
                       print("revised card id must stay the same:", pid)
                       sys.exit(1)
+                  card["files"] = [normp(f) for f in card["files"]]
                   for f in card["files"]:
                       if f in seen_files:
                           print(f"revised card claims file owned by {seen_files[f]}: {f}")
@@ -996,6 +1281,7 @@ jobs:
         with:
           name: team-plan-v2-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
           path: team-plan-v2.json
+          overwrite: true
 
   worker2:
     name: worker (round 2)
@@ -1013,6 +1299,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Record base SHA (session self-commit guard)
+        run: echo "BASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Install droid CLI
         run: curl -fsSL https://app.factory.ai/cli | sh
@@ -1080,10 +1369,11 @@ jobs:
           - Run your process checks before finishing: {'; '.join(proc['checks'])}
           - Do not commit or push; the workflow will do that.
           - Do not modify files owned by other processes.
+          - Be efficient: at most 20 tool calls.
           """
           open("worker-prompt.txt", "w").write(prompt)
           PY
-          ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
+          timeout --signal=TERM --kill-after=30s 900s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
 
       - name: Verify process checks and handoff
         env:
@@ -1091,10 +1381,20 @@ jobs:
         run: |
           python3 - <<'PY'
           import json, os, subprocess, sys
+          if subprocess.run(["python3", "-m", "pytest", "--version"],
+                            capture_output=True).returncode != 0:
+              print("pytest missing; installing deterministically (v2.1)")
+              if subprocess.run(["python3", "-m", "pip", "install", "-q", "pytest"]).returncode != 0:
+                  print("pytest install failed; cannot verify")
+                  sys.exit(1)
+              if subprocess.run(["python3", "-m", "pytest", "--version"],
+                                capture_output=True).returncode != 0:
+                  print("pytest still unavailable after install; cannot verify")
+                  sys.exit(1)
           proc = json.loads(os.environ["PROCESS_JSON"])
           handoff = f"team/handoffs/{proc['id']}.md"
           status = f"team/status/{proc['id']}.json"
-          for path in [handoff, status] + proc["files"]:
+          for path in [handoff, status] + [os.path.normpath(p) for p in proc["files"]]:
               if not os.path.exists(path):
                   print(f"missing expected file: {path}")
                   sys.exit(1)
@@ -1123,6 +1423,51 @@ jobs:
           BR="team/issue-${ISSUE_NUMBER}/run-${RUN_ID}/${PROCESS_ID}${SUFFIX}"
           git config user.name "droid-team-worker"
           git config user.email "droid-team-worker@localhost"
+          if [ -z "${BASE_SHA:-}" ]; then
+            echo "BASE_SHA not recorded; refusing to commit"
+            exit 1
+          fi
+          # The worker session is told not to commit, but a prompt is not a
+          # mechanism: squash any commits it made past the recorded base
+          # back into the worktree, then verify the whole changed-file set
+          # against the card before anything is staged (F-1).
+          git reset --soft "$BASE_SHA"
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          proc = json.loads(os.environ["PROCESS_JSON"])
+          pid = proc["id"]
+          def norm(p):
+              return os.path.normpath(p.strip().strip('"'))
+          allowed = {norm(f) for f in proc["files"]}
+          allowed |= {f"team/handoffs/{pid}.md", f"team/status/{pid}.json"}
+          scratch = {"worker-prompt.txt", "worker-stream.jsonl"}
+          out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"],
+                               capture_output=True, text=True).stdout
+          changed = set()
+          for line in out.splitlines():
+              path = line[3:]
+              if " -> " in path:
+                  path = path.split(" -> ")[-1]
+              np = norm(path)
+              parts = np.split("/")
+              if parts[-1] in scratch or "__pycache__" in parts or ".pytest_cache" in parts or np.endswith(".pyc"):
+                  continue
+              changed.add(np)
+          extras = sorted(changed - allowed)
+          if extras:
+              print("worker session changed files outside its card:", extras)
+              sp = f"team/status/{pid}.json"
+              try:
+                  st = json.load(open(sp))
+                  st["out_of_bounds"] = extras
+                  json.dump(st, open(sp, "w"), ensure_ascii=False, indent=2)
+              except Exception as exc:
+                  print("could not annotate status.json:", exc)
+              with open(f"team/handoffs/{pid}.md", "a") as fh:
+                  fh.write("\n\n## 越界文件（工作流校验）\n\n本工序会话改动了卡外文件，提交被工作流拒绝：" + ", ".join(extras) + "\n")
+              sys.exit(1)
+          print("changed files within card scope:", sorted(changed))
+          PY
           git checkout -b "$BR"
           jq -r '.files[]' <<<"$PROCESS_JSON" | while IFS= read -r f; do git add -- "$f"; done
           git add -- "team/handoffs/${PROCESS_ID}.md" "team/status/${PROCESS_ID}.json"
@@ -1152,6 +1497,7 @@ jobs:
     timeout-minutes: 20
     outputs:
       candidate_branch: ${{ steps.prep2.outputs.candidate_branch }}
+      manifest_sha256: ${{ steps.prep2.outputs.manifest_sha256 }}
     steps:
       - name: Checkout candidate from round 1
         uses: actions/checkout@v4
@@ -1173,9 +1519,38 @@ jobs:
         run: |
           python3 - <<'PY'
           import hashlib, json, os, subprocess, sys
+          import atexit, tarfile
+
+          def _pack_evidence_tar():
+              # v2.5: evidence.tar.gz must exist under ANY exit code of this
+              # script (the Upload step runs if: always() but needs a file).
+              # atexit covers normal returns, sys.exit() and exceptions.
+              try:
+                  if os.path.isdir("evidence"):
+                      with tarfile.open("evidence.tar.gz", "w:gz") as tf:
+                          for root, _dirs, files in os.walk("evidence"):
+                              for name in files:
+                                  path = os.path.join(root, name)
+                                  tf.add(path, arcname=os.path.relpath(path, "evidence"))
+              except Exception as exc:
+                  print(f"evidence tar packing failed: {exc}")
+
+          atexit.register(_pack_evidence_tar)
 
           issue = os.environ["ISSUE_NUMBER"]
           run_id = os.environ["RUN_ID"]
+
+          # v2.6.1: skeleton manifest before ANY artifact is read, so a
+          # failure in the first lines below (missing or corrupt plan /
+          # plan-v2 / round-1 evidence artifacts) still leaves a manifest
+          # behind; the always() round-2 prep report renders its fallback
+          # card from it. The minimal manifest further down (candidate
+          # branch known) and the full manifest at the end overwrite it.
+          os.makedirs("evidence", exist_ok=True)
+          json.dump({"issue": issue, "run_id": run_id, "iteration": 2,
+                     "candidate_branch": "", "pytest_exit": None,
+                     "pytest_note": "", "packs": {}, "sha256": {}},
+                    open("evidence/manifest.json", "w"), ensure_ascii=False, indent=2)
 
           def run(cmd, **kw):
               return subprocess.run(cmd, capture_output=True, text=True, **kw)
@@ -1201,6 +1576,14 @@ jobs:
           run(["git", "checkout", "-b", candidate2])
 
           os.makedirs("evidence/packs", exist_ok=True)
+          # v2.5: minimal manifest first (plans read, before any
+          # replacement), overwritten by the full manifest at the end;
+          # the always() round-2 prep report renders a "prep incomplete"
+          # card from this one instead of crashing.
+          json.dump({"issue": issue, "run_id": run_id, "iteration": 2,
+                     "candidate_branch": candidate2, "pytest_exit": None,
+                     "pytest_note": "", "packs": {}, "sha256": {}},
+                    open("evidence/manifest.json", "w"), ensure_ascii=False, indent=2)
           packs = {}
           replaced_any = False
           for proc in plan["processes"]:
@@ -1219,28 +1602,88 @@ jobs:
               json.dump(card, open(f"{pack_dir}/process-card.json", "w"), ensure_ascii=False, indent=2)
               branch = f"team/issue-{issue}/run-{run_id}/{pid}/r2"
               info = {"branch": branch, "branch_present": False, "merged": False, "merge_conflict": False}
+              info["out_of_bounds"] = []
               exists = run(["git", "ls-remote", "--exit-code", "origin", branch]).returncode == 0
               if exists:
                   info["branch_present"] = True
                   run(["git", "fetch", "origin", branch])
-                  diff = run(["git", "diff", cand1_tip, f"origin/{branch}", "--"] + card["files"])
+                  def normp(p):
+                      return os.path.normpath(str(p).strip())
+                  allowed = {normp(f) for f in card["files"]}
+                  allowed |= {f"team/handoffs/{pid}.md", f"team/status/{pid}.json"}
+                  full = run(["git", "diff", "--name-only", f"{cand1_tip}...origin/{branch}"])
+                  extras = sorted({normp(p) for p in full.stdout.splitlines() if p.strip()} - allowed)
+                  if extras:
+                      info["out_of_bounds"] = extras
+                      print(f"out-of-bounds files in {branch}: {extras}")
+                  diff = run(["git", "diff", f"{cand1_tip}...origin/{branch}", "--"] + card["files"])
                   open(f"{pack_dir}/diff.patch", "w").write(diff.stdout)
-                  checkout = run(["git", "checkout", f"origin/{branch}", "--"] + card["files"] +
-                                 [f"team/handoffs/{pid}.md", f"team/status/{pid}.json"])
+                  # Whole-card replacement: files the round-1 card owned but
+                  # the new card no longer claims must leave the candidate
+                  # tree, or they leak into the PR as zombie files (低-2).
+                  old_files = {normp(f) for f in proc["files"]}
+                  new_files = {normp(f) for f in card["files"]}
+                  to_delete = sorted(old_files - new_files)
+                  for f in to_delete:
+                      run(["git", "rm", "-q", "--ignore-unmatch", "--", f])
+                  team_files = [f"team/handoffs/{pid}.md", f"team/status/{pid}.json"]
+                  checkout = run(["git", "checkout", f"origin/{branch}", "--"] + card["files"] + team_files)
                   if checkout.returncode == 0:
-                      run(["git", "add", "--"] + card["files"] +
-                          [f"team/handoffs/{pid}.md", f"team/status/{pid}.json"])
-                      commit = run(["git", "commit", "-m", f"team prep2: replace {pid} with round 2 result"])
-                      info["merged"] = commit.returncode == 0
+                      stage_paths = [f for f in card["files"] + team_files if os.path.exists(f)]
+                      run(["git", "add", "--"] + stage_paths)
+                      staged = run(["git", "diff", "--cached", "--quiet"])
+                      commit_ok = True
+                      if staged.returncode != 0:
+                          commit = run(["git", "commit", "-m", f"team prep2: replace {pid} with round 2 result"])
+                          commit_ok = commit.returncode == 0
+                      if commit_ok:
+                          # merged := candidate tree matches the round-2
+                          # branch on every card/team path and the deleted
+                          # files are gone. A no-change replacement (round-2
+                          # content identical to round 1) is a success, not
+                          # a failure (中-6); a dirty staging area is reset.
+                          tree_diff = run(["git", "diff", "--quiet", "HEAD", f"origin/{branch}", "--"] + card["files"] + team_files)
+                          zombies = [f for f in to_delete
+                                     if run(["git", "ls-files", "--", f]).stdout.strip()]
+                          info["merged"] = tree_diff.returncode == 0 and not zombies
+                          if not info["merged"]:
+                              print(f"replacement verify failed for {pid}: tree_diff={tree_diff.returncode}, zombies={zombies}")
+                      else:
+                          print(f"replacement commit failed for {branch}")
+                          run(["git", "reset", "--hard", "HEAD"])
                       replaced_any = replaced_any or info["merged"]
                   else:
                       print(f"replacement checkout failed for {branch}: {checkout.stderr}")
+                      run(["git", "reset", "--hard", "HEAD"])
               packs[pid] = info
 
-          pytest = subprocess.run(["python3", "-m", "pytest", "-q"], capture_output=True, text=True)
-          open("evidence/pytest-output.txt", "w").write(pytest.stdout + pytest.stderr)
-          open("evidence/pytest-exit.txt", "w").write(str(pytest.returncode))
-          print(f"full pytest exit (round 2): {pytest.returncode}")
+          pytest_available = True
+          pytest_install_note = ""
+          if subprocess.run(["python3", "-m", "pytest", "--version"],
+                            capture_output=True).returncode != 0:
+              print("pytest missing; installing deterministically (v2.1)")
+              install_rc = subprocess.run(["python3", "-m", "pip", "install", "-q", "pytest"]).returncode
+              if install_rc != 0:
+                  pytest_available = False
+                  pytest_install_note = f"pytest install failed (pip exit {install_rc}); full test run not executed"
+              elif subprocess.run(["python3", "-m", "pytest", "--version"],
+                                  capture_output=True).returncode != 0:
+                  pytest_available = False
+                  pytest_install_note = "pytest still unavailable after install; full test run not executed"
+          if pytest_available:
+              pytest_rc = subprocess.run(["python3", "-m", "pytest", "-q"], capture_output=True, text=True)
+              pytest_output = pytest_rc.stdout + pytest_rc.stderr
+              pytest_exit = pytest_rc.returncode
+          else:
+              # Sentinel 127 (v2.4): pytest could not be installed. Evidence,
+              # manifest and the prep report are still produced below; this
+              # step exits non-zero only at the very end (failure on record).
+              print(pytest_install_note)
+              pytest_output = pytest_install_note + "\n"
+              pytest_exit = 127
+          open("evidence/pytest-output.txt", "w").write(pytest_output)
+          open("evidence/pytest-exit.txt", "w").write(str(pytest_exit))
+          print(f"full pytest exit (round 2): {pytest_exit}")
 
           for proc in plan["processes"]:
               pid = proc["id"]
@@ -1254,7 +1697,12 @@ jobs:
                   if info["merged"] and os.path.exists(src):
                       open(f"{pack_dir}/{dst}", "w").write(open(src).read())
               exits, out_lines = [], []
-              if info["merged"]:
+              if info["merged"] and not pytest_available:
+                  out_lines.append("pytest unavailable (install failed); process checks not run, recorded as exit 127")
+                  for cmd in card["checks"]:
+                      out_lines.append(f"$ {cmd}\n[exit 127] pytest unavailable: install failed")
+                      exits.append({"command": cmd, "exit": 127})
+              elif info["merged"]:
                   for cmd in card["checks"]:
                       r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
                       out_lines.append(f"$ {cmd}\n{r.stdout}{r.stderr}\n[exit {r.returncode}]")
@@ -1268,7 +1716,7 @@ jobs:
                               "status": os.path.exists(f"{pack_dir}/status.json"),
                               "diff": os.path.exists(f"{pack_dir}/diff.patch"),
                               "checks_output": True}
-              info["complete"] = all(info["pack"].values()) and info["merged"]
+              info["complete"] = all(info["pack"].values()) and info["merged"] and not info.get("out_of_bounds")
 
           effective_plan = dict(plan)
           effective_plan["processes"] = [rerun.get(p["id"], p) for p in plan["processes"]]
@@ -1278,7 +1726,8 @@ jobs:
 
           manifest = {"issue": issue, "run_id": run_id, "iteration": 2,
                       "candidate_branch": candidate2,
-                      "pytest_exit": pytest.returncode, "packs": packs, "sha256": {}}
+                      "pytest_exit": pytest_exit,
+                      "pytest_note": pytest_install_note, "packs": packs, "sha256": {}}
           for root, _dirs, files in os.walk("evidence"):
               for name in files:
                   path = os.path.join(root, name)
@@ -1287,39 +1736,60 @@ jobs:
                   manifest["sha256"][path] = hashlib.sha256(open(path, "rb").read()).hexdigest()
           json.dump(manifest, open("evidence/manifest.json", "w"), ensure_ascii=False, indent=2)
 
+          manifest_sha = hashlib.sha256(open("evidence/manifest.json", "rb").read()).hexdigest()
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"candidate_branch={candidate2}\n")
+              out.write(f"manifest_sha256={manifest_sha}\n")
+          print("manifest sha256 (round 2):", manifest_sha)
           push = run(["git", "push", "-u", "origin", candidate2])
           if push.returncode != 0:
               print("candidate2 push failed:", push.stdout, push.stderr)
               sys.exit(1)
+          if not pytest_available:
+              print("prep2 finishing as failure: pytest install failed (evidence and manifest already written)")
+              sys.exit(1)
           PY
-          tar -czf evidence.tar.gz -C evidence .
 
       - name: Upload evidence round 2 artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: team-evidence2-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
           path: evidence.tar.gz
+          overwrite: true
 
       - name: Post prep round 2 report
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           PLAN_ISSUE_NUMBER: ${{ needs.lead.outputs.plan_issue_number }}
         run: |
           python3 - <<'PY'
-          import json
-          manifest = json.load(open("evidence/manifest.json"))
+          import json, os
+          manifest_missing = not os.path.exists("evidence/manifest.json")
+          if manifest_missing:
+              print("evidence/manifest.json missing (prep2 script died early); posting fallback report")
+              manifest = {"candidate_branch": "", "pytest_exit": None, "pytest_note": "", "packs": {}}
+          else:
+              manifest = json.load(open("evidence/manifest.json"))
+          packs = manifest.get("packs") or {}
           lines = ["## 备料报告（第 2 轮，脚本 job）", "",
-                   f"候选分支：`{manifest.get('candidate_branch')}`",
+                   f"候选分支：`{manifest.get('candidate_branch') or '（无）'}`",
                    f"全量 pytest 退出码：{manifest.get('pytest_exit')}", "",
                    "| 工序 | 料齐 | 缺件 |", "|---|---|---|"]
-          for pid, info in manifest["packs"].items():
-              missing = [k for k, v in info["pack"].items() if not v]
-              if not info["merged"]:
+          if manifest.get("pytest_note"):
+              lines.insert(4, f"⚠ pytest 环境：{manifest['pytest_note']}（退出码 127 为安装失败哨兵，全量测试未执行）")
+          if not packs:
+              lines.append("| — | 否 | 备料未完成（第 2 轮备料脚本未产出清单，脚本早段失败） |" if manifest_missing else "| — | 否 | 备料未完成（第 2 轮备料脚本未跑完，仅有最小清单） |")
+          for pid, info in packs.items():
+              info = info or {}
+              missing = [k for k, v in (info.get("pack") or {}).items() if not v]
+              if not info.get("merged"):
                   missing.append("未合并/未替换")
-              lines.append(f"| `{pid}` | {'是' if info['complete'] else '否'} | {', '.join(missing) if missing else '—'} |")
+              if info.get("out_of_bounds"):
+                  missing.append("越界文件：" + ", ".join(info["out_of_bounds"]))
+              lines.append(f"| `{pid}` | {'是' if info.get('complete') else '否'} | {', '.join(missing) if missing else '—'} |")
           lines += ["", "重派工序以第 2 轮分支整卡替换第 1 轮成果；未重派工序沿用第 1 轮证据包。料不齐不予验收。"]
           open("prep2-comment.md", "w").write("\n".join(lines))
           print("\n".join(lines))
@@ -1339,6 +1809,7 @@ jobs:
     env:
       GITHUB_TOKEN: ""
       GH_TOKEN: ""
+      EXPECTED_MANIFEST_SHA: ${{ needs.prep2.outputs.manifest_sha256 }}
     outputs:
       overall: ${{ steps.verdict.outputs.overall }}
       failed_processes: ${{ steps.verdict.outputs.failed_processes }}
@@ -1350,11 +1821,18 @@ jobs:
 
       - name: Extract and precheck evidence packs
         id: pre
+        timeout-minutes: 2
         run: |
           mkdir -p work
           tar -xzf evidence.tar.gz -C work
           python3 - <<'PY'
           import hashlib, json, os, sys
+          expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
+          actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
+          if not expected_sha or actual_sha != expected_sha:
+              print(f"manifest sha256 mismatch: expected {expected_sha!r}, actual {actual_sha}; refusing to judge")
+              sys.exit(1)
+          print("manifest sha256 verified against prep output:", actual_sha)
           manifest = json.load(open("work/manifest.json"))
           bad = []
           for path, digest in manifest["sha256"].items():
@@ -1372,6 +1850,8 @@ jobs:
                   missing = [k for k, v in info["pack"].items() if not v]
                   if not info["merged"]:
                       missing.append("未合并/未替换")
+                  if info.get("out_of_bounds"):
+                      missing.append("越界文件：" + ", ".join(info["out_of_bounds"]))
                   blocked[pid] = missing
           json.dump(judgeable, open("work/judgeable.json", "w"))
           json.dump(blocked, open("work/blocked.json", "w"))
@@ -1459,9 +1939,15 @@ jobs:
 
       - name: Merge verdict, enforce gates, verify evidence untouched
         id: verdict
+        timeout-minutes: 3
         run: |
           python3 - <<'PY'
           import hashlib, json, os, sys
+          expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
+          actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
+          if not expected_sha or actual_sha != expected_sha:
+              print(f"manifest sha256 changed since precheck: expected {expected_sha!r}, actual {actual_sha}; verdict refused")
+              sys.exit(1)
           manifest = json.load(open("work/manifest.json"))
           plan = json.load(open("work/plan.json"))
           judgeable = json.load(open("work/judgeable.json"))
@@ -1479,10 +1965,11 @@ jobs:
                   print("validator produced no verdict-droid.json")
                   sys.exit(1)
               droid = json.load(open("work/verdict-droid.json"))
-              got = {p["id"]: p for p in droid.get("processes", [])}
-              if set(got) != set(judgeable):
-                  print(f"verdict coverage mismatch: judged {sorted(got)}, expected {sorted(judgeable)}")
+              entries = droid.get("processes", [])
+              if sorted(p.get("id") for p in entries) != sorted(judgeable):
+                  print(f"verdict coverage mismatch (multiset): judged {sorted(p.get('id') for p in entries)}, expected {sorted(judgeable)}")
                   sys.exit(1)
+              got = {p["id"]: p for p in entries}
               for pid, entry in got.items():
                   if entry.get("verdict") not in ("pass", "fail"):
                       print("invalid verdict value:", entry)
@@ -1491,11 +1978,11 @@ jobs:
                                    "reason": entry.get("reason", "")}
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing)}
+                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
 
-          expected = {p["id"] for p in plan["processes"]}
-          if set(verdicts) != expected:
-              print(f"final coverage mismatch: {sorted(verdicts)} vs {sorted(expected)}")
+          expected_ids = sorted(p["id"] for p in plan["processes"])
+          if sorted(verdicts) != expected_ids:
+              print(f"final coverage mismatch (multiset): {sorted(verdicts)} vs {expected_ids}")
               sys.exit(1)
 
           pytest_exit = manifest.get("pytest_exit", 1)
@@ -1511,7 +1998,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}")
+              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
           lines += ["", f"总判定：**{overall}**"]
           open("verdict.md", "w").write("\n".join(lines))
 
@@ -1523,6 +2010,7 @@ jobs:
           PY
 
       - name: Upload verdict round 2 artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: team-verdict2-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
@@ -1530,17 +2018,20 @@ jobs:
             verdict.json
             verdict.md
             work/validator-stream.jsonl
+          overwrite: true
 
   assemble:
     name: assemble (final status card, close-out, PR)
-    needs: [lead, prep, validate, replan, prep2, validate2]
+    needs: [lead, worker, prep, validate, replan, worker2, prep2, validate2]
     if: >-
-      ${{ !cancelled() && needs.lead.result == 'success' &&
-      needs.validate.result == 'success' &&
-      (needs.validate2.result == 'success' || needs.validate2.result == 'skipped') }}
+      ${{ always() && needs.lead.result != 'skipped' &&
+      needs.lead.outputs.duplicate != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -1549,44 +2040,127 @@ jobs:
 
       - name: Pick final verdict and candidate
         id: pick
+        env:
+          LEAD_RESULT: ${{ needs.lead.result }}
+          WORKER_RESULT: ${{ needs.worker.result }}
+          PREP_RESULT: ${{ needs.prep.result }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          REPLAN_RESULT: ${{ needs.replan.result }}
+          WORKER2_RESULT: ${{ needs.worker2.result }}
+          PREP2_RESULT: ${{ needs.prep2.result }}
+          VALIDATE2_RESULT: ${{ needs.validate2.result }}
         run: |
           python3 - <<'PY'
           import json, os
           def find(dirname_prefix, filename):
+              if not os.path.isdir("dl"):
+                  return None
               for d in sorted(os.listdir("dl")):
                   if d.startswith(dirname_prefix):
                       p = os.path.join("dl", d, filename)
                       if os.path.exists(p):
                           return p
               return None
-          verdict_path = find("team-verdict2-", "verdict.json") or find("team-verdict-", "verdict.json")
-          verdict = json.load(open(verdict_path))
-          json.dump(verdict, open("final-verdict.json", "w"), ensure_ascii=False, indent=2)
-          manifest_path = None
-          for prefix in ("team-evidence2-", "team-evidence-"):
-              for d in sorted(os.listdir("dl")):
-                  if d.startswith(prefix) and os.path.exists(os.path.join("dl", d, "evidence.tar.gz")):
-                      manifest_path = os.path.join("dl", d, "evidence.tar.gz")
-          candidate = ""
-          if manifest_path:
+          def read_candidate(tar_path):
               import tarfile, io
-              with tarfile.open(manifest_path) as tf:
-                  member = tf.extractfile("./manifest.json") or tf.extractfile("manifest.json")
-                  manifest = json.load(io.TextIOWrapper(member, encoding="utf-8"))
-                  candidate = manifest.get("candidate_branch", "")
+              try:
+                  with tarfile.open(tar_path) as tf:
+                      member = None
+                      for member_name in ("./manifest.json", "manifest.json"):
+                          try:
+                              member = tf.extractfile(member_name)
+                          except KeyError:
+                              member = None
+                          if member is not None:
+                              break
+                      if member is None:
+                          print(f"no manifest.json inside {tar_path}; candidate unknown")
+                          return ""
+                      manifest = json.load(io.TextIOWrapper(member, encoding="utf-8"))
+                      return manifest.get("candidate_branch", "") or ""
+              except Exception as exc:
+                  print(f"read_candidate failed for {tar_path}: {exc}")
+                  return ""
+
+          # Verdict and candidate branch must come from the SAME round:
+          # try round 2 (verdict2 + evidence2) first, then fall back to round 1.
+          verdict_path = find("team-verdict2-", "verdict.json")
+          evidence_tar = find("team-evidence2-", "evidence.tar.gz")
+          picked_round = 2
+          if verdict_path is None:
+              verdict_path = find("team-verdict-", "verdict.json")
+              evidence_tar = find("team-evidence-", "evidence.tar.gz")
+              picked_round = 1
+          if verdict_path is None:
+              # No verdict artifact from either round: synthesize a fallback
+              # verdict so the final status card is still posted, with the
+              # reason taken from the earliest failed link in the chain
+              # (lead -> worker -> prep -> validate -> ...).
+              fail_text = {
+                  "lead": "领班 job 失败，计划未落成（或落成未全）",
+                  "worker": "工人 job 失败，备料未启动",
+                  "prep": "备料未完成（prep job 红），验收未启动",
+                  "validate": "验收未产出判定（validate job 结构性失败）",
+                  "replan": "改计划回路失败（replan job 红），且无第 1 轮判定可收口",
+                  "worker2": "第 2 轮工人 job 失败，第 2 轮备料未启动",
+                  "prep2": "第 2 轮备料未完成（prep2 job 红），第 2 轮验收未启动",
+                  "validate2": "第 2 轮验收未产出判定（validate2 job 结构性失败）",
+              }
+              cancel_text = {
+                  "lead": "领班 job 被取消/硬超时，计划未落成",
+                  "worker": "工人 job 被取消/硬超时，备料未启动",
+                  "prep": "备料未完成（prep job 被取消/硬超时），验收未启动",
+                  "validate": "验收未产出判定（validate job 被取消/硬超时）",
+                  "replan": "改计划回路被取消/硬超时（replan job），且无第 1 轮判定可收口",
+                  "worker2": "第 2 轮工人 job 被取消/硬超时，第 2 轮备料未启动",
+                  "prep2": "第 2 轮备料未完成（prep2 job 被取消/硬超时），第 2 轮验收未启动",
+                  "validate2": "第 2 轮验收未产出判定（validate2 job 被取消/硬超时）",
+              }
+              chain_order = ["lead", "worker", "prep", "validate", "replan", "worker2", "prep2", "validate2"]
+              results = {name: os.environ.get(f"{name.upper()}_RESULT", "") for name in chain_order}
+              fallback_reason = "验收未产出判定（validate job 结构性失败）"
+              for name in chain_order:
+                  if results[name] == "failure":
+                      fallback_reason = fail_text[name]
+                      break
+                  if results[name] == "cancelled":
+                      fallback_reason = cancel_text[name]
+                      break
+              verdict = {"overall": "fail", "pytest_exit": None,
+                         "iteration": picked_round, "processes": [],
+                         "reason": fallback_reason}
+              print(f"no verdict artifact found; using synthesized fallback verdict (results={results})")
+          else:
+              verdict = json.load(open(verdict_path))
+          candidate = read_candidate(evidence_tar) if evidence_tar else ""
+          if verdict.get("overall") == "pass" and not candidate:
+              # A pass verdict with no candidate branch means the evidence
+              # pack is incomplete; never let that out as a green result.
+              verdict["overall"] = "fail"
+              verdict["reason"] = "判定 pass 但候选分支缺失（证据工件不完整）"
+              print("verdict says pass but candidate branch is empty; forcing fail")
+          json.dump(verdict, open("final-verdict.json", "w"), ensure_ascii=False, indent=2)
+          print(f"picked round: {picked_round} | verdict file: {verdict_path} | evidence tar: {evidence_tar}")
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"overall={verdict.get('overall')}\n")
               out.write(f"candidate={candidate}\n")
+              out.write(f"picked_round={picked_round}\n")
           print("final overall:", verdict.get("overall"), "| candidate:", candidate)
           PY
 
       - name: Post final status card, close out, attempt PR
+        id: closeout
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           PLAN_ISSUE_NUMBER: ${{ needs.lead.outputs.plan_issue_number }}
           CANDIDATE_BRANCH: ${{ steps.pick.outputs.candidate }}
           OVERALL: ${{ steps.pick.outputs.overall }}
+          REPLAN_RESULT: ${{ needs.replan.result }}
+          WORKER2_RESULT: ${{ needs.worker2.result }}
+          PREP2_RESULT: ${{ needs.prep2.result }}
+          VALIDATE2_RESULT: ${{ needs.validate2.result }}
+          PICKED_ROUND: ${{ steps.pick.outputs.picked_round }}
         run: |
           python3 - <<'PY'
           import json, os, subprocess
@@ -1601,9 +2175,12 @@ jobs:
           plan_number = os.environ["PLAN_ISSUE_NUMBER"]
           candidate = os.environ["CANDIDATE_BRANCH"]
           overall = os.environ["OVERALL"]
+          replan_result = os.environ.get("REPLAN_RESULT", "")
           verdict = json.load(open("final-verdict.json"))
 
           def find_file(prefix, filename):
+              if not os.path.isdir("dl"):
+                  return None
               for d in sorted(os.listdir("dl")):
                   if d.startswith(prefix):
                       p = os.path.join("dl", d, filename)
@@ -1611,8 +2188,11 @@ jobs:
                           return p
               return None
 
-          plan = json.load(open(find_file("team-plan-", "team-plan.json")))
-          subs = {p["id"]: p.get("sub_issue_number") for p in plan["processes"]}
+          plan_path = find_file("team-plan-", "team-plan.json")
+          plan = json.load(open(plan_path)) if plan_path else None
+          subs = {p["id"]: p.get("sub_issue_number") for p in plan["processes"]} if plan else {}
+          if plan is None:
+              print("plan artifact missing; closing out with an empty sub-issue table")
           v2_path = find_file("team-plan-v2-", "team-plan-v2.json")
           if v2_path:
               v2 = json.load(open(v2_path))
@@ -1621,39 +2201,90 @@ jobs:
                       subs[p["id"]] = p["sub_issue_number"]
 
           pr_text = "（未尝试：无候选分支）"
+          pr_failed = False
           if overall == "pass" and candidate:
-              for pid, sub in subs.items():
-                  if sub:
-                      gh("issue", "close", str(sub), "--reason", "completed")
-              gh("issue", "comment", plan_number, "--body",
-                 "## 收口\n\n全部工序验收过关，子单已关闭（Sub-issues progress 应为 3/3）。\n\n状态代偿记录：已验收。")
+              # PR first (L): sub-issues and the [计划] issue close only
+              # after the PR actually exists; a refused PR must not leave
+              # a fully closed-out board behind it.
               r = gh("pr", "create", "--repo", os.environ["GITHUB_REPOSITORY"],
                      "--base", "main", "--head", candidate,
                      "--title", f"team: issue #{issue_number}",
                      "--body", f"Foreman-pattern result for issue #{issue_number}. Candidate branch: {candidate}")
-              pr_text = (r.stdout or r.stderr).strip() or "(gh pr create 无输出)"
-              print("gh pr create rc:", r.returncode, pr_text)
+              print("gh pr create rc:", r.returncode, (r.stdout or r.stderr).strip())
+              if r.returncode == 0:
+                  pr_text = (r.stdout or "").strip() or "(gh pr create 无输出)"
+                  for pid, sub in subs.items():
+                      if sub:
+                          gh("issue", "close", str(sub), "--reason", "completed")
+                  if plan_number:
+                      gh("issue", "comment", plan_number, "--body",
+                         "## 收口\n\n全部工序验收过关，PR 已创建，子单与本计划单随之关闭。\n\n状态代偿记录：已验收。")
+                      gh("issue", "close", plan_number, "--reason", "completed")
+              else:
+                  pr_failed = True
+                  pr_text = "PR 创建失败（子单与计划单未关，run 将标红）：" + ((r.stderr or r.stdout).strip() or "(gh pr create 无输出)")
           elif overall != "pass":
-              failed = [p["id"] for p in verdict.get("processes", []) if p.get("verdict") != "pass"]
-              gh("issue", "comment", plan_number, "--body",
-                 f"## 阻塞\n\n验收未过：{', '.join(failed)}。迭代已用满（上限 2 轮）或无可重派，整单停下报人裁。子单保持打开。\n\n状态代偿记录：阻塞。")
+              procs = verdict.get("processes", [])
+              failed = [p["id"] for p in procs if p.get("verdict") != "pass"]
+              pytest_exit_v = verdict.get("pytest_exit")
+              if failed:
+                  block_detail = f"验收未过：{', '.join(failed)}。"
+              elif procs and all(p.get("verdict") == "pass" for p in procs) and pytest_exit_v not in (0, None):
+                  block_detail = f"工序逐项 pass，但全量 pytest 退出码 {pytest_exit_v}，机器闸判 fail。"
+              elif verdict.get("reason"):
+                  block_detail = f"验收未过：{verdict['reason']}。"
+              else:
+                  block_detail = "验收未过（无逐工序判定）。"
+              if plan_number:
+                  gh("issue", "comment", plan_number, "--body",
+                     f"## 阻塞\n\n{block_detail}迭代已用满（上限 2 轮）或无可重派，整单停下报人裁。子单保持打开。\n\n状态代偿记录：阻塞。")
               pr_text = "（未尝试：验收未过）"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"pr_failed={'true' if pr_failed else 'false'}\n")
 
+          pytest_exit = verdict.get("pytest_exit")
+          plan_label = f"#{plan_number}" if plan_number else "未落成"
           lines = ["## 团队状态卡（收口）", "",
-                   f"计划：#{plan_number}（计划版本 v{verdict.get('iteration', 1)} 轮验收）",
-                   f"候选分支：`{candidate or '无'}`", "",
-                   "### 验收结果"]
+                   f"计划：{plan_label}（计划版本 v{verdict.get('iteration', 1)} 轮验收）",
+                   f"候选分支：`{candidate or '无'}`",
+                   f"全量 pytest 退出码：{pytest_exit if pytest_exit is not None else '未知'}", ""]
+          if replan_result == "failure":
+              lines += ["⚠ 改计划回路失败（replan job 红），本卡按第 1 轮判定收口", ""]
+          r2_dead = [name for name, key in (("replan", "REPLAN_RESULT"), ("worker2", "WORKER2_RESULT"),
+                                            ("prep2", "PREP2_RESULT"), ("validate2", "VALIDATE2_RESULT"))
+                     if os.environ.get(key, "") in ("failure", "cancelled")]
+          if v2_path and os.environ.get("PICKED_ROUND") == "1" and r2_dead:
+              lines += [f"⚠ 计划 v2 已落成，但第 2 轮链条未走完（{', '.join(r2_dead)}），本卡按第 1 轮判定收口", ""]
+          if verdict.get("reason"):
+              lines += [f"判定说明：{verdict['reason']}", ""]
+          lines += ["### 验收结果"]
           for proc in verdict.get("processes", []):
-              lines.append(f"- `{proc.get('id')}`（子单 #{subs.get(proc.get('id'))}）：{proc.get('verdict')} — {proc.get('reason')}")
+              sub = subs.get(proc.get("id"))
+              sub_label = f"（子单 #{sub}）" if sub else ""
+              lines.append(f"- `{proc.get('id')}`{sub_label}：{proc.get('verdict')} — {proc.get('reason')}")
           lines += ["", f"总判定：**{overall}**", "", "### PR", "", pr_text, "",
                     "状态代偿说明：Projects 板面字段由 workflow 以评论代偿记录（已派单/施工中/待验收/已验收/阻塞），字段直写待令牌方案。"]
           open("final-comment.md", "w").write("\n".join(lines))
           print("\n".join(lines))
           PY
-          gh issue comment "$ISSUE_NUMBER" --body-file final-comment.md
+          gh issue comment "$ISSUE_NUMBER" --body-file final-comment.md || echo "::warning::final status card failed to post; the card text is in this job's log above"
 
-      - name: Fail the run when validation did not pass
-        if: steps.pick.outputs.overall != 'pass'
+      - name: Fail the run when validation did not pass or the PR failed
+        if: steps.pick.outputs.overall != 'pass' || steps.closeout.outputs.pr_failed == 'true'
         run: |
-          echo "validation overall != pass; run marked failed after posting the status card"
+          echo "overall != pass or PR creation failed; run marked failed after posting the status card"
           exit 1
+
+      - name: Post minimal status card when pick failed
+        if: ${{ failure() && steps.pick.outcome != 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          {
+            echo "## 团队状态卡（收口·兜底）"
+            echo ""
+            echo "汇总 job 的 pick 步失败，未能生成正式收口卡。run：${RUN_ID}。请看本 run 的 assemble job 日志定位 pick 失败原因；本工单未收口。"
+          } > minimal-card.md
+          gh issue comment "$ISSUE_NUMBER" --body-file minimal-card.md || echo "::warning::minimal fallback card failed to post"
