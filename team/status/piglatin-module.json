@@ -1,0 +1,21 @@
+{
+  "id": "piglatin-module",
+  "title": "实现 piglatin.py 猪拉丁翻译模块及其测试",
+  "state": "done",
+  "files": [
+    "piglatin.py",
+    "tests/test_piglatin.py",
+    "team/handoffs/piglatin-module.md",
+    "team/status/piglatin-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_piglatin.py",
+      "result": "PASS: 9 passed in 0.01s (exit code 0). Output: ......... [100%] / 9 passed in 0.01s"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "PASS: 9 passed in 0.01s (exit code 0). Output: ......... [100%] / 9 passed in 0.01s (full suite at time of run contained only this card's tests; other workers' files landed in parallel)"
+    }
+  ]
+}
