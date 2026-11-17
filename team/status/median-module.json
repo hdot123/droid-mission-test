@@ -1,0 +1,17 @@
+{
+  "id": "median-module",
+  "title": "Implement median.py with lower-median rule and tests",
+  "state": "done",
+  "files": [
+    "median.py",
+    "tests/test_median.py",
+    "team/handoffs/median-module.md",
+    "team/status/median-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_median.py",
+      "result": "7 passed in 0.02s (exit 0); pytest 9.2.0 was installed via pip first because it was missing from the environment"
+    }
+  ]
+}

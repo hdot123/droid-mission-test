@@ -1,0 +1,17 @@
+{
+  "id": "csvline-module",
+  "title": "Implement csvline.py parse/join without csv module and tests",
+  "state": "done",
+  "files": [
+    "csvline.py",
+    "tests/test_csvline.py",
+    "team/handoffs/csvline-module.md",
+    "team/status/csvline-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_csvline.py",
+      "result": "11 passed in 0.02s (exit 0)"
+    }
+  ]
+}
