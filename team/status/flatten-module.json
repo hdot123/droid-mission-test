@@ -1,0 +1,17 @@
+{
+  "id": "flatten-module",
+  "title": "Implement flatten.py with tests",
+  "state": "done",
+  "files": [
+    "flatten.py",
+    "tests/test_flatten.py",
+    "team/handoffs/flatten-module.md",
+    "team/status/flatten-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_flatten.py",
+      "result": "pass: 4 passed in 0.01s (exit 0)"
+    }
+  ]
+}
