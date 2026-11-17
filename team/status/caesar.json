@@ -1,0 +1,29 @@
+{
+  "id": "caesar",
+  "title": "caesar.py 凯撒移位模块与测试",
+  "state": "done",
+  "files": [
+    "caesar.py",
+    "tests/test_caesar.py",
+    "team/handoffs/caesar.md",
+    "team/status/caesar.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_caesar.py",
+      "result": "PASS: 11 passed in 0.01s (exit 0). First run failed: pytest not installed ('/usr/bin/python: No module named pytest', exit 1), then one test failure from my own wrong expectation (encode(\"ABC\", 3) asserted as 'XYZ', actual 'DEF'); installed pytest 9.2.0 and corrected the test, then all passed."
+    },
+    {
+      "command": "python -c \"from caesar import encode, decode; assert encode('Abc XyZ!', 2) == 'Cde ZaB!'\"",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "python -c \"from caesar import encode; assert encode('abc', -1) == 'zab'\"",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "python -c \"from caesar import decode; assert decode('Cde', 2) == 'Abc'\"",
+      "result": "PASS (exit 0)"
+    }
+  ]
+}
