@@ -1,0 +1,15 @@
+{
+  "id": "semver-module",
+  "title": "Implement semver.py with tests",
+  "state": "done",
+  "files": [
+    "semver.py",
+    "tests/test_semver.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_semver.py",
+      "result": "31 passed in 0.02s (exit 0); run as python3 -m pytest after installing pytest 9.2.0, since bare python had no pytest module"
+    }
+  ]
+}
