@@ -1,6 +1,7 @@
-name: Droid Team v2.6.1 (foreman pattern test)
+name: Droid Team v2.6.2 (foreman pattern test)
 
-# Foreman pattern （领班制）, v2.6.1:
+# Foreman pattern （领班制）, v2.6.2:
+#   v2.6.2 change note: round-2 worker branch .../<pid>/r2 -> .../<pid>-r2 (leaf suffix); the old name prefix-conflicted with the round-1 branch .../<pid> and its push was rejected with "cannot lock ref" (round-10 live evidence).
 #   env-check (reusable gate, GitHub side only)
 #   -> lead/foreman splits the order and files the [计划] issue + sub-issues
 #   -> workers (one process card each, parallel)
@@ -1227,7 +1228,7 @@ jobs:
                           print(f"revised card claims file owned by {seen_files[f]}: {f}")
                           sys.exit(1)
                       seen_files[f] = pid
-              card["branch_suffix"] = "/r2"
+              card["branch_suffix"] = "-r2"
 
               if mode == "revise":
                   old_sub = originals[pid].get("sub_issue_number")
@@ -1600,7 +1601,7 @@ jobs:
                   continue
               card = rerun[pid]
               json.dump(card, open(f"{pack_dir}/process-card.json", "w"), ensure_ascii=False, indent=2)
-              branch = f"team/issue-{issue}/run-{run_id}/{pid}/r2"
+              branch = f"team/issue-{issue}/run-{run_id}/{pid}-r2"
               info = {"branch": branch, "branch_present": False, "merged": False, "merge_conflict": False}
               info["out_of_bounds"] = []
               exists = run(["git", "ls-remote", "--exit-code", "origin", branch]).returncode == 0
