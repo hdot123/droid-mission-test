@@ -1,0 +1,17 @@
+{
+  "id": "luhn-module",
+  "title": "Implement luhn.py with tests",
+  "state": "done",
+  "files": [
+    "luhn.py",
+    "tests/test_luhn.py",
+    "team/handoffs/luhn-module.md",
+    "team/status/luhn-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest tests/test_luhn.py -q",
+      "result": "passed (5 passed in 0.01s; final run exit 0. First run had 2 failures due to incorrect hand-picked test fixtures, corrected before final run)"
+    }
+  ]
+}
