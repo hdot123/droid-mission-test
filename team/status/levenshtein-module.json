@@ -1,0 +1,15 @@
+{
+  "id": "levenshtein-module",
+  "title": "Implement levenshtein.py with tests",
+  "state": "done",
+  "files": [
+    "levenshtein.py",
+    "tests/test_levenshtein.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_levenshtein.py",
+      "result": "9 passed in 0.02s (exit 0)"
+    }
+  ]
+}
