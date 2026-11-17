@@ -1,0 +1,52 @@
+name: Repro needs chain (R15 mechanism test)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  lead:
+    name: lead (always succeeds)
+    runs-on: ubuntu-latest
+    outputs:
+      duplicate: ${{ steps.mark.outputs.duplicate }}
+    steps:
+      - name: Mark not-a-duplicate
+        id: mark
+        run: echo "duplicate=false" >> "$GITHUB_OUTPUT"
+
+  worker:
+    name: worker (deliberately fails)
+    needs: lead
+    runs-on: ubuntu-latest
+    steps:
+      - name: Simulate a worker whose process checks are red
+        run: |
+          echo "simulating worker verify-step failure"
+          exit 1
+
+  prep:
+    name: prep (armored, tolerates worker failure)
+    needs: [lead, worker]
+    if: ${{ !cancelled() && needs.lead.result == 'success' && needs.worker.result != 'cancelled' && needs.lead.outputs.duplicate != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prep runs despite the worker failure and succeeds
+        run: echo "prep ran and succeeded"
+
+  validate:
+    name: validate (bare result comparison, validator pattern)
+    needs: prep
+    if: needs.prep.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate ran
+        run: echo "validate ran"
+
+  control:
+    name: control (explicit always(), assemble pattern)
+    needs: prep
+    if: ${{ always() && needs.prep.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Control ran
+        run: echo "control ran"
