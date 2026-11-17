@@ -1,0 +1,17 @@
+{
+  "id": "initials-module",
+  "title": "Implement initials.py with tests",
+  "state": "done",
+  "files": [
+    "initials.py",
+    "tests/test_initials.py",
+    "team/handoffs/initials-module.md",
+    "team/status/initials-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_initials.py",
+      "result": "initially failed: No module named pytest; after pip installing pytest, reran as python3 -m pytest -q tests/test_initials.py -> 3 passed in 0.01s (exit 0)"
+    }
+  ]
+}
