@@ -1,0 +1,15 @@
+{
+  "id": "slugify-module",
+  "title": "Implement slugify module with tests",
+  "state": "done",
+  "files": [
+    "slugify.py",
+    "tests/test_slugify.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest tests/test_slugify.py -q",
+      "result": "4 passed"
+    }
+  ]
+}
