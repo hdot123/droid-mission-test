@@ -1,0 +1,17 @@
+{
+  "id": "luhn-module",
+  "title": "Implement luhn.py with Luhn validation helpers",
+  "state": "done",
+  "files": [
+    "luhn.py",
+    "tests/test_luhn.py",
+    "team/handoffs/luhn-module.md",
+    "team/status/luhn-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_luhn.py",
+      "result": "passed: 20 passed in 0.02s (exit code 0)"
+    }
+  ]
+}
