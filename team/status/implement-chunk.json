@@ -1,0 +1,21 @@
+{
+  "id": "implement-chunk",
+  "title": "Implement chunk and flatten module",
+  "state": "done",
+  "files": [
+    "chunk.py",
+    "tests/test_chunk.py",
+    "team/handoffs/implement-chunk.md",
+    "team/status/implement-chunk.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest tests/test_chunk.py -q",
+      "result": "PASS: 14 passed in 0.02s"
+    },
+    {
+      "command": "python -c \"import chunk; assert chunk.chunk([1,2,3,4,5],2)==[[1,2],[3,4],[5]]; assert chunk.flatten([[1,2],[3],[]])==[1,2,3]; import pytest; pytest.raises(ValueError, chunk.chunk, [1], 0)\"",
+      "result": "PASS: exit 0"
+    }
+  ]
+}
