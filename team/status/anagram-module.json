@@ -1,0 +1,17 @@
+{
+  "id": "anagram-module",
+  "title": "Implement anagram.py with tests",
+  "state": "done",
+  "files": [
+    "anagram.py",
+    "tests/test_anagram.py",
+    "team/handoffs/anagram-module.md",
+    "team/status/anagram-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_anagram.py",
+      "result": "pass: 7 passed in 0.01s (exit 0); pytest was installed first via python -m pip install pytest -q because the environment had no pytest module"
+    }
+  ]
+}
