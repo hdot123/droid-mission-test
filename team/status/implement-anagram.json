@@ -1,0 +1,19 @@
+{
+  "id": "implement-anagram",
+  "title": "Implement anagram helpers module",
+  "state": "done",
+  "files": [
+    "anagram.py",
+    "tests/test_anagram.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest tests/test_anagram.py -q",
+      "result": "pass: 8 passed in 0.02s"
+    },
+    {
+      "command": "python -c \"import anagram; assert anagram.are_anagrams('Dormitory','dirty room') is True; assert anagram.are_anagrams('hello','world') is False; assert anagram.group(['eat','tea','tan','ate','nat','bat'])==[['eat','tea','ate'],['tan','nat'],['bat']]\"",
+      "result": "pass: exit 0"
+    }
+  ]
+}
