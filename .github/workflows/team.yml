@@ -417,7 +417,7 @@ jobs:
 
   prep:
     name: prep (merge and pack evidence)
-              needs: [lead, worker]
+    needs: [lead, worker]
     if: ${{ !cancelled() && needs.lead.result == 'success' && needs.worker.result != 'cancelled' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
