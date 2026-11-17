@@ -1,0 +1,25 @@
+{
+  "id": "vowelcount-module",
+  "title": "Implement vowelcount.py with tests/test_vowelcount.py",
+  "state": "done",
+  "files": [
+    "vowelcount.py",
+    "tests/test_vowelcount.py",
+    "team/handoffs/vowelcount-module.md",
+    "team/status/vowelcount-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 7 passed in 0.01s (first attempt failed with 'No module named pytest'; pytest installed via pip, then rerun passed, exit 0)"
+    },
+    {
+      "command": "python -c \"from vowelcount import count; assert count('sky') == 0; assert count('AeIoU') == 5; assert count('banana') == 3; print('vowelcount examples ok')\"",
+      "result": "pass: printed 'vowelcount examples ok', exit 0"
+    },
+    {
+      "command": "python -c \"import os; assert os.path.exists('vowelcount.py') and os.path.exists('tests/test_vowelcount.py'); print('files ok')\"",
+      "result": "pass: printed 'files ok', exit 0"
+    }
+  ]
+}
