@@ -1,0 +1,27 @@
+{
+  "id": "hexcolor",
+  "title": "hexcolor.py 十六进制颜色模块与测试",
+  "state": "done",
+  "files": [
+    "hexcolor.py",
+    "tests/test_hexcolor.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_hexcolor.py",
+      "result": "PASS (final): 13 passed in 0.02s. Initial run before installing pytest failed verbatim: '/usr/bin/python: No module named pytest'; resolved by pip install pytest (pytest 9.2.0), rerun passed."
+    },
+    {
+      "command": "python -c \"from hexcolor import parse; assert parse('#f80') == (255, 136, 0)\"",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "python -c \"from hexcolor import parse; assert parse('#FF8800') == (255, 136, 0)\"",
+      "result": "PASS (exit 0)"
+    },
+    {
+      "command": "python -c \"from hexcolor import to_hex; assert to_hex(255, 136, 0) == '#FF8800'\"",
+      "result": "PASS (exit 0)"
+    }
+  ]
+}
