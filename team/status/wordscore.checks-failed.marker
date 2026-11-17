@@ -1,9 +1,0 @@
-process: wordscore
-check exit 1: python -m pytest -q tests/test_wordscore.py
-check exit 0: python -c "from wordscore import score; assert score('abc') == 6"
-check exit 0: python -c "from wordscore import score; assert score('z') == 26"
-check exit 0: python -c "from wordscore import score; assert score('a-b') == 3"
-check exit 0: python -c "from wordscore import score; assert score('bad') == 7"
-check exit 1: python -c "from wordscore import score; assert score('abc') == 7"
-problem: check failed (exit 1): python -m pytest -q tests/test_wordscore.py
-problem: check failed (exit 1): python -c "from wordscore import score; assert score('abc') == 7"
