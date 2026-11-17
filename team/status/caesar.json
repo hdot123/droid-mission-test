@@ -1,0 +1,25 @@
+{
+  "id": "caesar",
+  "title": "caesar 凯撒移位模块",
+  "state": "done",
+  "files": [
+    "caesar.py",
+    "tests/test_caesar.py",
+    "team/handoffs/caesar.md",
+    "team/status/caesar.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_caesar.py",
+      "result": "PASS: 8 passed in 0.02s (exit 0). Note: first run failed with 'No module named pytest'; pytest was installed in the environment, then the check passed as written."
+    },
+    {
+      "command": "python -c \"from caesar import encode, decode; assert encode('Abc XyZ!', 2) == 'Cde ZaB!', 'example 1'; assert encode('abc', -1) == 'zab', 'example 2'; assert decode('Cde', 2) == 'Abc', 'example 3'; assert decode(encode('Hello, World! 123', 13), 13) == 'Hello, World! 123', 'decode inverse'; print('caesar examples all hold')\"",
+      "result": "PASS: printed 'caesar examples all hold' (exit 0)."
+    },
+    {
+      "command": "test -f caesar.py && test -f tests/test_caesar.py && echo files-present",
+      "result": "PASS: printed 'files-present' (exit 0)."
+    }
+  ]
+}
