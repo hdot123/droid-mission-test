@@ -1,0 +1,17 @@
+{
+  "id": "nato-module",
+  "title": "Implement nato.py with tests",
+  "state": "done",
+  "files": [
+    "nato.py",
+    "tests/test_nato.py",
+    "team/handoffs/nato-module.md",
+    "team/status/nato-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest tests/test_nato.py -q",
+      "result": "10 passed in 0.02s (exit code 0)"
+    }
+  ]
+}
