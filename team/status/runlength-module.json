@@ -1,0 +1,17 @@
+{
+  "id": "runlength-module",
+  "title": "Implement runlength.py with run-length encode and decode",
+  "state": "done",
+  "files": [
+    "runlength.py",
+    "tests/test_runlength.py",
+    "team/handoffs/runlength-module.md",
+    "team/status/runlength-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_runlength.py",
+      "result": "PASS: 16 passed in 0.02s"
+    }
+  ]
+}
