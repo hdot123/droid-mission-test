@@ -1,0 +1,17 @@
+{
+  "id": "gcdx-module",
+  "title": "Implement gcdx.py with tests",
+  "state": "done",
+  "files": [
+    "gcdx.py",
+    "tests/test_gcdx.py",
+    "team/handoffs/gcdx-module.md",
+    "team/status/gcdx-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_gcdx.py",
+      "result": "passed (9 passed)"
+    }
+  ]
+}
