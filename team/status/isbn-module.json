@@ -1,0 +1,21 @@
+{
+  "id": "isbn-module",
+  "title": "实现 isbn.py ISBN-10 校验模块及其测试",
+  "state": "done",
+  "files": [
+    "isbn.py",
+    "tests/test_isbn.py",
+    "team/handoffs/isbn-module.md",
+    "team/status/isbn-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_isbn.py",
+      "result": "14 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "14 passed in 0.01s (exit 0)"
+    }
+  ]
+}
