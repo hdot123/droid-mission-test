@@ -1,0 +1,21 @@
+{
+  "id": "roman-module",
+  "title": "Implement roman.py with to_roman/from_roman and tests",
+  "state": "done",
+  "files": [
+    "roman.py",
+    "tests/test_roman.py",
+    "team/handoffs/roman-module.md",
+    "team/status/roman-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_roman.py",
+      "result": "pass (8 passed in 0.01s)"
+    },
+    {
+      "command": "python3 -c sanity script: invalid forms raise ValueError; full round-trip from_roman(to_roman(n)) for n in 1..3999",
+      "result": "pass (full round-trip 1..3999 OK)"
+    }
+  ]
+}
