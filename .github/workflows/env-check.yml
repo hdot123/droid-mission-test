@@ -1,0 +1,245 @@
+name: Env Check (GitHub side gate)
+
+# First workflow of the foreman pattern: checks only the GitHub side —
+# repo settings, secret presence, board config surface, workflow files,
+# token permission block, and the work order itself.
+# Hard failures block the team workflow (lead and below never start).
+# Anything the GITHUB_TOKEN cannot see is reported as a warning with the
+# boundary stated, never silently passed.
+# The model channel (CF gateway / Worker) is NOT checked here by design.
+
+on:
+  workflow_call:
+    inputs:
+      issue_number:
+        description: "Work order issue number to check (0 = skip issue checks)"
+        type: number
+        required: false
+        default: 0
+      project_number:
+        description: "Project board number to probe (0 = report boundary only)"
+        type: number
+        required: false
+        default: 0
+    secrets:
+      FACTORY_API_KEY:
+        required: false
+      WORKER_CI_KEY:
+        required: false
+      GW_TOKEN_KNOWN:
+        required: false
+      GO_GITHUB_RUN_TOKEN:
+        required: false
+    outputs:
+      ok:
+        description: "true when no hard check failed"
+        value: ${{ jobs.envcheck.outputs.ok }}
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Work order issue number to check (0 = skip issue checks)"
+        type: number
+        required: false
+        default: 0
+      project_number:
+        description: "Project board number to probe (0 = report boundary only)"
+        type: number
+        required: false
+        default: 0
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  envcheck:
+    name: env-check (GitHub side only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ok: ${{ steps.gate.outputs.ok }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run checks
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          PROJECT_NUMBER: ${{ inputs.project_number }}
+          S_FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+          S_WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          S_GW_TOKEN_KNOWN: ${{ secrets.GW_TOKEN_KNOWN }}
+          S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+        run: |
+          RESULTS=env-check-results.tsv
+          : > "$RESULTS"
+          add() { printf '%s\t%s\t%s\n' "$1" "$2" "$3" >> "$RESULTS"; }
+          HARD_FAIL=0
+
+          # 1. Workflow files present and parseable
+          shopt -s nullglob
+          WF_FILES=(.github/workflows/*.yml .github/workflows/*.yaml)
+          if [ ${#WF_FILES[@]} -eq 0 ]; then
+            add FAIL "工作流在册" "未找到任何 workflow 文件"
+            HARD_FAIL=1
+          else
+            for f in "${WF_FILES[@]}"; do
+              if yq eval '.' "$f" > /dev/null 2>&1; then
+                add PASS "工作流语法" "$f 可解析"
+              else
+                add FAIL "工作流语法" "$f 解析失败"
+                HARD_FAIL=1
+              fi
+            done
+          fi
+
+          # 2. Team workflow permission block (GITHUB_TOKEN surface declared in YAML)
+          if [ -f .github/workflows/team.yml ]; then
+            python3 - <<'PY' >> "$RESULTS"
+          import json, subprocess, sys
+          raw = subprocess.run(["yq", "eval", ".permissions", ".github/workflows/team.yml", "-o=json"],
+                               capture_output=True, text=True)
+          try:
+              perms = json.loads(raw.stdout) or {}
+          except Exception:
+              perms = {}
+          for scope in ("contents", "issues", "pull-requests"):
+              got = perms.get(scope, "(missing)")
+              if got == "write":
+                  print(f"PASS\t令牌权限块\tteam.yml permissions.{scope} = write")
+              else:
+                  print(f"FAIL\t令牌权限块\tteam.yml permissions.{scope} = {got}（需要 write）")
+          PY
+            grep -q $'^FAIL\t令牌权限块' "$RESULTS" && HARD_FAIL=1
+          else
+            add FAIL "工作流在册" ".github/workflows/team.yml 不存在"
+            HARD_FAIL=1
+          fi
+
+          # 3. Repo Actions settings: default workflow permissions + PR creation switch
+          if API_JSON=$(gh api "repos/${GITHUB_REPOSITORY}/actions/permissions/workflow" 2> api-err.txt); then
+            export API_JSON
+            python3 - <<'PY' >> "$RESULTS"
+          import json, os
+          d = json.loads(os.environ["API_JSON"])
+          default_perm = d.get("default_workflow_permissions")
+          if default_perm == "write":
+              print("PASS\t仓库设置\t默认工作流权限 = write")
+          else:
+              print(f"FAIL\t仓库设置\t默认工作流权限 = {default_perm}（需要 write）")
+          if d.get("can_approve_pull_request_reviews") is True:
+              print("PASS\t仓库设置\t允许 Actions 创建 PR = 已开")
+          else:
+              print("FAIL\t仓库设置\t允许 Actions 创建 PR = 未开（gh pr create 会被仓级设置拒绝）")
+          PY
+            grep -q $'^FAIL\t仓库设置' "$RESULTS" && HARD_FAIL=1
+          else
+            ERR_LINE=$(head -c 300 api-err.txt | tr '\n' ' ')
+            add WARN "仓库设置" "GITHUB_TOKEN 读不到仓库 Actions 设置（令牌边界，非通过）：$ERR_LINE"
+          fi
+
+          # 4. Secrets presence (names only, values never printed)
+          python3 - <<'PY' >> "$RESULTS"
+          import os
+          for name in ("FACTORY_API_KEY", "WORKER_CI_KEY", "GW_TOKEN_KNOWN", "GO_GITHUB_RUN_TOKEN"):
+              present = bool(os.environ.get("S_" + name))
+              print(f"{'PASS' if present else 'FAIL'}\tSecret 名单\t{name} {'在册' if present else '缺失'}")
+          PY
+          grep -q $'^FAIL\tSecret 名单' "$RESULTS" && HARD_FAIL=1
+
+          # 5. Work order completeness (goal / deliverables / acceptance standard)
+          if [ "${ISSUE_NUMBER:-0}" != "0" ]; then
+            if gh issue view "$ISSUE_NUMBER" --json title,body,state > issue.json 2> issue-err.txt; then
+              python3 - <<'PY' >> "$RESULTS"
+          import json
+          d = json.load(open("issue.json"))
+          body = d.get("body") or ""
+          if d.get("state") != "OPEN":
+              print(f"FAIL\t工单完整\t工单状态 = {d.get('state')}（需要 OPEN）")
+          for kw, label in (("目标", "目标段"), ("交付物", "交付物段"), ("验收", "验收标准段")):
+              if kw in body:
+                  print(f"PASS\t工单完整\t正文含{label}")
+              else:
+                  print(f"FAIL\t工单完整\t正文缺{label}（未找到「{kw}」）")
+          PY
+              grep -q $'^FAIL\t工单完整' "$RESULTS" && HARD_FAIL=1
+            else
+              ERR_LINE=$(head -c 300 issue-err.txt | tr '\n' ' ')
+              add FAIL "工单完整" "读不到工单 #$ISSUE_NUMBER：$ERR_LINE"
+              HARD_FAIL=1
+            fi
+          else
+            add WARN "工单完整" "未提供工单号，跳过（独立手动运行时正常）"
+          fi
+
+          # 6. Board config surface (GITHUB_TOKEN has no Projects access: boundary, not a pass)
+          if [ "${PROJECT_NUMBER:-0}" != "0" ]; then
+            OWNER="${GITHUB_REPOSITORY%%/*}"
+            if gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json > project.json 2> project-err.txt; then
+              add PASS "板面配置" "项目板 #$PROJECT_NUMBER 可读（字段细查见板面纪律，字段值由 workflow 代偿记录）"
+            else
+              ERR_LINE=$(head -c 300 project-err.txt | tr '\n' ' ')
+              add WARN "板面配置" "项目板读不到（令牌边界，非通过）：$ERR_LINE"
+            fi
+          else
+            add WARN "板面配置" "未提供板号；且 GITHUB_TOKEN 无 Projects 权限，板面字段不在本门核查面内（边界明示）"
+          fi
+
+          # 7. Another team already in flight on this repo?
+          if RUNS_JSON=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/team.yml/runs?status=in_progress&per_page=20" 2> runs-err.txt); then
+            export RUNS_JSON
+            COUNT=$(python3 -c "import json,os; print(json.loads(os.environ['RUNS_JSON']).get('total_count', 0))" 2>/dev/null || echo "?")
+            if [ "$COUNT" = "?" ]; then
+              add WARN "并发队伍" "在飞 run 数解析失败，未核查"
+            elif [ "$COUNT" -gt 1 ]; then
+              add WARN "并发队伍" "已有 $COUNT 条 team run 在飞；同工单由 team workflow 的 concurrency 分组排队，不同工单请人工确认"
+            else
+              add PASS "并发队伍" "在飞 team run 数 = $COUNT"
+            fi
+          else
+            ERR_LINE=$(head -c 300 runs-err.txt | tr '\n' ' ')
+            add WARN "并发队伍" "在飞 run 读不到（非通过）：$ERR_LINE"
+          fi
+
+          echo "ok=$([ "$HARD_FAIL" -eq 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "---- env-check results ----"
+          cat "$RESULTS"
+          exit "$HARD_FAIL"
+
+      - name: Render and post report
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          GATE_RESULT: ${{ steps.gate.outcome }}
+        run: |
+          python3 - <<'PY'
+          import os
+          rows = []
+          if os.path.exists("env-check-results.tsv"):
+              for line in open("env-check-results.tsv"):
+                  parts = line.rstrip("\n").split("\t")
+                  if len(parts) == 3:
+                      rows.append(parts)
+          icon = {"PASS": "✓", "FAIL": "✗", "WARN": "⚠"}
+          lines = ["## env-check 体检报告（GitHub 侧）", ""]
+          lines.append(f"结论：{'通过，队伍可以开始' if os.environ.get('GATE_RESULT') == 'success' else '未通过，队伍不启动'}")
+          lines.append("")
+          lines.append("| 项 | 检查 | 结果 |")
+          lines.append("|---|---|---|")
+          for status, item, detail in rows:
+              lines.append(f"| {icon.get(status, status)} | {item} | {detail} |")
+          lines.append("")
+          lines.append("说明：⚠ 为令牌边界无法核查项，不算通过；✗ 为硬失败，领班以下 job 全部不启动。模型通道（CF 网关/Worker）不归本门查。")
+          report = "\n".join(lines)
+          open("env-check-report.md", "w").write(report)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
+              fh.write(report + "\n")
+          print(report)
+          PY
+          if [ "${ISSUE_NUMBER:-0}" != "0" ]; then
+            gh issue comment "$ISSUE_NUMBER" --body-file env-check-report.md || echo "report comment failed (report is in the run summary)"
+          fi
