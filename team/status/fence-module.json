@@ -1,0 +1,15 @@
+{
+  "id": "fence-module",
+  "title": "Implement text wrapping and unwrapping",
+  "state": "done",
+  "files": [
+    "fence.py",
+    "tests/test_fence.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_fence.py",
+      "result": "15 passed in 0.02s"
+    }
+  ]
+}
