@@ -1,0 +1,17 @@
+{
+  "id": "baseconv-module",
+  "title": "Implement baseconv.py with tests/test_baseconv.py",
+  "state": "done",
+  "files": [
+    "baseconv.py",
+    "tests/test_baseconv.py",
+    "team/handoffs/baseconv-module.md",
+    "team/status/baseconv-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest tests/test_baseconv.py -q",
+      "result": "passed: 17 passed in 0.03s (exit code 0)"
+    }
+  ]
+}
