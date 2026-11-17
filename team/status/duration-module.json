@@ -1,0 +1,15 @@
+{
+  "id": "duration-module",
+  "title": "Implement duration string parsing and formatting",
+  "state": "done",
+  "files": [
+    "duration.py",
+    "tests/test_duration.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_duration.py",
+      "result": "passed"
+    }
+  ]
+}
