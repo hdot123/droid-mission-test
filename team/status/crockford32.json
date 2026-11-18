@@ -1,0 +1,21 @@
+{
+  "id": "crockford32",
+  "title": "Implement Crockford Base32 encode/decode",
+  "state": "done",
+  "files": [
+    "crockford32.py",
+    "tests/test_crockford32.py",
+    "team/handoffs/crockford32.md",
+    "team/status/crockford32.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_crockford32.py -q",
+      "result": "passed: 10 passed in 0.01s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 21 passed in 0.02s"
+    }
+  ]
+}
