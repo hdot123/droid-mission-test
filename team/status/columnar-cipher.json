@@ -1,0 +1,21 @@
+{
+  "id": "columnar-cipher",
+  "title": "Implement columnar transposition cipher module and tests",
+  "state": "done",
+  "files": [
+    "columnar.py",
+    "tests/test_columnar.py",
+    "team/handoffs/columnar-cipher.md",
+    "team/status/columnar-cipher.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_columnar.py -q",
+      "result": "18 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "29 passed in 0.04s"
+    }
+  ]
+}
