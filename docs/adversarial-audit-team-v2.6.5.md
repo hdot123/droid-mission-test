@@ -6,7 +6,8 @@
 - **对照通道**：`.github/workflows/droid.yml`（`@droid` 单体）
 - **审计时间**：2026-11-18（UTC）
 - **审计方式**：只读；基于 GitHub Issues / Comments / Actions Runs / 仓库工作流源码；**未**修改任何工作流或测试行为
-- **Project 33（droid-mission-test-board）**：审计主体（`cursor[bot]` / `GITHUB_TOKEN`）**无法**读取用户级 Project V2（见 [证据 A1](#a1-project-33-与板面字段无法被自动化核对)）；板面结论以工单评论「状态代偿」+ 出题人记账评论交叉验证
+- **官方流程定版（权威依据）**：[《开发领班制 · 流程定版》](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e)（空间 live v45，抽屉双写；定版日 2026-11-17；§1–§14 + 第 1–41 轮轮次卡；用户同步核验 71,410 字符完整）。本报告 [§9](#9-对照官方定版的评价2026-11-18) 以该页为裁定口径。
+- **Project 33（droid-mission-test-board）**：审计主体（`cursor[bot]` / `GITHUB_TOKEN`）**无法**读取用户级 Project V2（见 [证据 A1](#a1-project-33-与板面字段无法被自动化核对)）；板面结论以工单评论「状态代偿」+ 出题人记账 + 定版 §14「视图层／事实本体」规则交叉验证
 
 ---
 
@@ -17,14 +18,14 @@
 仍有几类**已用 GitHub 证据坐实**的结构性缺口：
 
 1. **板面与自动化脱节**：workflow 只写评论代偿、不写 Project 字段；env-check 对板面只能 WARN，无法证明 Project #33 与 run 一致（[A1](#a1-project-33-与板面字段无法被自动化核对)）。
-2. **工单 issue 生命周期与「通过」脱节**：`assemble` 关闭的是子工单与 `[计划]`，**不关闭**母工单；大量 `总判定：pass` 的工单仍为 `open`（[A2](#a2-pass-工单长期-open-与设计一致但板面易误判)）。
+2. **母工单 pass 仍 open**：与定版 §13 多轮收口口径一致（「主工单按设计保持 Open，等 PR 合并」），**不是缺陷**；若板面示「已验收」而母工单 open，按定版 §14 层级口径 **错在板面视图**（[A2'](#a2-pass-工单长期-open-与设计一致但板面易误判)）。
 3. **验收员 / 工人「会话硬超时」与改计划断路**：`droid exec` 600s 杀进程时 `validate` job 结构性失败，`replan` 因 `needs.validate.result == 'success'` **不触发**，出现「工人与备料全绿、全量 pytest 0，但无裁定、无 PR」的假阴性（[F1](#f1-验收员会话超时-改计划不回退)）。
 4. **并发加压下的「死亡账」**：第四十轮五路并发中多笔 failure 与出题人记账「代码全绿、死因在预算」一致（[F1](#f1-验收员会话超时-改计划不回退)、[T1](#t1-第四十轮并发五路)）。
 5. **收口卡兜底文案可误导**：工人失败但 prep 已运行时，assemble 合成理由仍写「备料未启动」（[F2](#f2-assemble-兜底理由与真实-job-链不一致)）。
 6. **早期 / 中断单证据缺口**：如 [#7](https://github.com/hdot123/droid-mission-test/issues/7) `replan` 失败后**无** `团队状态卡（收口）` 评论（[F3](#f3-工单-7-无收口卡-replan-失败)）。
-7. **出题合规无机械门禁**：env-check 只验 `## 目标/交付物/验收标准` 标题存在，不验语义矛盾、并发互斥、归因禁令可执行性；导致「流水线 fail」与「题面不合格」需人工裁（契合拟议「法官」角色，[§6](#6-拟议角色法官cursor-缺口分析)）。
+7. **出题合规机械门禁不足**：与定版 §14 登记表 **A8＝C8**、**补20**（段标题格式门）同源——env-check 只验 `##` 标题行，不验语义与编排合规；第三十五轮首批四 run 曾因无段标题被门拒（[env-check 作废批](https://github.com/hdot123/droid-mission-test/issues/277)）已在定版记账，但 **编排侧 grep 自检尚未 workflow 化**（见 [§9.3](#93-定版写了-github-侧尚未覆盖或仍打架)）。
 
-**测试方案**覆盖广（常规组、并发、埋错、改存量、矛盾题、题型轮），但**失败回归**偏「记失败样本 + 人工记账」，缺少自动区分 **pipeline fault / 出题 fault / 板面 stale** 的统一裁定字段；40 轮**未**系统覆盖：Project 字段写回、母工单自动归档、validate 超时后的 attribution fallback、出题模板校验。
+**测试方案**（定版 §13）已系统覆盖至第 41 轮并建立网关基线、一致计数、并发阶梯；本 Agent 体检侧重 GitHub 可复核链，与定版轮次叙述 **大体一致**，差异见 [§9](#9-对照官方定版的评价2026-11-18)。第 42 轮 GitHub 证据见 [#379–#383](https://github.com/hdot123/droid-mission-test/issues/379)，定版页随 live v45 落档（用户称 **六处起落档同步**；本轮 MCP 回读含 §14 第四十一轮卡与「下轮第四十二轮 4 路」预告，42 轮全文以 Notion 页为准）。
 
 ---
 
@@ -68,12 +69,13 @@
 | 证据 | 收口 [issuecomment-6946868355](https://github.com/hdot123/droid-mission-test/issues/72#issuecomment-6946868355)；run [44074014028 jobs](https://github.com/hdot123/droid-mission-test/actions/runs/44074014028)；备料评论在同 run。 |
 | 历史 | 该 run `head_sha`=`ab02c1d8`（早于 v2.6.3 合并后多次 workflow 重命名）；同 SHA 上 `validator` 为 **skipped**（R15 回归仅能从更新 SHA 证明，见 [V1](#v1-r15-工人失败后验收仍跑)）。 |
 
-#### A2. pass 工单长期 open（与设计一致但板面易误判） {#a2-pass-工单长期-open-与设计一致但板面易误判}
+#### A2'. pass 工单长期 open（定版内设计，非流水线 bug） {#a2-pass-工单长期-open-与设计一致但板面易误判}
 
 | 项 | 内容 |
 |---|---|
 | 现象 | 扫描 64 条含 bot「收口」工单：**43 pass / 21 fail**；其中 **25** 条 `总判定：pass` 且 issue 仍 **open**（如 [#380–#383](https://github.com/hdot123/droid-mission-test/issues/380) 第四十二轮）。 |
-| 设计 | `assemble` 仅在 PR 创建成功后关闭 **子工单 + [计划]**，不关闭母工单（[team.yml L2777–2794](https://github.com/hdot123/droid-mission-test/blob/main/.github/workflows/team.yml#L2777-L2794)）。 |
+| 定版 | [§13 第 5–6 轮等](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) 明写「主工单按设计保持 Open」；[§14 2026-11-18 层级口径](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e)：**事实本体 = issue 谱系 + 工件**，板面是视图，对不上时 **错在板**。 |
+| 代码 | `assemble` 仅在 PR 成功后关闭 **子工单 + [计划]**（[team.yml L2777–2794](https://github.com/hdot123/droid-mission-test/blob/main/.github/workflows/team.yml#L2777-L2794)）。 |
 | 证据 | [#380 收口 pass + PR #402](https://github.com/hdot123/droid-mission-test/issues/380#issuecomment-6987056474)；母工单 [state=open](https://github.com/hdot123/droid-mission-test/issues/380)。 |
 
 #### F4. 51 条 `[工序]` 子工单仍 open
@@ -233,10 +235,23 @@
 ### 6.2 解不了什么
 
 - Factory 组织策略 / 网关白名单（[#1](https://github.com/hdot123/droid-mission-test/issues/1#issuecomment-6915148486)）
-- `droid exec` 600s 硬超时与 validator 无输出（需改 team.yml 或降载，非法官可替代）
+- `droid exec` 600s 硬超时与 validator 无输出（定版 §14 **补10** 已登记多例；修法属 team.yml，非法官角色）
 - `GITHUB_TOKEN` 无 Project 写权限 → 法官若无 PAT 同样不能自动改板
 - 工人代码质量、领班拆卡、合并 pytest 真红（法官不施工）
-- 母工单不关闭的产品决策（需改 assemble 或板面工作流）
+- 母工单不关闭（**定版既定**，非法官可改）
+
+### 6.3 在官方定版中的位置（未单独立项）
+
+定版**未**出现「法官cursor」工作流名称；近义机制已存在：
+
+| 定版条目 | 链接锚点 | 与「法官cursor」关系 |
+|---|---|---|
+| env-check 第一工作流 | [§7](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | 只查 GitHub 侧；与领班/工人链 **硬隔离** |
+| 补20 题面段标题格式门 | [§14 · 第三十五轮](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | **编排侧**出题自检，拟议法官的最接近落点 |
+| 裁判席 / 对抗审计四席 | [§14 · 2026-11-18 对抗审计](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | 事后多席只读审计，**非** issue 评论点名触发 |
+| 层级口径「错的一定是板」 | [§14](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | 法官若只做 **板面／出题合规裁定**，须服从此本体论 |
+
+**结论**：拟议「法官cursor」= 定版 **补20 + A8/C8 编排扩展 + 失败归类评论** 的自动化壳；**不替代** env-check（ secrets/令牌）、**不替代** 裁判席（网关账 + 工件原物）。本次仍不实现。
 
 ---
 
@@ -244,9 +259,10 @@
 
 | 类型 | 含义 | 示例 |
 |---|---|---|
-| **已证据实现的问题** | 源码 + run/issue 交叉证实 | [F1](#f1-验收员会话超时-改计划不回退)、[F2](#f2-assemble-兜底理由与真实-job-链不一致)、[A2](#a2-pass-工单长期-open-与设计一致但板面易误判)、[G1](#g1-env-check-不验出题语义合规) |
-| **可能问题（证据不足）** | 推测合理但缺 Project/字段直证 | Project #33 上 #3/#5/#6 仍示「施工中」；板面「失败」计数 vs open pass 工单 |
-| **40 轮未系统覆盖** | 无专门轮次或仅单次命中 | fail 工单重复点名；validate 超时后脚本化 fallback 裁定；Project 字段自动写回；`flips` 字段 UI 回归；母工单自动归档；仓库 Actions 权限 403 场景 |
+| **已证据实现的问题** | 源码 + run/issue 交叉证实 | [F1](#f1-验收员会话超时-改计划不回退)、[F2](#f2-assemble-兜底理由与真实-job-链不一致)、[G1](#g1-env-check-不验出题语义合规)；[A1](#a1-project-33-与板面字段无法被自动化核对) 相对定版 §12(3) 为目标缺口 |
+| **定版内设计，非缺陷** | 定版 §13/§14 明示 | [A2'](#a2-pass-工单长期-open-与设计一致但板面易误判) 母工单 open；失败不关单（[#344](https://github.com/hdot123/droid-mission-test/issues/344)） |
+| **可能问题（证据不足）** | 推测合理但缺 Project/字段直证 | 自动化无法读 Project 33；早期 #3/#5/#6 **issue 已 closed**（[#3](https://github.com/hdot123/droid-mission-test/issues/3)），若板仍「施工中」则符合定版「错在板」、非本 Agent 可证 |
+| **定版已记账、GitHub 仍缺口** | 定版 §14 挂账 / 未活验 | [§9.3](#93-定版写了-github-侧尚未覆盖或仍打架)：`workflow 自动写板面`（§12 第 3 件）、Merge `always()`（补18）、fail 工单重复点名、确定性剥离活验等 |
 
 ---
 
@@ -268,4 +284,57 @@
 
 ---
 
-*本报告由 Cloud Agent 对抗式只读审计生成；除本文档外未改动仓库运行中流程。*
+## 9. 对照官方定版的评价（2026-11-18） {#9-对照官方定版的评价2026-11-18}
+
+**依据**：[《开发领班制 · 流程定版》](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e)（MCP `notion-fetch` 于 2026-11-18T18:15Z 回读全文；用户同步声明 71,410 字符无删节）。**证据链**：定版条文用 Notion 链接；可执行事实仍用 GitHub issue/run/comment。
+
+### 9.1 与原体检报告一致（定版背书）
+
+| 原报告结论 | 定版对应 | GitHub 复核 |
+|---|---|---|
+| env-check 硬门 → 领班 → 工人 → prep → validate → replan(≤1) → assemble | [§6 工作流结构](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e)、[§8 修复回路](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | [#380 run 44363177614](https://github.com/hdot123/droid-mission-test/actions/runs/44363177614) success |
+| 「没料不验收」、证据包五件 | [§8 验收](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | [#348 备料评论](https://github.com/hdot123/droid-mission-test/issues/348#issuecomment-6980553273) 三工序料齐 |
+| env-check 对板 33 / 仓 Actions 设置 ⚠ 边界 | [§7 板面配置](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e)、§14 挂账⑤ | [#380 env-check](https://github.com/hdot123/droid-mission-test/issues/380#issuecomment-6986820971) |
+| duplicate 仅 pass 后挡重复点名 | [§13 第 6 轮](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | [#18 重复点名](https://github.com/hdot123/droid-mission-test/issues/18#issuecomment-6938686986) |
+| R15→v2.6.3 工人红仍备料/验收 | [§14 R15](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | [#83 run 44109665167](https://github.com/hdot123/droid-mission-test/actions/runs/44109665167) validate 真跑 |
+| 改计划二轮链活验 | [§13 第 10、18 轮](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | [#88 v1→v2](https://github.com/hdot123/droid-mission-test/issues/88#issuecomment-6953234478) |
+| 第四十轮 A/E 会话预算死、工件全绿 | [§13 第四十轮](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | [#348](https://github.com/hdot123/droid-mission-test/issues/348#issuecomment-6984203875)、[44316831033](https://github.com/hdot123/droid-mission-test/actions/runs/44316831033) |
+| 失败单不关单、板置「失败」 | [§13 第 33、35、40 轮](https://app.notion.com/p/41cf9797e33381db87b5e416baac358e) | [#344](https://github.com/hdot123/droid-mission-test/issues/344) open + [记账](https://github.com/hdot123/droid-mission-test/issues/344#issuecomment-6984188557) |
+| 第四十二轮四路并发 pass | 定版 live v45 落档（用户六处同步） | [#380–383 收口 pass](https://github.com/hdot123/droid-mission-test/issues/380#issuecomment-6987056474)、PR [#401–404](https://github.com/hdot123/droid-mission-test/pull/402) |
+
+### 9.2 被定版修正或补强的表述
+
+| 原报告表述 | 定版修正 | 评价调整 |
+|---|---|---|
+| 「板面与自动化脱节」似缺陷 | §12 v2 第 3 件 **「workflow 自动写板面」为待落地**；现行 [team.yml 状态代偿评论](https://github.com/hdot123/droid-mission-test/blob/main/.github/workflows/team.yml#L2871) 为 **过渡实现** | [A1](#a1-project-33-与板面字段无法被自动化核对) 仍为 **实现相对定版目标的缺口**，非「未经文档的意外」 |
+| pass 母工单 open「易误判」 | §14：**母工单留 Open 是设计**；板面应对子单/计划/收口 | 降级为 [A2'](#a2-pass-工单长期-open-与设计一致但板面易误判) **运维视图问题**，不是 assemble bug |
+| #1–#6 板面「施工中」线索 | §14：**板错 issue 对** | [#3 closed](https://github.com/hdot123/droid-mission-test/issues/3) vs 板面：若仍示施工中 → **板面 stale**（定版口径），非流水线故障 |
+| F1「改计划应回退」 | 定版第三十六轮：**补18 采认链断点**——`validate` exec 被杀后 **Merge 步无 `always()`** 致无 `verdict.json`；replan 本就不该在 **结构性 fail** 上触发 | F1 主因应并列：**600s 预算杀（补10）** + **采认链断裂（补18）**；[team.yml L1283](https://github.com/hdot123/droid-mission-test/blob/main/.github/workflows/team.yml#L1283) 条件与设计一致 |
+| #72「备料未启动」误导 | 定版第十五轮、第四十轮：**收口合成文案可失实**（R15 历史；round40 记 A 路同错） | [F2](#f2-assemble-兜底理由与真实-job-链不一致) 与定版 **A4/B7 类** 登记一致，v2.6.3 只修了 **停单理由五分支** 未修 worker 首败文案 |
+| 「40 轮未测 Project 写回」 | 定版明示 v2 五件中第 3 件 **未完工** | 从「测试遗漏」改为 **定版已知 backlog** |
+| 出题合规 | 定版 **A8/C8、补20、补15、补19** 族谱 | [G1](#g1-env-check-不验出题语义合规) 与定版 **一致**，解法方向是 **编排前门** 而非扩大 env-check 语义 |
+
+### 9.3 定版写了、GitHub 证据仍缺口或「打架」 {#93-定版写了-github-侧尚未覆盖或仍打架}
+
+| 定版要求 / 挂账 | 状态 | GitHub / 代码证据 |
+|---|---|---|
+| §12(3) workflow **自动写** Project 六态 | **未实现** | 仅评论代偿：[#380 收口说明](https://github.com/hdot123/droid-mission-test/issues/380#issuecomment-6987056474)；env-check 板面 ⚠ |
+| §7 env-check 验板字段齐全 | **令牌读不到** | 与 [#380 env-check](https://github.com/hdot123/droid-mission-test/issues/380#issuecomment-6986820971) 一致 |
+| §7 仓级「允许 Actions 建 PR」 | **403 不可见** | 同上 WARN；历史 [#1](https://github.com/hdot123/droid-mission-test/issues/1#issuecomment-6915148486) PR 失败 |
+| §9 assemble **必贴**收口卡 | **仍有漏贴** | [#7](https://github.com/hdot123/droid-mission-test/issues/7) 无收口（[43998961143](https://github.com/hdot123/droid-mission-test/actions/runs/43998961143)）；定版第四轮已记 v2.3 checkout 修复后，**旧 run 未补卡** |
+| 补18 Merge 步 `always()` | **未活验修复** | [#348](https://github.com/hdot123/droid-mission-test/issues/348)：validator fail、无 replan；与定版第三十六轮断点描述一致 |
+| fail 工单 duplicate 闸 | **未活验** | 仅 [#18 pass 重复](https://github.com/hdot123/droid-mission-test/issues/18#issuecomment-6938686986) |
+| 确定性剥离 team/（R19 v2.6.5） | **代码有、自然样本无** | 定版第二十三轮「零拒收」；埋错首轮 lead 杀：[44254645634](https://github.com/hdot123/droid-mission-test/actions/runs/44254645634) |
+| 裁判一致计数 / 网关基线 | **定版内建** | 本 Agent **未**复算网关账；第四十轮一致计数清零与 [#344/#348](https://github.com/hdot123/droid-mission-test/issues/344) fail 一致 |
+| 「状态记在 Projects 板面」一句话定义 | **与实现打架（已知过渡）** | 事实源 = issue + 工件（§14）；自动化写板 = backlog |
+
+### 9.4 原报告总裁定 — 定版对照后的总评
+
+1. **流水线本体**：定版 §6–§9 与 GitHub 第四十一、四十二轮样本 **对齐**；v2.6.5 为当前正式线（[team.yml 头注释](https://github.com/hdot123/droid-mission-test/blob/main/.github/workflows/team.yml)）。
+2. **仍须工程处置的顶点**（定版已命名）：**补10 会话预算**（validator/lead/worker）、**补18 采认链**、**§12(3) 写板**、**A4 收口贴附可靠性**、**补20 编排前门 workflow 化**。
+3. **测试线 vs 生产定版**：定版 §14 明示测试仓 PR 不合并、母工单常 open——**不得以生产板面习惯审计测试仓 issue 状态**。
+4. **法官cursor**：见 [§6.3](#63-在官方定版中的位置未单独立项)；定版已有 env-check + 裁判席 + 补20，**缺口在编排时点单与板面自动写回**，非领班/worker 链内角色。
+
+---
+
+*本报告由 Cloud Agent 对抗式只读审计生成；§9 增补对照官方定版，未改动仓库运行中流程。*
