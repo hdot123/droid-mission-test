@@ -1,0 +1,19 @@
+{
+  "id": "morse-module",
+  "title": "实现 morse 模块与测试",
+  "state": "done",
+  "files": [
+    "morse.py",
+    "tests/test_morse.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_morse.py",
+      "result": "pass: 23 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 27 passed in 0.02s (exit 0)"
+    }
+  ]
+}
