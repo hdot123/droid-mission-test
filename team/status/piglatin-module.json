@@ -1,0 +1,21 @@
+{
+  "id": "piglatin-module",
+  "title": "实现 piglatin.py 与测试",
+  "state": "done",
+  "files": [
+    "piglatin.py",
+    "tests/test_piglatin.py",
+    "team/handoffs/piglatin-module.md",
+    "team/status/piglatin-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_piglatin.py",
+      "result": "pass: 5 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "python -c \"import piglatin; assert piglatin.translate_word('apple')=='appleway'; assert piglatin.translate_word('hello')=='ellohay'; assert piglatin.translate_word('string')=='ingstray'; assert piglatin.translate_word('rhythm')=='rhythmay'; assert piglatin.translate('hello world')=='ellohay orldway'\"",
+      "result": "pass: printed OK, no assertion failure (exit 0)"
+    }
+  ]
+}
