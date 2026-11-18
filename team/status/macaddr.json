@@ -1,0 +1,21 @@
+{
+  "id": "macaddr",
+  "title": "MAC address normalization (macaddr.py)",
+  "state": "done",
+  "files": [
+    "macaddr.py",
+    "tests/test_macaddr.py",
+    "team/handoffs/macaddr.md",
+    "team/status/macaddr.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_macaddr.py -q",
+      "result": "passed (10 passed in 0.01s)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (21 passed in 0.01s)"
+    }
+  ]
+}
