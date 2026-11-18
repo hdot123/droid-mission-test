@@ -1,0 +1,19 @@
+{
+  "id": "crc16",
+  "title": "Implement CRC-16/CCITT-FALSE component",
+  "state": "done",
+  "files": [
+    "crc16.py",
+    "tests/test_crc16.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_crc16.py -q",
+      "result": "5 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "16 passed"
+    }
+  ]
+}
