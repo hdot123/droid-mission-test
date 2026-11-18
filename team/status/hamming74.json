@@ -1,0 +1,21 @@
+{
+  "id": "hamming74",
+  "title": "Implement (7,4) Hamming code component",
+  "state": "done",
+  "files": [
+    "hamming74.py",
+    "tests/test_hamming74.py",
+    "team/handoffs/hamming74.md",
+    "team/status/hamming74.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_hamming74.py -q",
+      "result": "passed (5 passed, exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (16 passed, exit 0)"
+    }
+  ]
+}
