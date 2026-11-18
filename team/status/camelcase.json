@@ -1,0 +1,19 @@
+{
+  "id": "camelcase",
+  "title": "Implement camelcase.py with tests",
+  "state": "done",
+  "files": [
+    "camelcase.py",
+    "tests/test_camelcase.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_camelcase.py -q",
+      "result": "pass: 13 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 24 passed"
+    }
+  ]
+}
