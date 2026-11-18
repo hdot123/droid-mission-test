@@ -1,0 +1,21 @@
+{
+  "id": "zigzag",
+  "title": "Implement ZigZag varint encode/decode",
+  "state": "done",
+  "files": [
+    "zigzag.py",
+    "tests/test_zigzag.py",
+    "team/handoffs/zigzag.md",
+    "team/status/zigzag.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_zigzag.py -q",
+      "result": "6 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "17 passed"
+    }
+  ]
+}
