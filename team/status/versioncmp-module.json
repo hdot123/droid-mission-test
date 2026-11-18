@@ -1,0 +1,15 @@
+{
+  "id": "versioncmp-module",
+  "title": "Implement versioncmp.py version comparison with tests",
+  "state": "done",
+  "files": [
+    "versioncmp.py",
+    "tests/test_versioncmp.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_versioncmp.py",
+      "result": "7 passed in 0.01s (exit 0); required after installing pytest, which was missing from the environment"
+    }
+  ]
+}
