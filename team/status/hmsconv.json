@@ -1,0 +1,21 @@
+{
+  "id": "hmsconv",
+  "title": "秒与时分秒互转 hmsconv.py",
+  "state": "done",
+  "files": [
+    "hmsconv.py",
+    "tests/test_hmsconv.py",
+    "team/handoffs/hmsconv.md",
+    "team/status/hmsconv.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_hmsconv.py -q",
+      "result": "13 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "24 passed"
+    }
+  ]
+}
