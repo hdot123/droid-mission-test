@@ -1,0 +1,19 @@
+{
+  "id": "codec-flip",
+  "title": "Implement codec_flip plugin and its tests",
+  "state": "done",
+  "files": [
+    "codec_flip.py",
+    "tests/test_codec_flip.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_codec_flip.py",
+      "result": "pass: 4 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "git diff --exit-code -- codecbox.py tests/test_codecbox.py",
+      "result": "pass: no diff, exit 0 (stock files untouched)"
+    }
+  ]
+}
