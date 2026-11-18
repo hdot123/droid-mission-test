@@ -1,0 +1,19 @@
+{
+  "id": "base58-encode-decode",
+  "title": "Implement Base58 byte codec module (base58.py)",
+  "state": "done",
+  "files": [
+    "base58.py",
+    "tests/test_base58.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_base58.py -q",
+      "result": "pass: 15 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 26 passed in 0.03s (exit 0)"
+    }
+  ]
+}
