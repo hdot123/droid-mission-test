@@ -1,0 +1,21 @@
+{
+  "id": "atbash",
+  "title": "Implement atbash.py with tests",
+  "state": "done",
+  "files": [
+    "atbash.py",
+    "tests/test_atbash.py",
+    "team/handoffs/atbash.md",
+    "team/status/atbash.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_atbash.py -q",
+      "result": "pass: 8 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 19 passed in 0.03s"
+    }
+  ]
+}
