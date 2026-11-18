@@ -1,0 +1,19 @@
+{
+  "id": "wordfreq-module",
+  "title": "实现 wordfreq.py 词频统计模块",
+  "state": "done",
+  "files": [
+    "wordfreq.py",
+    "tests/test_wordfreq.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_wordfreq.py",
+      "result": "pass: 13 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 13 passed in 0.01s (exit 0)"
+    }
+  ]
+}
