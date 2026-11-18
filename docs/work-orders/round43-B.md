@@ -14,7 +14,7 @@ beaufort.py、affine.py、polybius.py 与 tests/test_beaufort.py、tests/test_af
 
 二、affine.py ——仿射密码（模 26）
 - `encode(text: str, a: int, b: int) -> str`：`E(x)=(ax+b) mod 26` 作用于字母；`decode(text: str, a: int, b: int) -> str` 为逆运算；保留大小写，非字母原样；`a` 与 26 不互素时 encode/decode 均抛 ValueError。
-- 验收要点：`encode("Affine", 5, 8) == "Ihhwvc"`；`decode("Ihhwvc", 5, 8) == "Affine"`；`encode("abc", 1, 0) == "abc"`；`encode("Hello", 25, 3) == "Ahccl"`；`decode("Ahccl", 25, 3) == "Hello"`；`encode("Hi", 2, 0)` 抛 ValueError；`decode("Hi", 2, 0)` 抛 ValueError；对 `"Secret message"`、`a=7`、`b=11` 做往返恒等。
+- 验收要点：`encode("Affine", 5, 8) == "Ihhwvc"`；`decode("Ihhwvc", 5, 8) == "Affine"`；`encode("abc", 1, 0) == "abc"`；`encode("Hello", 25, 3) == "Wzssp"`；`decode("Wzssp", 25, 3) == "Hello"`；`encode("Hi", 2, 0)` 抛 ValueError；`decode("Hi", 2, 0)` 抛 ValueError；对 `"Secret message"`、`a=7`、`b=11` 做往返恒等。
 - checks（逐字）：`python3 -m pytest tests/test_affine.py -q`、`python3 -m pytest tests/ -q`
 
 三、polybius.py —— Polybius 方格（关键字 MONARCHY）
