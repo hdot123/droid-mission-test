@@ -1,0 +1,19 @@
+{
+  "id": "quotedprint-codec",
+  "title": "Quoted-Printable encode/decode (simplified)",
+  "state": "done",
+  "files": [
+    "quotedprint.py",
+    "tests/test_quotedprint.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_quotedprint.py -q",
+      "result": "passed: 11 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 22 passed in 0.03s"
+    }
+  ]
+}
