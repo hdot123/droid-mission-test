@@ -1,0 +1,21 @@
+{
+  "id": "factorial-module",
+  "title": "Implement factorial.py (factorial and binomial coefficients)",
+  "state": "done",
+  "files": [
+    "factorial.py",
+    "tests/test_factorial.py",
+    "team/handoffs/factorial-module.md",
+    "team/status/factorial-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_factorial.py -q",
+      "result": "11 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "22 passed in 0.02s (exit 0)"
+    }
+  ]
+}
