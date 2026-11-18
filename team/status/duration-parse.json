@@ -1,0 +1,17 @@
+{
+  "id": "duration-parse",
+  "title": "实现 duration_parse.py 模块及其测试",
+  "state": "done",
+  "files": [
+    "duration_parse.py",
+    "tests/test_duration_parse.py",
+    "team/handoffs/duration-parse.md",
+    "team/status/duration-parse.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_duration_parse.py",
+      "result": "passed"
+    }
+  ]
+}
