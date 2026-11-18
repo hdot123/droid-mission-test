@@ -1,0 +1,15 @@
+{
+  "id": "plugin-beta",
+  "title": "Deliver plugin_beta lowercase handler plugin",
+  "state": "done",
+  "files": [
+    "plugin_beta.py",
+    "tests/test_plugin_beta.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_plugin_beta.py",
+      "result": "pass: 2 passed in 0.01s (exit 0)"
+    }
+  ]
+}
