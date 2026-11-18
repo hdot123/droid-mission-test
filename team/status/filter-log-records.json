@@ -1,0 +1,17 @@
+{
+  "id": "filter-log-records",
+  "title": "Filter parsed log records by level threshold and time window",
+  "state": "done",
+  "files": [
+    "log_filter.py",
+    "tests/test_log_filter.py",
+    "team/handoffs/filter-log-records.md",
+    "team/status/filter-log-records.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m unittest discover -s tests -p \"test_log_filter.py\" -v",
+      "result": "PASSED: 23 tests ran, all ok (Ran 23 tests in 0.001s / OK), exit code 0"
+    }
+  ]
+}
