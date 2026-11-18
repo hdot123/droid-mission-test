@@ -1,0 +1,19 @@
+{
+  "id": "crc32-ieee",
+  "title": "Implement CRC-32/IEEE checksum module",
+  "state": "done",
+  "files": [
+    "crc32.py",
+    "tests/test_crc32.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_crc32.py -q",
+      "result": "7 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "18 passed"
+    }
+  ]
+}
