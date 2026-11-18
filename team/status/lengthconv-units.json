@@ -1,0 +1,19 @@
+{
+  "id": "lengthconv-units",
+  "title": "Implement length unit conversion module and tests",
+  "state": "done",
+  "files": [
+    "lengthconv.py",
+    "tests/test_lengthconv.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_lengthconv.py -q",
+      "result": "passed: 16 tests, exit code 0"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 27 tests, exit code 0"
+    }
+  ]
+}
