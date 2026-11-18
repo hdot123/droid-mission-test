@@ -1,0 +1,19 @@
+{
+  "id": "semvercmp",
+  "title": "Implement semantic version triple comparison",
+  "state": "done",
+  "files": [
+    "semvercmp.py",
+    "tests/test_semvercmp.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_semvercmp.py -q",
+      "result": "pass: 13 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 24 passed in 0.03s"
+    }
+  ]
+}
