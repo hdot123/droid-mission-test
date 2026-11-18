@@ -1,0 +1,19 @@
+{
+  "id": "luhn-module",
+  "title": "Implement luhn.py Luhn checksum component",
+  "state": "done",
+  "files": [
+    "luhn.py",
+    "tests/test_luhn.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_luhn.py -q",
+      "result": "10 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "21 passed in 0.03s"
+    }
+  ]
+}
