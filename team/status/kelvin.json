@@ -1,0 +1,21 @@
+{
+  "id": "kelvin",
+  "title": "实现 kelvin.py 温标换算",
+  "state": "done",
+  "files": [
+    "kelvin.py",
+    "tests/test_kelvin.py",
+    "team/handoffs/kelvin.md",
+    "team/status/kelvin.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_kelvin.py -q",
+      "result": "9 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "20 passed in 0.03s"
+    }
+  ]
+}
