@@ -1,0 +1,21 @@
+{
+  "id": "word-frequency-module",
+  "title": "Implement word frequency statistics module",
+  "state": "done",
+  "files": [
+    "word_freq.py",
+    "tests/test_word_freq.py",
+    "team/handoffs/word-frequency-module.md",
+    "team/status/word-frequency-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_word_freq.py",
+      "result": "passed (23 passed in 0.02s)"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "passed (23 passed in 0.01s)"
+    }
+  ]
+}
