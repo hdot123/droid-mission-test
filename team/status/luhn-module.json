@@ -1,0 +1,23 @@
+{
+  "id": "luhn-module",
+  "title": "Implement luhn.py with tests",
+  "state": "done",
+  "files": [
+    "luhn.py",
+    "tests/test_luhn.py"
+  ],
+  "checks": [
+    {
+      "command": "python -c \"import luhn; assert luhn.check_digit('7992739871') == '3'; assert luhn.check_digit('424242424242424') == '2'; assert luhn.is_valid('79927398713') is True; assert luhn.is_valid('79927398714') is False; assert luhn.is_valid('7992739871a') is False; assert luhn.is_valid('') is False\nok=True\nfor bad in ('', '12a'):\n try:\n  luhn.check_digit(bad)\n except ValueError:\n  pass\n else:\n  ok=False\nassert ok\"",
+      "result": "passed (exit 0)"
+    },
+    {
+      "command": "python -m pytest -q tests/test_luhn.py",
+      "result": "passed: 6 passed in 0.01s"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "passed: 10 passed in 0.02s"
+    }
+  ]
+}
