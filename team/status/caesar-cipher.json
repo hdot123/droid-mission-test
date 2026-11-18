@@ -1,0 +1,19 @@
+{
+  "id": "caesar-cipher",
+  "title": "Implement caesar.py shift() with full acceptance tests",
+  "state": "done",
+  "files": [
+    "caesar.py",
+    "tests/test_caesar.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_caesar.py -q",
+      "result": "8 passed in 0.01s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "19 passed in 0.02s"
+    }
+  ]
+}
