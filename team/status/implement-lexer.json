@@ -1,0 +1,17 @@
+{
+  "id": "implement-lexer",
+  "title": "第一环 lexer.py：tokenize 切词元（链首，无上游依赖）",
+  "state": "done",
+  "files": [
+    "lexer.py",
+    "tests/test_lexer.py",
+    "team/handoffs/implement-lexer.md",
+    "team/status/implement-lexer.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_lexer.py",
+      "result": "passed: 6 tests (6 passed in 0.01s, exit 0)"
+    }
+  ]
+}
