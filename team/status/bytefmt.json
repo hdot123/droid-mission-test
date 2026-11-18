@@ -1,0 +1,19 @@
+{
+  "id": "bytefmt",
+  "title": "实现 bytefmt.py IEC 1024 字节可读格式",
+  "state": "done",
+  "files": [
+    "bytefmt.py",
+    "tests/test_bytefmt.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bytefmt.py -q",
+      "result": "pass"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass"
+    }
+  ]
+}

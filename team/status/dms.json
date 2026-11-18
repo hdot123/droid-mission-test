@@ -1,0 +1,21 @@
+{
+  "id": "dms",
+  "title": "实现 dms.py 十进制度数与度分秒换算",
+  "state": "done",
+  "files": [
+    "dms.py",
+    "tests/test_dms.py",
+    "team/handoffs/dms.md",
+    "team/status/dms.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_dms.py -q",
+      "result": "15 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "26 passed in 0.04s"
+    }
+  ]
+}
