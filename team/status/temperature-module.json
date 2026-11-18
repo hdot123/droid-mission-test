@@ -1,0 +1,17 @@
+{
+  "id": "temperature-module",
+  "title": "Implement temperature.py with tests",
+  "state": "done",
+  "files": [
+    "temperature.py",
+    "tests/test_temperature.py",
+    "team/handoffs/temperature-module.md",
+    "team/status/temperature-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_temperature.py",
+      "result": "PASS: 8 passed in 0.01s"
+    }
+  ]
+}
