@@ -1,0 +1,21 @@
+{
+  "id": "euclid-tools",
+  "title": "Implement euclid.py gcd/lcm/is_coprime with full acceptance tests",
+  "state": "done",
+  "files": [
+    "euclid.py",
+    "tests/test_euclid.py",
+    "team/handoffs/euclid-tools.md",
+    "team/status/euclid-tools.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_euclid.py -q",
+      "result": "10 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "21 passed"
+    }
+  ]
+}
