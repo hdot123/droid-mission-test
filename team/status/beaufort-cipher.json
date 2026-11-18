@@ -1,0 +1,21 @@
+{
+  "id": "beaufort-cipher",
+  "title": "Implement Beaufort cipher component",
+  "state": "done",
+  "files": [
+    "beaufort.py",
+    "tests/test_beaufort.py",
+    "team/handoffs/beaufort-cipher.md",
+    "team/status/beaufort-cipher.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_beaufort.py -q",
+      "result": "7 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "18 passed in 0.02s (exit 0)"
+    }
+  ]
+}
