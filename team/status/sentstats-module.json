@@ -1,0 +1,21 @@
+{
+  "id": "sentstats-module",
+  "title": "实现 sentstats.py 句子统计模块",
+  "state": "done",
+  "files": [
+    "sentstats.py",
+    "tests/test_sentstats.py",
+    "team/handoffs/sentstats-module.md",
+    "team/status/sentstats-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_sentstats.py",
+      "result": "pass"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass"
+    }
+  ]
+}
