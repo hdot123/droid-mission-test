@@ -1,0 +1,21 @@
+{
+  "id": "wordwrap-module",
+  "title": "Implement greedy word wrapping (wordwrap.py)",
+  "state": "done",
+  "files": [
+    "wordwrap.py",
+    "tests/test_wordwrap.py",
+    "team/handoffs/wordwrap-module.md",
+    "team/status/wordwrap-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_wordwrap.py -q",
+      "result": "passed (9 passed)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (20 passed)"
+    }
+  ]
+}
