@@ -1,0 +1,23 @@
+{
+  "id": "euclid-module",
+  "title": "Implement euclid.py with tests",
+  "state": "done",
+  "files": [
+    "euclid.py",
+    "tests/test_euclid.py"
+  ],
+  "checks": [
+    {
+      "command": "python -c \"import euclid; assert euclid.gcd(48, 36) == 12; assert euclid.gcd(-48, 36) == 12; assert euclid.gcd(0, 0) == 0; assert euclid.lcm(4, 6) == 12; assert euclid.lcm(0, 5) == 0; g, x, y = euclid.extended_gcd(30, 18); assert g == 6 and 30*x + 18*y == 6\"",
+      "result": "pass"
+    },
+    {
+      "command": "python -m pytest -q tests/test_euclid.py",
+      "result": "pass (21 passed in 0.03s)"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass (25 passed in 0.03s)"
+    }
+  ]
+}
