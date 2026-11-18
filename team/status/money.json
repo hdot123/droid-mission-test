@@ -1,0 +1,19 @@
+{
+  "id": "money",
+  "title": "Implement money.py integer-cent amounts",
+  "state": "done",
+  "files": [
+    "money.py",
+    "tests/test_money.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_money.py -q",
+      "result": "pass"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass"
+    }
+  ]
+}
