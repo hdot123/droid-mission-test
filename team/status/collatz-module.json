@@ -1,0 +1,25 @@
+{
+  "id": "collatz-module",
+  "title": "Implement collatz.py with tests",
+  "state": "done",
+  "files": [
+    "collatz.py",
+    "tests/test_collatz.py",
+    "team/handoffs/collatz-module.md",
+    "team/status/collatz-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -c \"import collatz; assert collatz.sequence(6) == [6, 3, 10, 5, 16, 8, 4, 2, 1]; assert collatz.steps(6) == 8; assert collatz.sequence(1) == [1]; assert collatz.steps(1) == 0; assert collatz.steps(27) == 111; raised = []\nfor bad in (0, -1, 1.5, '6'):\n try:\n  collatz.sequence(bad)\n except ValueError:\n  raised.append(bad)\nassert len(raised) == 4\"",
+      "result": "pass (exit 0)"
+    },
+    {
+      "command": "python -m pytest -q tests/test_collatz.py",
+      "result": "pass (13 passed in 0.02s)"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass (17 passed in 0.02s)"
+    }
+  ]
+}
