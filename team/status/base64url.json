@@ -1,0 +1,21 @@
+{
+  "id": "base64url",
+  "title": "Implement RFC 4648 base64url codec (no padding)",
+  "state": "done",
+  "files": [
+    "base64url.py",
+    "tests/test_base64url.py",
+    "team/handoffs/base64url.md",
+    "team/status/base64url.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_base64url.py -q",
+      "result": "9 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "20 passed"
+    }
+  ]
+}
