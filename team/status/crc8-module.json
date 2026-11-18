@@ -1,0 +1,17 @@
+{
+  "id": "crc8-module",
+  "title": "Implement crc8.py with CRC-8/SMBUS checksum",
+  "state": "done",
+  "files": [
+    "crc8.py",
+    "tests/test_crc8.py",
+    "team/handoffs/crc8-module.md",
+    "team/status/crc8-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_crc8.py",
+      "result": "passed: 10 passed in 0.02s"
+    }
+  ]
+}
