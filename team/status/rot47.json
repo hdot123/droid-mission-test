@@ -1,0 +1,19 @@
+{
+  "id": "rot47",
+  "title": "Implement rot47.py with tests",
+  "state": "done",
+  "files": [
+    "rot47.py",
+    "tests/test_rot47.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_rot47.py -q",
+      "result": "passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed"
+    }
+  ]
+}
