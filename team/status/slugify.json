@@ -1,0 +1,15 @@
+{
+  "id": "slugify",
+  "title": "Deliver slugify text utility",
+  "state": "done",
+  "files": [
+    "slugify.py",
+    "tests/test_slugify.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_slugify.py",
+      "result": "pass: 8 passed in 0.01s (exit 0; run as python3 -m pytest after installing pytest, which was missing from the environment)"
+    }
+  ]
+}
