@@ -1,0 +1,32 @@
+"""EAN-13 check digit utilities (standard library only)."""
+
+__all__ = ["check_digit", "is_valid"]
+
+
+def check_digit(first12):
+    """Return the EAN-13 check digit for a 12-digit numeric string.
+
+    Odd positions (1-based, from the left) have weight 1, even positions
+    weight 3. The weighted sum is reduced modulo 10 and subtracted from 10;
+    a result of 10 becomes 0.
+
+    Raises ValueError if ``first12`` is not a 12-character pure-digit string.
+    """
+    if not isinstance(first12, str) or len(first12) != 12 or not first12.isdigit():
+        raise ValueError("first12 must be a 12-digit numeric string")
+    total = 0
+    for index, ch in enumerate(first12):
+        weight = 1 if (index + 1) % 2 == 1 else 3
+        total += int(ch) * weight
+    remainder = total % 10
+    return (10 - remainder) % 10
+
+
+def is_valid(code):
+    """Return True if ``code`` is a 13-digit string with a correct check digit.
+
+    Malformed input returns False instead of raising.
+    """
+    if not isinstance(code, str) or len(code) != 13 or not code.isdigit():
+        return False
+    return check_digit(code[:12]) == int(code[12])
