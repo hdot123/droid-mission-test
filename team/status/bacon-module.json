@@ -1,0 +1,21 @@
+{
+  "id": "bacon-module",
+  "title": "bacon.py Bacon 双字母密码（26 字母版）",
+  "state": "done",
+  "files": [
+    "bacon.py",
+    "tests/test_bacon.py",
+    "team/handoffs/bacon-module.md",
+    "team/status/bacon-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bacon.py -q",
+      "result": "pass (15 passed in 0.02s)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass (26 passed in 0.03s)"
+    }
+  ]
+}
