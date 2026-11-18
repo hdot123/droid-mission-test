@@ -1,0 +1,15 @@
+{
+  "id": "packbits-module",
+  "title": "实现 packbits.py（PackBits 游程编解码）",
+  "state": "done",
+  "files": [
+    "packbits.py",
+    "tests/test_packbits.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_packbits.py",
+      "result": "pass: 16 passed in 0.02s"
+    }
+  ]
+}
