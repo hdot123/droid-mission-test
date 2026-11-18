@@ -1,0 +1,21 @@
+{
+  "id": "polygonarea",
+  "title": "Implement polygon shoelace area and perimeter with tests",
+  "state": "done",
+  "files": [
+    "polygonarea.py",
+    "tests/test_polygonarea.py",
+    "team/handoffs/polygonarea.md",
+    "team/status/polygonarea.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_polygonarea.py -q",
+      "result": "12 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "23 passed"
+    }
+  ]
+}
