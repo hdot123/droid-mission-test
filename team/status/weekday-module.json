@@ -1,0 +1,17 @@
+{
+  "id": "weekday-module",
+  "title": "Implement weekday.py proleptic-Gregorian weekday module",
+  "state": "done",
+  "files": [
+    "weekday.py",
+    "tests/test_weekday.py",
+    "team/handoffs/weekday-module.md",
+    "team/status/weekday-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_weekday.py",
+      "result": "7 passed in 0.02s"
+    }
+  ]
+}
