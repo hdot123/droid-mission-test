@@ -1,0 +1,21 @@
+{
+  "id": "vigenere-cipher",
+  "title": "Implement vigenere.py encrypt()/decrypt() with full acceptance tests",
+  "state": "done",
+  "files": [
+    "vigenere.py",
+    "tests/test_vigenere.py",
+    "team/handoffs/vigenere-cipher.md",
+    "team/status/vigenere-cipher.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_vigenere.py -q",
+      "result": "13 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "24 passed"
+    }
+  ]
+}
