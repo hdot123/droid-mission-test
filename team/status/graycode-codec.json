@@ -1,0 +1,21 @@
+{
+  "id": "graycode-codec",
+  "title": "Implement Gray code encode/decode module",
+  "state": "done",
+  "files": [
+    "graycode.py",
+    "tests/test_graycode.py",
+    "team/handoffs/graycode-codec.md",
+    "team/status/graycode-codec.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_graycode.py -q",
+      "result": "passed (17 passed)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (28 passed)"
+    }
+  ]
+}
