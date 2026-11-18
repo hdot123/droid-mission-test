@@ -1,0 +1,21 @@
+{
+  "id": "unixpath",
+  "title": "Implement unixpath.py POSIX path normalization",
+  "state": "done",
+  "files": [
+    "unixpath.py",
+    "tests/test_unixpath.py",
+    "team/handoffs/unixpath.md",
+    "team/status/unixpath.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_unixpath.py -q",
+      "result": "passed (17 passed in 0.02s)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (28 passed in 0.03s)"
+    }
+  ]
+}
