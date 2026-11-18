@@ -1,0 +1,21 @@
+{
+  "id": "bcd-codec",
+  "title": "BCD 编解码 bcd.py",
+  "state": "done",
+  "files": [
+    "bcd.py",
+    "tests/test_bcd.py",
+    "team/handoffs/bcd-codec.md",
+    "team/status/bcd-codec.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bcd.py -q",
+      "result": "13 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "24 passed in 0.04s"
+    }
+  ]
+}
