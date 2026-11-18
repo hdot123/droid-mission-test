@@ -1,0 +1,19 @@
+{
+  "id": "baseconv",
+  "title": "任意进制转换 baseconv.py（2–36）",
+  "state": "done",
+  "files": [
+    "baseconv.py",
+    "tests/test_baseconv.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_baseconv.py -q",
+      "result": "8 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "19 passed"
+    }
+  ]
+}
