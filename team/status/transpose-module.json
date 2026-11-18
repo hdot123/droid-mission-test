@@ -1,0 +1,15 @@
+{
+  "id": "transpose-module",
+  "title": "Implement transpose.py matrix utilities with tests",
+  "state": "done",
+  "files": [
+    "transpose.py",
+    "tests/test_transpose.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_transpose.py",
+      "result": "passed: 11 passed in 0.01s (exit 0)"
+    }
+  ]
+}
