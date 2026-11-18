@@ -1,0 +1,19 @@
+{
+  "id": "isbn13-check-digit",
+  "title": "Implement ISBN-13 check digit module",
+  "state": "done",
+  "files": [
+    "isbn13.py",
+    "tests/test_isbn13.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_isbn13.py -q",
+      "result": "passed (8 tests, exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (19 tests, exit 0)"
+    }
+  ]
+}
