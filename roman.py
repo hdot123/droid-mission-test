@@ -5,6 +5,7 @@
 """
 
 _VALUES = [
+    (4000, "MMMM"),
     (1000, "M"),
     (900, "CM"),
     (500, "D"),
@@ -32,8 +33,8 @@ _SYMBOL_VALUES = {
 
 
 def to_roman(n):
-    """把 1..3999 的整数转成罗马数字（标准减法记法）；越界抛 ValueError。"""
-    if n < 1 or n > 3999:
+    """把 1..4999 的整数转成罗马数字（标准减法记法，4000..4999 以 MMMM 起头）；越界抛 ValueError。"""
+    if n < 1 or n > 4999:
         raise ValueError("out of range: %r" % (n,))
     parts = []
     rest = n
@@ -45,12 +46,13 @@ def to_roman(n):
 
 
 def from_roman(s):
-    """把合法罗马数字字符串（大写、标准记法）转成整数；非法抛 ValueError。"""
+    """把合法罗马数字字符串（大小写不敏感、标准记法、1..4999）转成整数；非法抛 ValueError。"""
     if not isinstance(s, str) or not s:
         raise ValueError("invalid roman numeral: %r" % (s,))
+    text = s.upper()
     total = 0
     prev = 0
-    for ch in reversed(s):
+    for ch in reversed(text):
         if ch not in _SYMBOL_VALUES:
             raise ValueError("invalid roman numeral: %r" % (s,))
         value = _SYMBOL_VALUES[ch]
@@ -59,6 +61,15 @@ def from_roman(s):
         else:
             total += value
             prev = value
-    if total < 1 or total > 3999 or to_roman(total) != s:
+    if total < 1 or total > 4999 or to_roman(total) != text:
         raise ValueError("invalid roman numeral: %r" % (s,))
     return total
+
+
+def validate_roman(s):
+    """判断字符串是否为合法标准罗马数字（1..4999，大小写不敏感）；永不抛异常。"""
+    try:
+        from_roman(s)
+    except Exception:
+        return False
+    return True
