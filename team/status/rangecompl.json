@@ -1,0 +1,21 @@
+{
+  "id": "rangecompl",
+  "title": "整数区间补集 rangecompl.py",
+  "state": "done",
+  "files": [
+    "rangecompl.py",
+    "tests/test_rangecompl.py",
+    "team/handoffs/rangecompl.md",
+    "team/status/rangecompl.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_rangecompl.py -q",
+      "result": "13 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "24 passed"
+    }
+  ]
+}
