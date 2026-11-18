@@ -1,0 +1,21 @@
+{
+  "id": "base32-codec",
+  "title": "RFC 4648 Base32 encode/decode",
+  "state": "done",
+  "files": [
+    "base32.py",
+    "tests/test_base32.py",
+    "team/handoffs/base32-codec.md",
+    "team/status/base32-codec.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_base32.py -q",
+      "result": "9 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "20 passed"
+    }
+  ]
+}
