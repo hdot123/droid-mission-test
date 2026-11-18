@@ -1,0 +1,19 @@
+{
+  "id": "manchester-codec",
+  "title": "IEEE 802.3 Manchester encoder/decoder with tests",
+  "state": "done",
+  "files": [
+    "manchester.py",
+    "tests/test_manchester.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_manchester.py -q",
+      "result": "11 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "22 passed in 0.03s (exit 0)"
+    }
+  ]
+}
