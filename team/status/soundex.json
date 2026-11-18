@@ -1,0 +1,21 @@
+{
+  "id": "soundex",
+  "title": "Implement American Soundex module with tests",
+  "state": "done",
+  "files": [
+    "soundex.py",
+    "tests/test_soundex.py",
+    "team/handoffs/soundex.md",
+    "team/status/soundex.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_soundex.py -q",
+      "result": "21 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "32 passed"
+    }
+  ]
+}
