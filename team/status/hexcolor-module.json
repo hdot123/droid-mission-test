@@ -1,0 +1,21 @@
+{
+  "id": "hexcolor-module",
+  "title": "实现 hexcolor 模块与测试",
+  "state": "done",
+  "files": [
+    "hexcolor.py",
+    "tests/test_hexcolor.py",
+    "team/handoffs/hexcolor-module.md",
+    "team/status/hexcolor-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_hexcolor.py",
+      "result": "pass: 44 passed in 0.04s (exit 0). One earlier run failed on an incorrect round-trip expectation in the test itself (#f80 expands to #ff8000 per spec, not #f80); test fixed, module unchanged."
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 48 passed in 0.05s (exit 0)"
+    }
+  ]
+}
