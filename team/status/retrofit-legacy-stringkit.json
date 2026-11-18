@@ -1,0 +1,40 @@
+{
+  "id": "retrofit-legacy-stringkit",
+  "title": "改造存量模块 legacy_stringkit：修隐患、去重复、新增 initials",
+  "state": "done",
+  "files": [
+    "legacy_stringkit.py",
+    "tests/test_count_vowels_case.py",
+    "tests/test_initials.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 8 passed in 0.02s (4 baseline tests unchanged + 1 new mixed-case test + 3 new initials tests)"
+    },
+    {
+      "command": "python -c \"from legacy_stringkit import count_vowels; assert count_vowels('AEIOU')==5; assert count_vowels('Apple')==2; assert count_vowels('banana')==3; assert count_vowels('hello world')==3; assert count_vowels('rhythm')==0; assert count_vowels('')==0; print('count_vowels ok')\"",
+      "result": "pass: printed 'count_vowels ok'"
+    },
+    {
+      "command": "grep -q 'AEIOU' tests/test_count_vowels_case.py && grep -qi 'Apple' tests/test_count_vowels_case.py && grep -q 'mixed\\|大小写\\|upper\\|Upper' tests/test_count_vowels_case.py && echo 'regression test present'",
+      "result": "pass: printed 'regression test present'"
+    },
+    {
+      "command": "python -c \"import inspect, legacy_stringkit as m; src=inspect.getsource(m.first_word)+inspect.getsource(m.last_word); assert 'strip()' not in src and 'split()' not in src, src; assert hasattr(m,'_words'); assert inspect.getsource(m).count('def _words')==1; assert m._words('  a b  ')==['a','b']; assert m.first_word('the quick fox')=='the'; assert m.first_word('  padded text ')=='padded'; assert m.first_word('')==''; assert m.first_word('   ')==''; assert m.last_word('the quick fox')=='fox'; assert m.last_word('trailing space ')=='space'; assert m.last_word('')==''; assert m.last_word('   ')==''; print('dedup ok')\"",
+      "result": "pass: printed 'dedup ok'"
+    },
+    {
+      "command": "python -c \"from legacy_stringkit import initials; assert initials('john ronald reuel tolkien')=='JRRT'; assert initials('ada lovelace')=='AL'; assert initials('')==''; print('initials ok')\"",
+      "result": "pass: printed 'initials ok'"
+    },
+    {
+      "command": "python -c \"import legacy_stringkit as m; pubs={n for n,v in vars(m).items() if callable(v) and not n.startswith('_')}; assert pubs=={'shout','count_vowels','first_word','last_word','initials'}, pubs; assert m.shout('hello')=='HELLO!'; assert m.shout('Hey')=='HEY!'; print('api ok')\"",
+      "result": "pass: printed 'api ok'"
+    },
+    {
+      "command": "git diff --exit-code -- tests/test_legacy_stringkit.py",
+      "result": "pass: exit 0, baseline test file byte-identical"
+    }
+  ]
+}
