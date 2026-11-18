@@ -1,0 +1,21 @@
+{
+  "id": "temperature-convert",
+  "title": "Implement temperature conversion module with tests",
+  "state": "done",
+  "files": [
+    "temperature.py",
+    "tests/test_temperature.py",
+    "team/handoffs/temperature-convert.md",
+    "team/status/temperature-convert.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_temperature.py",
+      "result": "pass (11 passed; first attempt failed only because pytest was not installed, re-ran after pip install pytest)"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass (11 passed)"
+    }
+  ]
+}
