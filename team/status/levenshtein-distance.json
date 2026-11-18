@@ -1,0 +1,21 @@
+{
+  "id": "levenshtein-distance",
+  "title": "levenshtein.py 编辑距离",
+  "state": "done",
+  "files": [
+    "levenshtein.py",
+    "tests/test_levenshtein.py",
+    "team/handoffs/levenshtein-distance.md",
+    "team/status/levenshtein-distance.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_levenshtein.py -q",
+      "result": "8 passed in 0.01s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "19 passed in 0.02s (exit 0)"
+    }
+  ]
+}
