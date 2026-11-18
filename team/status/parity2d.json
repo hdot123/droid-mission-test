@@ -1,0 +1,19 @@
+{
+  "id": "parity2d",
+  "title": "Implement 2D parity check component",
+  "state": "done",
+  "files": [
+    "parity2d.py",
+    "tests/test_parity2d.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_parity2d.py -q",
+      "result": "18 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "29 passed in 0.03s"
+    }
+  ]
+}
