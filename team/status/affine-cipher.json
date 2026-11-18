@@ -1,0 +1,19 @@
+{
+  "id": "affine-cipher",
+  "title": "Implement affine cipher component",
+  "state": "done",
+  "files": [
+    "affine.py",
+    "tests/test_affine.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_affine.py -q",
+      "result": "passed (8 tests)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (19 tests)"
+    }
+  ]
+}
