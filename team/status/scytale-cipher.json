@@ -1,0 +1,19 @@
+{
+  "id": "scytale-cipher",
+  "title": "Implement Spartan scytale transposition (scytale.py)",
+  "state": "done",
+  "files": [
+    "scytale.py",
+    "tests/test_scytale.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_scytale.py -q",
+      "result": "18 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "29 passed"
+    }
+  ]
+}
