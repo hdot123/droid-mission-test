@@ -1,0 +1,19 @@
+{
+  "id": "zigzag-mapping",
+  "title": "Implement zigzag signed-integer mapping",
+  "state": "done",
+  "files": [
+    "zigzag.py",
+    "tests/test_zigzag.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_zigzag.py -q",
+      "result": "6 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "17 passed"
+    }
+  ]
+}
