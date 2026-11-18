@@ -1,0 +1,19 @@
+{
+  "id": "isbn10",
+  "title": "Implement ISBN-10 check digit validation",
+  "state": "done",
+  "files": [
+    "isbn10.py",
+    "tests/test_isbn10.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_isbn10.py -q",
+      "result": "11 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "22 passed"
+    }
+  ]
+}
