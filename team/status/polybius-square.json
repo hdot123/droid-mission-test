@@ -1,0 +1,21 @@
+{
+  "id": "polybius-square",
+  "title": "Implement Polybius square component",
+  "state": "done",
+  "files": [
+    "polybius.py",
+    "tests/test_polybius.py",
+    "team/handoffs/polybius-square.md",
+    "team/status/polybius-square.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_polybius.py -q",
+      "result": "PASS - 7 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "PASS - 18 passed"
+    }
+  ]
+}
