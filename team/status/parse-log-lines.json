@@ -1,0 +1,17 @@
+{
+  "id": "parse-log-lines",
+  "title": "Parse log lines into structured records (and flag malformed lines)",
+  "state": "done",
+  "files": [
+    "log_parser.py",
+    "tests/test_log_parser.py",
+    "team/handoffs/parse-log-lines.md",
+    "team/status/parse-log-lines.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m unittest discover -s tests -p \"test_log_parser.py\" -v",
+      "result": "PASS: 12 tests, all ok (Ran 12 tests ... OK, exit code 0)"
+    }
+  ]
+}
