@@ -1,0 +1,17 @@
+{
+  "id": "plugin-alpha",
+  "title": "Deliver plugin_alpha uppercase handler plugin",
+  "state": "done",
+  "files": [
+    "plugin_alpha.py",
+    "tests/test_plugin_alpha.py",
+    "team/handoffs/plugin-alpha.md",
+    "team/status/plugin-alpha.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_plugin_alpha.py",
+      "result": "pass: 2 passed in 0.01s (exit 0)"
+    }
+  ]
+}
