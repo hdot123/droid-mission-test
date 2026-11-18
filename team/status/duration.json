@@ -1,0 +1,19 @@
+{
+  "id": "duration",
+  "title": "Duration string parse/format h/m/s (duration.py)",
+  "state": "done",
+  "files": [
+    "duration.py",
+    "tests/test_duration.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_duration.py -q",
+      "result": "passed (12 passed in 0.02s)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (23 passed in 0.03s)"
+    }
+  ]
+}
