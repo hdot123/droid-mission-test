@@ -1,0 +1,21 @@
+{
+  "id": "primepi-nthprime",
+  "title": "Implement prime counting pi(x) and nth prime module and tests",
+  "state": "done",
+  "files": [
+    "primepi.py",
+    "tests/test_primepi.py",
+    "team/handoffs/primepi-nthprime.md",
+    "team/status/primepi-nthprime.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_primepi.py -q",
+      "result": "passed: 17 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 28 passed in 0.04s"
+    }
+  ]
+}
