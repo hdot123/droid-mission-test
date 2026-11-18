@@ -1,0 +1,19 @@
+{
+  "id": "ordinal",
+  "title": "Implement ordinal suffix formatting with tests",
+  "state": "done",
+  "files": [
+    "ordinal.py",
+    "tests/test_ordinal.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_ordinal.py -q",
+      "result": "31 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "42 passed in 0.04s"
+    }
+  ]
+}
