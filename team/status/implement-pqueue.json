@@ -1,0 +1,15 @@
+{
+  "id": "implement-pqueue",
+  "title": "Implement PriorityQueue module with tests",
+  "state": "done",
+  "files": [
+    "pqueue.py",
+    "tests/test_pqueue.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_pqueue.py",
+      "result": "11 passed in 0.03s (exit code 0; pytest installed into environment before run)"
+    }
+  ]
+}
