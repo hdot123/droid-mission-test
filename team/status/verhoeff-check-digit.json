@@ -1,0 +1,21 @@
+{
+  "id": "verhoeff-check-digit",
+  "title": "Implement Verhoeff checksum/validate module (verhoeff.py)",
+  "state": "done",
+  "files": [
+    "verhoeff.py",
+    "tests/test_verhoeff.py",
+    "team/handoffs/verhoeff-check-digit.md",
+    "team/status/verhoeff-check-digit.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_verhoeff.py -q",
+      "result": "7 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "18 passed"
+    }
+  ]
+}
