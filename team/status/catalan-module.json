@@ -1,0 +1,19 @@
+{
+  "id": "catalan-module",
+  "title": "Implement catalan.py and its tests",
+  "state": "done",
+  "files": [
+    "catalan.py",
+    "tests/test_catalan.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_catalan.py -q",
+      "result": "passed (9 passed)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (20 passed)"
+    }
+  ]
+}
