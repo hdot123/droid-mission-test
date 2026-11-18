@@ -1,0 +1,15 @@
+{
+  "id": "iban-module",
+  "title": "Implement iban.py mod-97 validation with tests",
+  "state": "done",
+  "files": [
+    "iban.py",
+    "tests/test_iban.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_iban.py",
+      "result": "5 passed in 0.01s (exit 0)"
+    }
+  ]
+}
