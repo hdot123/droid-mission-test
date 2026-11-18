@@ -1,0 +1,15 @@
+{
+  "id": "manchester-module",
+  "title": "Implement manchester.py with IEEE 802.3 Manchester codec",
+  "state": "done",
+  "files": [
+    "manchester.py",
+    "tests/test_manchester.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_manchester.py",
+      "result": "6 passed in 0.02s (exit 0) — executed as `python3 -m pytest -q tests/test_manchester.py` after installing pytest; bare `python` in this container lacks the pytest module"
+    }
+  ]
+}
