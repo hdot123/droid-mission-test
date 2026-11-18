@@ -1,0 +1,15 @@
+{
+  "id": "aggregate-log-stats",
+  "title": "Aggregate statistics over log records (counts, error frequency, top messages)",
+  "state": "done",
+  "files": [
+    "log_stats.py",
+    "tests/test_log_stats.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m unittest discover -s tests -p \"test_log_stats.py\" -v",
+      "result": "pass: 13 tests OK (exit code 0)"
+    }
+  ]
+}
