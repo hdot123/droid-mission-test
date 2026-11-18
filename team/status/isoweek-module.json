@@ -1,0 +1,19 @@
+{
+  "id": "isoweek-module",
+  "title": "isoweek.py 公历日期与 ISO 周日期互转",
+  "state": "done",
+  "files": [
+    "isoweek.py",
+    "tests/test_isoweek.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_isoweek.py -q",
+      "result": "PASS: 12 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "PASS: 23 passed in 0.04s"
+    }
+  ]
+}
