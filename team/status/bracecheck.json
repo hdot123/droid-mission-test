@@ -1,0 +1,21 @@
+{
+  "id": "bracecheck",
+  "title": "Implement bracecheck utility and its tests",
+  "state": "done",
+  "files": [
+    "bracecheck.py",
+    "tests/test_bracecheck.py",
+    "team/handoffs/bracecheck.md",
+    "team/status/bracecheck.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_bracecheck.py",
+      "result": "PASS - 9 passed in 0.02s (exit code 0)"
+    },
+    {
+      "command": "git diff --exit-code -- codecbox.py tests/test_codecbox.py",
+      "result": "PASS - no diff, exit code 0 (stock files unmodified)"
+    }
+  ]
+}
