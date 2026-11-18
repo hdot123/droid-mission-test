@@ -1,0 +1,21 @@
+{
+  "id": "trie-module",
+  "title": "trie.py 前缀树",
+  "state": "done",
+  "files": [
+    "trie.py",
+    "tests/test_trie.py",
+    "team/handoffs/trie-module.md",
+    "team/status/trie-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_trie.py -q",
+      "result": "passed: 16 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 27 passed"
+    }
+  ]
+}
