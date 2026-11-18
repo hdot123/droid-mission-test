@@ -1,0 +1,19 @@
+{
+  "id": "runlength-module",
+  "title": "实现 runlength.py 与测试",
+  "state": "done",
+  "files": [
+    "runlength.py",
+    "tests/test_runlength.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_runlength.py",
+      "result": "pass"
+    },
+    {
+      "command": "python -c \"import runlength; assert runlength.encode('aaabbc') == [('a',3),('b',2),('c',1)]; assert runlength.encode('') == []; assert runlength.decode([('a',3),('b',2)]) == 'aaabb'; exec('try:\\n runlength.decode([(chr(97),0)])\\nexcept ValueError:\\n pass\\nelse:\\n raise SystemExit(1)')\"",
+      "result": "pass"
+    }
+  ]
+}
