@@ -1,0 +1,19 @@
+{
+  "id": "sieve-module",
+  "title": "Implement sieve.py (prime sieve)",
+  "state": "done",
+  "files": [
+    "sieve.py",
+    "tests/test_sieve.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_sieve.py -q",
+      "result": "passed (12 passed, exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (23 passed, exit 0)"
+    }
+  ]
+}

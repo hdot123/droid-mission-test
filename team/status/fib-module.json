@@ -1,0 +1,21 @@
+{
+  "id": "fib-module",
+  "title": "Implement fib.py (Fibonacci sequence)",
+  "state": "done",
+  "files": [
+    "fib.py",
+    "tests/test_fib.py",
+    "team/handoffs/fib-module.md",
+    "team/status/fib-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_fib.py -q",
+      "result": "passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed"
+    }
+  ]
+}
