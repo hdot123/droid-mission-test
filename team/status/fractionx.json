@@ -1,0 +1,21 @@
+{
+  "id": "fractionx",
+  "title": "Implement fractionx.py fraction arithmetic",
+  "state": "done",
+  "files": [
+    "fractionx.py",
+    "tests/test_fractionx.py",
+    "team/handoffs/fractionx.md",
+    "team/status/fractionx.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_fractionx.py -q",
+      "result": "21 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "32 passed"
+    }
+  ]
+}
