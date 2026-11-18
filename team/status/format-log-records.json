@@ -1,0 +1,17 @@
+{
+  "id": "format-log-records",
+  "title": "Format processed log records back into uniform human-readable text",
+  "state": "done",
+  "files": [
+    "log_format.py",
+    "tests/test_log_format.py",
+    "team/handoffs/format-log-records.md",
+    "team/status/format-log-records.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m unittest discover -s tests -p \"test_log_format.py\" -v",
+      "result": "OK — 4 tests ran, all passed (exit code 0): test_message_with_spaces_preserved_verbatim, test_round_trip_identity, test_single_record_matches_uniform_line_shape, test_multi_record_formatting_preserves_order"
+    }
+  ]
+}
