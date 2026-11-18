@@ -1,0 +1,21 @@
+{
+  "id": "murmur3-hash",
+  "title": "Implement MurmurHash3 x86_32 (murmur3.py)",
+  "state": "done",
+  "files": [
+    "murmur3.py",
+    "tests/test_murmur3.py",
+    "team/handoffs/murmur3-hash.md",
+    "team/status/murmur3-hash.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_murmur3.py -q",
+      "result": "pass: 16 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 27 passed"
+    }
+  ]
+}
