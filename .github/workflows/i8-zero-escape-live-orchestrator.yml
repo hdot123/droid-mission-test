@@ -83,7 +83,7 @@ jobs:
           - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/b-marker.txt`
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 B 评论硬失败" --body "$BODY" --json number -q .number)
+          NUM=$(gh issue create --title "[I8] API墙活验 B 评论硬失败" --body "$BODY" | sed -n 's|.*/issues/||p')
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Lock issue (force comment failure)
@@ -164,7 +164,7 @@ jobs:
           （无）
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 C PAT缺失（team L0）" --body "$BODY" --json number -q .number)
+          NUM=$(gh issue create --title "[I8] API墙活验 C PAT缺失（team L0）" --body "$BODY" | sed -n 's|.*/issues/||p')
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Trigger team workflow
@@ -231,7 +231,7 @@ jobs:
           - foreman 仅 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/a-marker.txt`
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 A 采认失败" --body "$BODY" --json number -q .number)
+          NUM=$(gh issue create --title "[I8] API墙活验 A 采认失败" --body "$BODY" | sed -n 's|.*/issues/||p')
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Trigger team workflow
@@ -298,7 +298,7 @@ jobs:
           - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/d-marker.txt`
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 D 半套artifact" --body "$BODY" --json number -q .number)
+          NUM=$(gh issue create --title "[I8] API墙活验 D 半套artifact" --body "$BODY" | sed -n 's|.*/issues/||p')
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Trigger and cancel at validate (same as A)
