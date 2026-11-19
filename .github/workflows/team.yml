@@ -371,12 +371,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          # I8-B live only: non-empty invalid PAT → gh issue comment 401/403; post_comment_hard --hard-required exits 1.
+          I8_LIVE_B_INVALID_GH_TOKEN: ${{ vars.I8_LIVE_B_INVALID_GH_TOKEN || 'ghp_i8livefixture000000000000000000000000' }}
         run: |
           if [ ! -f wall-in/foreman-run.json ]; then
             echo "foreman-run missing before plan comment"
             exit 1
           fi
           cp wall-in/foreman-run.json foreman-run.json
+          if [[ "$ISSUE_TITLE" == "[I8] API墙活验 B 评论硬失败" ]]; then
+            export GH_TOKEN="$I8_LIVE_B_INVALID_GH_TOKEN"
+            echo "I8-B live fixture: plan dispatch comment uses invalid GH_TOKEN (API hard-fail, not empty)"
+          fi
           PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
             --issue "$ISSUE_NUMBER" \
             --body-file plan-comment.md \
@@ -1334,10 +1341,10 @@ jobs:
           PY
           set +e
           DROID_TIMEOUT_SEC=600
-          if [[ "$ISSUE_TITLE" == \[I8\]* ]]; then
+          if [[ "$ISSUE_TITLE" == "[I8] API墙活验 A 采认失败" ]] || [[ "$ISSUE_TITLE" == "[I8] API墙活验 D 半套artifact" ]]; then
             DROID_TIMEOUT_SEC="${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
           fi
-          echo "validator droid GNU timeout: ${DROID_TIMEOUT_SEC}s (non-[I8] issues always 600)"
+          echo "validator droid GNU timeout: ${DROID_TIMEOUT_SEC}s (I8-A/D live titles only; B/C and others use 600)"
           timeout --signal=TERM --kill-after=30s "${DROID_TIMEOUT_SEC}s" ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
           echo $? > droid-exit.txt
 
@@ -2849,10 +2856,10 @@ jobs:
           PY
           set +e
           DROID_TIMEOUT_SEC=600
-          if [[ "$ISSUE_TITLE" == \[I8\]* ]]; then
+          if [[ "$ISSUE_TITLE" == "[I8] API墙活验 A 采认失败" ]] || [[ "$ISSUE_TITLE" == "[I8] API墙活验 D 半套artifact" ]]; then
             DROID_TIMEOUT_SEC="${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
           fi
-          echo "validator droid GNU timeout: ${DROID_TIMEOUT_SEC}s (non-[I8] issues always 600)"
+          echo "validator droid GNU timeout: ${DROID_TIMEOUT_SEC}s (I8-A/D live titles only; B/C and others use 600)"
           timeout --signal=TERM --kill-after=30s "${DROID_TIMEOUT_SEC}s" ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
           echo $? > droid-exit.txt
 
