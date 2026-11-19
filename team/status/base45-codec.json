@@ -1,0 +1,19 @@
+{
+  "id": "base45-codec",
+  "title": "Implement Base45 encode/decode (RFC 9285)",
+  "state": "done",
+  "files": [
+    "base45.py",
+    "tests/test_base45.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_base45.py -q",
+      "result": "passed (21 tests)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (32 tests)"
+    }
+  ]
+}
