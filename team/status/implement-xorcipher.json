@@ -1,0 +1,21 @@
+{
+  "id": "implement-xorcipher",
+  "title": "Implement repeating-key XOR cipher module xorcipher.py",
+  "state": "done",
+  "files": [
+    "xorcipher.py",
+    "tests/test_xorcipher.py",
+    "team/handoffs/implement-xorcipher.md",
+    "team/status/implement-xorcipher.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_xorcipher.py -q",
+      "result": "passed: 14 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 25 passed in 0.03s (exit 0)"
+    }
+  ]
+}
