@@ -1,0 +1,24 @@
+name: Foreman wall contract (v2.7)
+
+# Read-only CI: schema + machine gates. Does not trigger team.yml.
+
+on:
+  push:
+    branches: [main, 'cursor/**']
+  pull_request:
+    branches: [main, 'cursor/**']
+
+jobs:
+  foreman-wall-contract:
+    name: foreman-run.v1 contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Schema + contract pytest
+        run: pytest tests/test_foreman_wall_contract.py -q
+      - name: Workflow foreman lint
+        run: python3 scripts/team/lint_workflow_foreman.py
