@@ -1,0 +1,20 @@
+{
+  "id": "i8-d-m1",
+  "title": "Create d-m1 marker file",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/d-m1.txt",
+    "team/handoffs/i8-d-m1.md",
+    "team/status/i8-d-m1.json"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/d-m1.txt",
+      "result": "pass"
+    },
+    {
+      "command": "od -c docs/evidence/i8-scratch/d-m1.txt",
+      "result": "pass: exact content i8-live-d-m1 + newline (15 bytes)"
+    }
+  ]
+}
