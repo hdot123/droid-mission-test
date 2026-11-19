@@ -282,6 +282,8 @@ jobs:
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: |
           python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
+          # I8 harness: let validator enter adoption/upload before cancel (not wall logic)
+          sleep 240
           source scripts/team/i8_select_gh_trigger_token.sh
           gh run cancel "$RUN_ID" || true
           sleep 30
