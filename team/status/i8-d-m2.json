@@ -1,0 +1,14 @@
+{
+  "id": "i8-d-m2",
+  "title": "Create d-m2 marker file",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/d-m2.txt"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/d-m2.txt",
+      "result": "pass"
+    }
+  ]
+}
