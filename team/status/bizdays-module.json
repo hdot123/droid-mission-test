@@ -1,0 +1,21 @@
+{
+  "id": "bizdays-module",
+  "title": "Implement bizdays.py (工作日计数与推算)",
+  "state": "done",
+  "files": [
+    "bizdays.py",
+    "tests/test_bizdays.py",
+    "team/handoffs/bizdays-module.md",
+    "team/status/bizdays-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bizdays.py -q",
+      "result": "22 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "58 passed in 1.81s (exit 0)"
+    }
+  ]
+}
