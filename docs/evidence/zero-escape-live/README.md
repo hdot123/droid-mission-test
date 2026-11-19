@@ -4,7 +4,7 @@
 
 **声明**：**A/D 仍未达标**；不得宣称零逃逸（P4 未做）。
 
-**阻塞（2026-11-19）**：自 #572 起 push 触发的 orchestrator 在 `resolve-scene` **秒败**（`runner_id=0`、无 steps），D/A 无法起跑；见 [44476313896-orchestrator-D-blocked.md](./44476313896-orchestrator-D-blocked.md)。编排侧已合 **watch 无 cancel**（#574/#578）。
+**Billing（2026-11-19）**：曾阻塞 hosted runner（见 [44476313896-orchestrator-D-blocked.md](./44476313896-orchestrator-D-blocked.md)）；恢复后 orchestrator [44522049816](https://github.com/hdot123/droid-mission-test/actions/runs/44522049816) 已正常。编排 **watch 无 cancel**（#574/#578）。
 
 | 场景 | 达标 | Team / 夹具 run | 归档 |
 |---|---|---|---|
@@ -12,7 +12,7 @@
 | **B** 评论硬失败 | **是** | [44468619417](https://github.com/hdot123/droid-mission-test/actions/runs/44468619417) | [44468619417-B.md](./44468619417-B.md) |
 | **C** PAT 缺失 | **是**（夹具） | [44465372141](https://github.com/hdot123/droid-mission-test/actions/runs/44465372141) | [44465372141-C.md](./44465372141-C.md) |
 | **C-team** L0 | **是** | [44468989446](https://github.com/hdot123/droid-mission-test/actions/runs/44468989446) | [44468989446-C-team.md](./44468989446-C-team.md) |
-| **D** 半套 artifact | **否** | [44474237836](https://github.com/hdot123/droid-mission-test/actions/runs/44474237836)（env 即败）；[44476313896](https://github.com/hdot123/droid-mission-test/actions/runs/44476313896)（orchestrator 未起跑） | [44474237836-D.md](./44474237836-D.md) · [44476313896-orchestrator-D-blocked.md](./44476313896-orchestrator-D-blocked.md) |
+| **D** 半套 artifact | **否** | [44522115630](https://github.com/hdot123/droid-mission-test/actions/runs/44522115630)（happy path，`complete=true`）；[44474237836](https://github.com/hdot123/droid-mission-test/actions/runs/44474237836)（env 即败） | [44522115630-D.md](./44522115630-D.md) · [44474237836-D.md](./44474237836-D.md) |
 
 ## 本次 A/D 重跑基础设施（非墙）
 
