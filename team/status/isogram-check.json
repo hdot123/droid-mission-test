@@ -1,0 +1,19 @@
+{
+  "id": "isogram-check",
+  "title": "等词判定 (isogram.py)",
+  "state": "done",
+  "files": [
+    "isogram.py",
+    "tests/test_isogram.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_isogram.py -q",
+      "result": "passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed"
+    }
+  ]
+}
