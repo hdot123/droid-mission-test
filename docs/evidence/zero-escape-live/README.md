@@ -1,20 +1,28 @@
 # I8 活验归档（P3）
 
-**合入 SHA**：`96051ba13658c895cadf306a6831f6286c3047cb`（PR [#508](https://github.com/hdot123/droid-mission-test/pull/508) → `main`）
+**墙合入**：`96051ba`（#508） · **lead GH_TOKEN**：`997240f`（[#553](https://github.com/hdot123/droid-mission-test/pull/553)）
 
-**基础设施**：PR [#509](https://github.com/hdot123/droid-mission-test/pull/509)–[#522](https://github.com/hdot123/droid-mission-test/pull/522)（orchestrator、`C-fixture`、`push` 触发器、`GO_GITHUB_RUN_TOKEN` 修复）。
+**声明**：活验 **A/B/C/C-team/D 均有达标归档**；**P4 未做 → 不得宣称零逃逸**。
 
-**声明**：未完成四类归档并通过独立对抗审（P4）前，不得对外宣称「零逃逸 / 硬性 API 墙」。
+**Billing（2026-11-19）**：曾阻塞 hosted runner（见 [44476313896-orchestrator-D-blocked.md](./44476313896-orchestrator-D-blocked.md)）；恢复后 orchestrator [44522049816](https://github.com/hdot123/droid-mission-test/actions/runs/44522049816) 已正常。编排 **watch 无 cancel**（#574/#578）。
 
-| 场景 | 归档文件 | Run / 状态 |
-|---|---|---|
-| A 采认失败 | （待补） | **进行中/阻塞**：合并 `A.scene` 触发 orchestrator；预计 30–90min 全链 |
-| B 评论硬失败 | （待补） | **进行中**：`GO_GITHUB_RUN_TOKEN` 修复后 `B.scene` 重触发（见 [#523](https://github.com/hdot123/droid-mission-test/pull/523)） |
-| C PAT 缺失 | [44465372141-C.md](./44465372141-C.md) | **达标（夹具等价）**：[run 44465372141](https://github.com/hdot123/droid-mission-test/actions/runs/44465372141)；team L0 补档见 `C-team.scene` |
-| D 半套 artifact | （待补） | **待跑**：合并 `D.scene` 后归档 |
+| 场景 | 达标 | Team / 夹具 run | 归档 |
+|---|---|---|---|
+| **A** 采认失败 | **是** | [44526511233](https://github.com/hdot123/droid-mission-test/actions/runs/44526511233) | [44526511233-A.md](./44526511233-A.md) · 历史 [44473343701-A.md](./44473343701-A.md) |
+| **B** 评论硬失败 | **是** | [44468619417](https://github.com/hdot123/droid-mission-test/actions/runs/44468619417) | [44468619417-B.md](./44468619417-B.md) |
+| **C** PAT 缺失 | **是**（夹具） | [44465372141](https://github.com/hdot123/droid-mission-test/actions/runs/44465372141) | [44465372141-C.md](./44465372141-C.md) |
+| **C-team** L0 | **是** | [44468989446](https://github.com/hdot123/droid-mission-test/actions/runs/44468989446) | [44468989446-C-team.md](./44468989446-C-team.md) |
+| **D** 半套 artifact | **是** | [44525110357](https://github.com/hdot123/droid-mission-test/actions/runs/44525110357) | [44525110357-D.md](./44525110357-D.md) |
 
-## 触发方式（main）
+## 本次 A/D 重跑基础设施（非墙）
 
-见 [triggers/README.md](./triggers/README.md)：向 `main` 合并对应 `*.scene` marker 即可（无需 `workflow_dispatch`）。
+- [#554](https://github.com/hdot123/droid-mission-test/pull/554)：`PROJECTS_STATE_PAT` 用于 `gh run cancel`
+- [#564](https://github.com/hdot123/droid-mission-test/pull/564) / [#571](https://github.com/hdot123/droid-mission-test/pull/571)：orchestrator run-pick 调整
+- [#574](https://github.com/hdot123/droid-mission-test/pull/574) / [#578](https://github.com/hdot123/droid-mission-test/pull/578)：**A/D 无 cancel**，`gh run watch`
+- [#599](https://github.com/hdot123/droid-mission-test/pull/599)：`[I8]*` 门 + `VALIDATOR_DROID_TIMEOUT_SECONDS`（validator 非墙注入）
 
-**禁止**在战役工单 #407–#410 及第 43–46 轮同类 issue 上 `@team-droid`。
+历史尝试：`44469188184-A.md`、`44470162674-D.md` 为 #553 前记录，保留备查。
+
+## 触发
+
+[triggers/README.md](./triggers/README.md) · 禁止战役工单 #407–#410。

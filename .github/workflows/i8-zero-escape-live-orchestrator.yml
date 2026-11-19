@@ -97,6 +97,7 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
+          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
@@ -178,6 +179,7 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
+          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
@@ -251,6 +253,7 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
+          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
@@ -270,14 +273,11 @@ jobs:
           done
           exit 1
 
-      - name: Cancel at validate (induce adoption failed)
+      - name: Wait for team run (no cancel; adopt/wall must finish)
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
-        run: |
-          python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
-          gh run cancel "$RUN_ID" || true
-          sleep 30
+        run: gh run watch "$RUN_ID" --exit-status || true
 
       - name: Collect partial evidence
         env:
@@ -303,6 +303,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set VALIDATOR_DROID_TIMEOUT_SECONDS for I8 live (harness)
+        env:
+          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
+          S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
+        run: |
+          source scripts/team/i8_select_gh_trigger_token.sh
+          gh variable set VALIDATOR_DROID_TIMEOUT_SECONDS -b 15 --repo "$GITHUB_REPOSITORY"
+
       - name: Create I8-D issue
         id: issue
         env:
@@ -313,10 +322,16 @@ jobs:
           I8 活验场景 D：半套 artifact（validate 采认失败，complete=false）。
 
           ## 交付物
-          仅新增 `docs/evidence/i8-scratch/d-marker.txt` 一行 `i8-live-d`。
+          在 `docs/evidence/i8-scratch/` 下各新增一行标记文件（共 6 个）：
+          - `d-m1.txt` → `i8-live-d-m1`
+          - `d-m2.txt` → `i8-live-d-m2`
+          - `d-m3.txt` → `i8-live-d-m3`
+          - `d-m4.txt` → `i8-live-d-m4`
+          - `d-m5.txt` → `i8-live-d-m5`
+          - `d-m6.txt` → `i8-live-d-m6`
 
           ## 验收标准
-          - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/d-marker.txt`
+          - 6 张工序卡；各卡 checks 为 `test -f docs/evidence/i8-scratch/d-mN.txt`（N=1..6）
           EOF
           )
           URL=$(gh issue create --title "[I8] API墙活验 D 半套artifact" --body "$BODY")
@@ -327,6 +342,7 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
+          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
@@ -346,14 +362,11 @@ jobs:
           done
           exit 1
 
-      - name: Cancel at validate
+      - name: Wait for team run (validator/upload path, no cancel)
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
-        run: |
-          python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
-          gh run cancel "$RUN_ID" || true
-          sleep 15
+        run: gh run watch "$RUN_ID" --exit-status || true
 
       - name: Summarize
         env:
