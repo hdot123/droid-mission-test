@@ -37,6 +37,32 @@ def foreman_run_download_lax(text: str) -> list[str]:
     return errs
 
 
+def post_comment_hard_has_gh_token(text: str) -> list[str]:
+    """Every workflow step that invokes post_comment_hard.py must set GH_TOKEN (B4/I4)."""
+    errs: list[str] = []
+    needle = "post_comment_hard.py"
+    for pos in range(len(text)):
+        hit = text.find(needle, pos)
+        if hit == -1:
+            break
+        pos = hit
+        step_start = text.rfind("\n      - name:", 0, hit)
+        if step_start < 0:
+            step_start = text.rfind("\n    - name:", 0, hit)
+        if step_start < 0:
+            errs.append("post_comment_hard.py step chunk not found")
+            continue
+        step_end = text.find("\n      - name:", hit)
+        if step_end < 0:
+            step_end = len(text)
+        chunk = text[step_start:step_end]
+        if not re.search(r"^\s+GH_TOKEN:", chunk, re.MULTILINE):
+            name_m = re.search(r"- name:\s*(.+)", chunk)
+            step_name = name_m.group(1).strip() if name_m else "(unknown step)"
+            errs.append(f"post_comment_hard step missing GH_TOKEN in env: {step_name}")
+    return errs
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--workflow", default=".github/workflows/team.yml")
@@ -51,6 +77,11 @@ def main() -> int:
     if not PREP2_GATE.search(text):
         errors.append("prep2 job must gate on workers2-wall-merge.outputs.prep_should_run (I1)")
     errors.extend(foreman_run_download_lax(text))
+    errors.extend(post_comment_hard_has_gh_token(text))
+    repo_root = Path(args.workflow).resolve().parent.parent.parent
+    env_check = repo_root / ".github" / "workflows" / "env-check.yml"
+    if env_check.is_file():
+        errors.extend(post_comment_hard_has_gh_token(env_check.read_text(encoding="utf-8")))
     for m in re.finditer(r"- name: Upload verdict(?: round 2)? artifact", text):
         chunk = text[m.start() : m.start() + 180]
         if re.search(r"if:\s*always\(\)", chunk):
