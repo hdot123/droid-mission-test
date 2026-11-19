@@ -1,0 +1,21 @@
+{
+  "id": "unionfind",
+  "title": "实现并查集 unionfind.py 及其测试",
+  "state": "done",
+  "files": [
+    "unionfind.py",
+    "tests/test_unionfind.py",
+    "team/handoffs/unionfind.md",
+    "team/status/unionfind.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_unionfind.py -q",
+      "result": "15 passed, exit 0"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "44 passed, exit 0"
+    }
+  ]
+}
