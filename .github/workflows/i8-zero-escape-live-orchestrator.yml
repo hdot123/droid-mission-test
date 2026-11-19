@@ -97,10 +97,12 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
+          S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
           test -n "$NUM"
+          source scripts/team/i8_select_gh_trigger_token.sh
           gh issue comment "$NUM" --body "@team-droid I8-B 活验：评论硬失败"
           sleep 20
           for i in $(seq 1 40); do
@@ -176,10 +178,12 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
+          S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
           test -n "$NUM"
+          source scripts/team/i8_select_gh_trigger_token.sh
           gh issue comment "$NUM" --body "@team-droid I8-C team L0 活验"
           sleep 20
           for i in $(seq 1 30); do
@@ -247,10 +251,12 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
+          S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
           test -n "$NUM"
+          source scripts/team/i8_select_gh_trigger_token.sh
           gh issue comment "$NUM" --body "@team-droid I8-A 活验：采认失败路径"
           sleep 20
           for i in $(seq 1 30); do
@@ -321,10 +327,12 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
+          S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
           test -n "$NUM"
+          source scripts/team/i8_select_gh_trigger_token.sh
           gh issue comment "$NUM" --body "@team-droid I8-D 活验：半套 artifact"
           sleep 20
           for i in $(seq 1 30); do
