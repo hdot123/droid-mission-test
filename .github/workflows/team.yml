@@ -760,7 +760,6 @@ jobs:
 
       - name: Download all worker deltas
         uses: actions/download-artifact@v4
-        continue-on-error: true
         with:
           pattern: foreman-worker-delta-*-${{ github.run_id }}
           path: deltas
@@ -2242,7 +2241,6 @@ jobs:
           path: wall-in
       - name: Download worker2 deltas
         uses: actions/download-artifact@v4
-        continue-on-error: true
         with:
           pattern: foreman-worker2-delta-*-${{ github.run_id }}
           path: deltas
@@ -3072,15 +3070,6 @@ jobs:
 
       - name: Pick final verdict and candidate
         id: pick
-        env:
-          LEAD_RESULT: ${{ needs.lead.result }}
-          WORKER_RESULT: ${{ needs.worker.result }}
-          PREP_RESULT: ${{ needs.prep.result }}
-          VALIDATE_RESULT: ${{ needs.validate.result }}
-          REPLAN_RESULT: ${{ needs.replan.result }}
-          WORKER2_RESULT: ${{ needs.worker2.result }}
-          PREP2_RESULT: ${{ needs.prep2.result }}
-          VALIDATE2_RESULT: ${{ needs.validate2.result }}
         run: |
           if [ ! -f wall-root/foreman-run.json ]; then
             echo "foreman-run missing in assemble"
@@ -3092,15 +3081,7 @@ jobs:
             --issue ${{ github.event.issue.number }} \
             --run-id ${{ github.run_id }} \
             --out final-verdict.json \
-            --github-output "$GITHUB_OUTPUT" \
-            --chain-result lead=${{ needs.lead.result }} \
-            --chain-result worker=${{ needs.worker.result }} \
-            --chain-result prep=${{ needs.prep.result }} \
-            --chain-result validate=${{ needs.validate.result }} \
-            --chain-result replan=${{ needs.replan.result }} \
-            --chain-result worker2=${{ needs.worker2.result }} \
-            --chain-result prep2=${{ needs.prep2.result }} \
-            --chain-result validate2=${{ needs.validate2.result }}
+            --github-output "$GITHUB_OUTPUT"
 
       - name: Write Projects board via PAT (P1-1)
         id: board_write

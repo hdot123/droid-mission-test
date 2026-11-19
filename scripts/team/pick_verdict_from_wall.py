@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pick assemble verdict from ForemanRun wall (I2); legacy dl/ only when wall incomplete."""
+"""Pick assemble verdict from ForemanRun wall (I2); incomplete artifacts fail-closed (no needs.*_RESULT)."""
 from __future__ import annotations
 
 import argparse
@@ -8,8 +8,7 @@ import os
 import sys
 from pathlib import Path
 
-from assemble_chain_facts import build_facts, pick_fallback_reason
-from foreman_run_lib import deep_merge, load_wall, save_wall
+from foreman_run_lib import load_wall
 
 
 def find_in_dl(dl_dir: Path, dirname_prefix: str, filename: str) -> Path | None:
@@ -54,7 +53,8 @@ def pick(
     chain_results: dict[str, str] | None = None,
 ) -> tuple[dict, str, int, str]:
     """Returns verdict dict, candidate branch, picked_round, verdict_source."""
-    chain_results = chain_results or {}
+    if chain_results:
+        raise SystemExit("chain_results forbidden when wall is enabled (fail-closed I2)")
     if not wall_path.is_file():
         raise SystemExit("foreman-run.json missing; cannot pick verdict (fail-closed)")
 
@@ -97,42 +97,14 @@ def pick(
             }
         source = "wall+artifact"
     else:
-        results = chain_results or {
-            j: "skipped" for j in (
-                "lead", "worker", "prep", "validate", "replan", "worker2", "prep2", "validate2"
-            )
-        }
-        evidence = bool(
-            find_in_dl(dl_dir, "team-evidence-", "evidence.tar.gz")
-            or find_in_dl(dl_dir, "team-evidence2-", "evidence.tar.gz")
+        art_key = key2 if arts.get(key2) is not None else key1
+        entry = arts.get(art_key) or {}
+        missing = entry.get("missing") or ["verdict.json"]
+        raise SystemExit(
+            "wall verdict not authoritative "
+            f"(artifacts[{art_key!r}].complete=false); fail-closed without needs.*_RESULT: "
+            f"missing={missing}"
         )
-        if evidence:
-            wall.setdefault("chain", {}).setdefault("prep", {})["produced_required_artifact"] = True
-        completed = (wall.get("workers") or {}).get("completed_pids") or []
-        if completed:
-            wall.setdefault("chain", {}).setdefault("worker", {})["result"] = results.get("worker", "failure")
-        wall = build_facts(wall, results)
-        reason = pick_fallback_reason(wall)
-        wall = deep_merge(
-            wall,
-            {
-                "closeout": {
-                    "schema_version": "closeout-slice.v1",
-                    "run_must_fail": True,
-                }
-            },
-        )
-        save_wall(wall, wall_path)
-        verdict = {
-            "overall": "fail",
-            "pytest_exit": None,
-            "iteration": picked_round,
-            "processes": [],
-            "reason": reason,
-        }
-        ev_prefix = "team-evidence2-" if picked_round == 2 else "team-evidence-"
-        evidence_tar = find_in_dl(dl_dir, ev_prefix, "evidence.tar.gz")
-        source = "degrade_chain_facts"
 
     candidate = read_candidate(evidence_tar) if evidence_tar else ""
     if verdict.get("overall") == "pass" and not candidate:
@@ -150,25 +122,13 @@ def main() -> int:
     p.add_argument("--run-id", required=True)
     p.add_argument("--out", default="final-verdict.json")
     p.add_argument("--github-output", default="")
-    p.add_argument(
-        "--chain-result",
-        action="append",
-        default=[],
-        help="JOB=result pairs, e.g. lead=success",
-    )
     args = p.parse_args()
-    chain: dict[str, str] = {}
-    for item in args.chain_result:
-        if "=" in item:
-            job, res = item.split("=", 1)
-            chain[job.strip()] = res.strip()
 
     verdict, candidate, picked_round, source = pick(
         Path(args.wall),
         Path(args.dl),
         issue_number=args.issue,
         run_id=args.run_id,
-        chain_results=chain or None,
     )
     Path(args.out).write_text(json.dumps(verdict, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"picked round: {picked_round} | source: {source} | overall: {verdict.get('overall')}")
