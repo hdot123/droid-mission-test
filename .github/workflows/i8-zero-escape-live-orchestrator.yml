@@ -49,20 +49,31 @@ jobs:
             echo "scene=${{ inputs.scene }}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          BEFORE="${{ github.event.before }}"
           SHA="${{ github.sha }}"
-          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            BEFORE="${SHA}^"
-          fi
           SCENE=""
-          for f in docs/evidence/zero-escape-live/triggers/*.scene; do
-            if git diff --name-only "$BEFORE" "$SHA" -- "$f" 2>/dev/null | grep -q .; then
-              SCENE=$(basename "$f" .scene)
-              break
+          # Prefer files touched by this push commit (reliable for squash merges).
+          mapfile -t TOUCHED < <(git show --name-only --format= "$SHA" -- 'docs/evidence/zero-escape-live/triggers/' 2>/dev/null | grep '\.scene$' | sort || true)
+          if [ ${#TOUCHED[@]} -eq 0 ]; then
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              BEFORE="${SHA}^"
             fi
-          done
+            for f in docs/evidence/zero-escape-live/triggers/*.scene; do
+              if git diff --name-only "$BEFORE" "$SHA" -- "$f" 2>/dev/null | grep -q .; then
+                TOUCHED+=("$f")
+              fi
+            done
+            IFS=$'\n' TOUCHED=($(printf '%s\n' "${TOUCHED[@]}" | sort -u))
+          fi
+          if [ ${#TOUCHED[@]} -gt 1 ]; then
+            echo "::error::Push 同时改了多个 .scene：${TOUCHED[*]}（请一次只改一个）"
+            exit 1
+          fi
+          if [ ${#TOUCHED[@]} -eq 1 ]; then
+            SCENE=$(basename "${TOUCHED[0]}" .scene)
+          fi
           echo "scene=$SCENE" >> "$GITHUB_OUTPUT"
-          echo "Push-triggered I8 scene: ${SCENE:-(none)} (diff $BEFORE..$SHA)"
+          echo "Push-triggered I8 scene: ${SCENE:-(none)} (commit $SHA)"
           if [ -z "$SCENE" ]; then
             echo "::error::Push 未命中任何 triggers/*.scene 变更（请一次只改一个 .scene，或用 workflow_dispatch）"
             exit 1
