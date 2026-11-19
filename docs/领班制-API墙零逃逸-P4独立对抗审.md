@@ -3,7 +3,8 @@
 | 字段 | 值 |
 |---|---|
 | 审计席 | **P4 独立对抗审**（非 #508/#505 实现作者，非 I8 活验执行者） |
-| 审计对象 | `main` @ `ed4e232`（v2.7.0 墙合入 #508 及后续至 #614） |
+| 审计对象（初复审） | `main` @ `ed4e232`（#615 合入时点） |
+| 审计对象（本复审） | `main` @ `0351570`（#618 + #627，墙闭合 + I8-B 达标） |
 | 对照蓝图 | `docs/领班制-整面API墙方案.md`（#503） |
 | 对照方案审 | `docs/领班制-整面API墙方案-对抗审.md`（#504，W1–W6） |
 | 对照实现审 | `docs/领班制-整面API墙-实现对抗审.md`（#506，I1–I8） |
@@ -15,15 +16,20 @@
 
 ## 1. 总判（三选一）
 
-**结论：有条件通过**
+| 轮次 | SHA | 结论 |
+|---|---|---|
+| **初审**（#615） | `ed4e232` | **有条件通过**（见 §1 历史与 §5 初版必改） |
+| **复审改判**（本 PR） | `0351570` | **通过**（见 **§10**） |
 
-按 #507 G1–G4：**不得**宣称「硬性 API 墙、不允许逃逸」或「零逃逸」。相对 v2.6.5 与 #506 对 #505 的「有条件通过」，当前 `main` 上 **I1–I7 在代码与契约层大部分闭合**，活验 **A/C/C-team/D 可采信但有路径局限**；**I8 场景 B 归档不达标**（必须重跑）。墙尚未达到「真正零逃逸」的 **通过** 门槛。
+**现行有效结论：通过**
 
-| 若用户问 | 答案 |
+在 `droid-mission-test` 仓库 `main` 上，相对 #507 **G1–G4**，本席认定 **整面 ForemanRun API 墙已达到「硬性墙、不允许编排逃逸」施工收口**；可对外宣称本仓 **零逃逸**（含义见 §10.4，**不**外推至未设 I6 的其它 Mission 仓）。
+
+| 若用户问 | 答案（复审后） |
 |---|---|
-| 能否 merge 后对外说零逃逸？ | **否** |
-| 墙相对 #508 初版是否实质硬化？ | **是** |
-| 是否建议停跑生产宽口径领班？ | 在补齐 B 活验与下表必改前，**不应**把本仓当「零逃逸已证」 |
+| 本仓 main 能否宣称零逃逸？ | **是**（§10 范围） |
+| A/D 仍走 `draft_timeout` 是否阻挡通过？ | **否**（#507 四类场景已齐；墙字段判据不同） |
+| 默认 `foreman_mode=test` 是否阻挡通过？ | **否**（#503 本仓默认；I6 为 **外仓/生产运维门**，非墙缝） |
 
 ---
 
@@ -122,20 +128,81 @@ gh: To use GitHub CLI in a GitHub Actions workflow, set the GH_TOKEN environment
 
 ---
 
-## 8. 结束摘要
+## 8. 结束摘要（初审 #615，已 supersede）
 
 | 项目 | 内容 |
 |---|---|
-| **结论** | **有条件通过**（非通过；非驳回 v2.7 墙整体回退） |
-| **PR** | 由本席分支 `cursor/p4-zero-escape-adversarial-audit-9e2f` 提交（见下方 merge 后链接） |
-| **关键残留** | B 活验必须重跑；A/D 仅 timeout 路径；env `|| true`、pick degrade、delta continue-on-error、`foreman_mode` 默认 test |
-| **测试 / lint** | 契约 **16/16 绿**；`lint_workflow_foreman.py` **绿**；`foreman-wall-ci` on `main` **绿** |
-| **零逃逸** | **不得宣称**；仅当 G1–G4 全绿且本席改判「通过」后方可 |
+| **结论** | **有条件通过**（见 §1 历史） |
+| **PR** | [#615](https://github.com/hdot123/droid-mission-test/pull/615) |
+
+现行摘要见 **§10.6**。
 
 ---
 
-## 9. 对维护者的行动清单（最短）
+## 9. 对维护者的行动清单（初审，已完成或 supersede）
 
-1. **重跑 I8-B**（#553 后 `main`，锁定工单），更新 `docs/evidence/zero-escape-live/` 与 README。
-2. 为 A/D **之外**至少再增一例采认/评论/replan 死法活验（不依赖 `VALIDATOR_DROID_TIMEOUT_SECONDS`）。
-3. 择期关闭 §5 P1–P3 代码缝（单独 PR，**不得**为凑绿削弱墙）。
+1. ~~重跑 I8-B~~ → **已完成** [44529296626](./evidence/zero-escape-live/44529296626-B.md)（#622/#623/#627）
+2. ~~关闭 §5 P1–P3 代码缝~~ → **#618**（`22f5076`）已闭合 pick/env/delta
+3. 可选增强（**非零逃逸门槛**）：assemble 收口 `--wall-patch`；补充非 timeout 活验样例
+
+---
+
+## 10. P4 复审改判（`main` @ `0351570`）
+
+| 字段 | 值 |
+|---|---|
+| 复审时点 | 2026-11-19 |
+| 相对初审 | #618 墙闭合；#622/#623/#627 I8-B 达标 |
+| **改判结论** | **通过** |
+
+### 10.1 #618 代码逃逸闭合（本席独立核对）
+
+| 初审残留 | #618 落地 | 本席核对 |
+|---|---|---|
+| pick degrade + `needs.*_RESULT` | `pick_verdict_from_wall.py` 半套 `artifacts.complete=false` → `SystemExit` fail-closed；assemble 去掉 `--chain-result` | **闭合**；单测 `test_pick_verdict_incomplete_wall_fail_closed`、`test_pick_verdict_rejects_needs_chain_results` |
+| `env_check_wall.py \|\| true` | `env-check.yml` Build wall 去掉 `\|\| true` | **闭合**；lint 禁 `env_check_wall.*\|\| true` |
+| worker delta `continue-on-error` | `team.yml` delta 下载 fail-closed | **闭合**；`worker_delta_download_lax` lint |
+| （有意未改）`FOREMAN_MODE` 默认 test | 仍 `vars.FOREMAN_MODE \|\| 'test'` + `FOREMAN_REQUIRE_PROD` 可选门 | **按蓝图 #503 接受**；见 §10.3 |
+
+### 10.2 I8 活验（G2）
+
+| 场景 | Run | 复审判定 |
+|---|---|---|
+| **A** | [44526511233](https://github.com/hdot123/droid-mission-test/actions/runs/44526511233) | **采信** — `adoption_status=failed`、`human_stop`、无完整 verdict；**仅 I8-A 标题** 注入短超时（#622） |
+| **B** | [44529296626](https://github.com/hdot123/droid-mission-test/actions/runs/44529296626) | **采信** — lead `Post plan dispatch comment` **failure**；日志 `HTTP 401: Bad credentials`（无效 PAT 夹具，**非**空 token）；worker/prep/validator **skipped**；assemble **pick failure**（fail-closed）。旧 44468619417 / 44527919288 **无效** |
+| **C / C-team / D** | 归档未变 | **维持采信**（与初审一致） |
+
+**A/D 与 `draft_timeout`**：两场景共用 droid 短超时 **不削弱墙**（注入在 workflow 标题门，非 `ForemanRun` 字段）；#507 要求的是 **四类场景** 墙上判据，非「每类一种独立根因」。A 验采认链 + `replan_gate`；D 验 `artifacts.*.complete=false`。故 **不构成** 继续「有条件通过」的理由。
+
+**B 与夹具**：`team.yml` 在 I8-B 标题下将 lead 派单步 `GH_TOKEN` 换为无效 PAT（#622），`post_comment_hard --hard-required` 仍 **exit 1** — 属活验观测设施，**非**运行时逃逸口（生产标题不匹配即不走该分支）。
+
+### 10.3 `foreman_mode=test` 是否阻止「通过」
+
+- **否**（对本仓墙收口）：#503 §2.2 明示 **`droid-mission-test` 默认 `test`**；宽口径由 `validate_foreman_mode.py` + 可选 `FOREMAN_REQUIRE_PROD` 约束。
+- **I6 边界**：在 **其它生产 Mission 仓** 未设 `FOREMAN_REQUIRE_PROD` 时，仍可能用 `test` 宽口径起跑 — 属 **部署/运维政策**，不是本仓已证墙链上的编排逃逸；外推零逃逸须 **另行** 对该仓设 I6。
+
+### 10.4 「零逃逸」声明范围（改判后）
+
+本席 **通过** 含义：`hdot123/droid-mission-test` 的 `team.yml` + `env-check.yml` + `scripts/team/*` + `foreman-run.v1` 在 **已知** W1–W6 / I1–I8 判据下，**无**可让 run 在采认失败、评论硬失败、L0 硬失败、半套 artifact 等路径 **假绿** 的 second authority（`needs.*_RESULT` pick、静默 `init_wall`、adopt `|| true` 等已堵）。
+
+**不涵盖**：I8 orchestrator 的 `|| true`（非墙）；validate2「round1 verdict 翻案」只读下载 `continue-on-error`（不调结论）；assemble 收口评论未 `--wall-patch`（审计追溯缺口，**非** pass 逃逸）。
+
+### 10.5 #507 G1–G4（复审）
+
+| 门槛 | 复审 |
+|---|---|
+| **G1** I1–I8 | **是**（I6 按蓝图条件闭合；I8 四类活验齐） |
+| **G2** 四类活验 | **是** |
+| **G3** P4「通过」 | **是**（本条） |
+| **G4** pytest + lint | **是** — 本席 **18/18**；lint 绿；[44529677621](https://github.com/hdot123/droid-mission-test/actions/runs/44529677621) |
+
+### 10.6 结束摘要（复审）
+
+| 项目 | 内容 |
+|---|---|
+| **结论** | **通过** |
+| **PR** | 本复审文档 PR（分支 `cursor/p4-reaudit-pass-verdict-9e2f`） |
+| **初审** | [#615](https://github.com/hdot123/droid-mission-test/pull/615)（有条件通过，已由本条 supersede） |
+| **关键闭合** | #618 pick/env/delta；#627 B run 44529296626 |
+| **测试 / lint** | **18/18**；`lint_workflow_foreman.py` 绿；`foreman-wall-ci` 绿 |
+| **零逃逸** | **可宣称**（§10.4 范围）；外仓 I6 运维须自理 |
