@@ -1,0 +1,19 @@
+{
+  "id": "swatch-beats",
+  "title": "Implement swatchbeats.py Swatch internet time",
+  "state": "done",
+  "files": [
+    "swatchbeats.py",
+    "tests/test_swatchbeats.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_swatchbeats.py -q",
+      "result": "passed (9 tests, exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (20 tests, exit 0)"
+    }
+  ]
+}
