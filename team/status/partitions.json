@@ -1,0 +1,21 @@
+{
+  "id": "partitions",
+  "title": "Implement integer partition count p(n)",
+  "state": "done",
+  "files": [
+    "partitions.py",
+    "tests/test_partitions.py",
+    "team/handoffs/partitions.md",
+    "team/status/partitions.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_partitions.py -q",
+      "result": "pass: 21 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 57 passed in 2.94s"
+    }
+  ]
+}
