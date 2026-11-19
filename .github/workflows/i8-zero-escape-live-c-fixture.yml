@@ -49,7 +49,7 @@ jobs:
             --issue "$ISSUE" \
             --run-id "${{ github.run_id }}" \
             --out foreman-run.json \
-            --github-output "$GITHUB_OUTPUT"
+            --github-output "$GITHUB_OUTPUT" || true
 
       - name: Assert team.yml lead would not start
         run: |
