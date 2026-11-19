@@ -10,3 +10,5 @@ Cloud Agent 无 `workflow_dispatch` / 建单权限时，向 `main` 合并下列 
 | `A.scene` / `D.scene` | orchestrator 场景 A / D（完整 team 链） |
 
 每次触发：在 `main` 上 **新增或修改** 对应 `.scene` 文件（内容可为空行 + 时间戳注释）。
+
+**前置条件**：仓库需配置 GitHub PAT secret（`I8_TEAM_TRIGGER_PAT` 或可见的 `PROJECTS_STATE_PAT`），否则 orchestrator 无法发 `@team-droid` 评论，`team.yml` 不会起跑。
