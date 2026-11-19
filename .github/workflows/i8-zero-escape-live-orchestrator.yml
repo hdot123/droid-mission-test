@@ -1,0 +1,313 @@
+name: I8 zero-escape live orchestrator
+
+# Creates dedicated [I8] issues and triggers team.yml (or scene fixtures).
+# Does not touch battle issues #407–#410. Run from main via workflow_dispatch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      scene:
+        description: "I8 scene to execute"
+        required: true
+        type: choice
+        options:
+          - A
+          - B
+          - C-fixture
+          - C-team
+          - D
+      wait_minutes:
+        description: "Max wait for team.yml run"
+        required: false
+        default: "45"
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+concurrency:
+  group: i8-live-orchestrator
+  cancel-in-progress: false
+
+jobs:
+  scene-b:
+    if: inputs.scene == 'B'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create I8-B issue
+        id: issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BODY=$(cat <<'EOF'
+          ## 目标
+          I8 活验场景 B：评论硬失败（工单已锁定，派单 `--hard-required` 应失败）。
+
+          ## 交付物
+          仅新增 `docs/evidence/i8-scratch/b-marker.txt` 一行 `i8-live-b`。
+
+          ## 验收标准
+          - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/b-marker.txt`
+          EOF
+          )
+          NUM=$(gh issue create --title "[I8] API墙活验 B 评论硬失败" --body "$BODY" --json number -q .number)
+          echo "number=$NUM" >> "$GITHUB_OUTPUT"
+
+      - name: Lock issue (force comment failure)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUM: ${{ steps.issue.outputs.number }}
+        run: gh api --method PUT "repos/${GITHUB_REPOSITORY}/issues/${NUM}/lock"
+
+      - name: Trigger team workflow
+        id: trigger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUM: ${{ steps.issue.outputs.number }}
+        run: |
+          gh issue comment "$NUM" --body "@team-droid I8-B 活验：评论硬失败"
+          for i in $(seq 1 30); do
+            RUN=$(gh run list --workflow=team.yml --json databaseId,event,displayTitle,status \
+              --jq "[.[] | select(.status==\"in_progress\" or .status==\"queued\") | select(.displayTitle | test(\"\\\\[I8\\\\].*B\"))][0].databaseId" 2>/dev/null || true)
+            if [ -n "$RUN" ] && [ "$RUN" != "null" ]; then
+              echo "run_id=$RUN" >> "$GITHUB_OUTPUT"
+              echo "Team run: $RUN"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "No team run found within 300s" >&2
+          exit 1
+
+      - name: Wait for team run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.trigger.outputs.run_id }}
+        run: gh run watch "$RUN_ID" --exit-status || true
+
+      - name: Summarize and capture wall
+        id: summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.trigger.outputs.run_id }}
+          ISSUE_NUM: ${{ steps.issue.outputs.number }}
+        run: |
+          mkdir -p out
+          gh run view "$RUN_ID" --json conclusion,status,url,jobs > out/run-view.json
+          gh run download "$RUN_ID" -n "foreman-run-${RUN_ID}" -D out 2>/dev/null || true
+          python3 scripts/team/i8_summarize_run.py --scene B --run-id "$RUN_ID" --issue "$ISSUE_NUM" --out out/summary.md
+
+      - name: Upload I8 evidence bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: i8-live-evidence-B-${{ steps.trigger.outputs.run_id }}
+          path: out/
+
+      - name: Unlock issue (cleanup)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUM: ${{ steps.issue.outputs.number }}
+        run: gh api --method DELETE "repos/${GITHUB_REPOSITORY}/issues/${NUM}/lock" || true
+
+  scene-c-team:
+    if: inputs.scene == 'C-team'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create I8-C team issue (incomplete work order)
+        id: issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BODY=$(cat <<'EOF'
+          ## 目标
+          I8 活验场景 C（team L0）：工单缺验收标准，env-check 硬失败，lead 不得起跑。
+
+          ## 交付物
+          （无）
+          EOF
+          )
+          NUM=$(gh issue create --title "[I8] API墙活验 C PAT缺失（team L0）" --body "$BODY" --json number -q .number)
+          echo "number=$NUM" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger team workflow
+        id: trigger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUM: ${{ steps.issue.outputs.number }}
+        run: |
+          gh issue comment "$NUM" --body "@team-droid I8-C team L0 活验"
+          for i in $(seq 1 30); do
+            RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
+              --jq "[.[] | select(.status==\"in_progress\" or .status==\"queued\" or .status==\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*C\"))][0].databaseId")
+            if [ -n "$RUN" ] && [ "$RUN" != "null" ]; then
+              echo "run_id=$RUN" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Wait for team run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.trigger.outputs.run_id }}
+        run: gh run watch "$RUN_ID" --exit-status || true
+
+      - name: Summarize
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.trigger.outputs.run_id }}
+          ISSUE_NUM: ${{ steps.issue.outputs.number }}
+        run: |
+          mkdir -p out
+          gh run view "$RUN_ID" --json conclusion,status,url,jobs > out/run-view.json
+          gh run download "$RUN_ID" -n "foreman-run-${RUN_ID}" -D out 2>/dev/null || true
+          python3 scripts/team/i8_summarize_run.py --scene C-team --run-id "$RUN_ID" --issue "$ISSUE_NUM" --out out/summary.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: i8-live-evidence-C-team-${{ steps.trigger.outputs.run_id }}
+          path: out/
+
+  scene-a:
+    if: inputs.scene == 'A'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create I8-A issue
+        id: issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BODY=$(cat <<'EOF'
+          ## 目标
+          I8 活验场景 A：单工序极小交付，观测采认失败。
+
+          ## 交付物
+          仅新增 `docs/evidence/i8-scratch/a-marker.txt` 一行 `i8-live-a`。
+
+          ## 验收标准
+          - foreman 仅 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/a-marker.txt`
+          EOF
+          )
+          NUM=$(gh issue create --title "[I8] API墙活验 A 采认失败" --body "$BODY" --json number -q .number)
+          echo "number=$NUM" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger team workflow
+        id: trigger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUM: ${{ steps.issue.outputs.number }}
+        run: |
+          gh issue comment "$NUM" --body "@team-droid I8-A 活验：采认失败路径"
+          for i in $(seq 1 30); do
+            RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
+              --jq "[.[] | select(.status!=\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*A\"))][0].databaseId")
+            if [ -n "$RUN" ] && [ "$RUN" != "null" ]; then
+              echo "run_id=$RUN" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Wait for run completion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.trigger.outputs.run_id }}
+        run: gh run watch "$RUN_ID" --exit-status || true
+
+      - name: Collect partial evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.trigger.outputs.run_id }}
+          ISSUE_NUM: ${{ steps.issue.outputs.number }}
+        run: |
+          mkdir -p out
+          gh run view "$RUN_ID" --json conclusion,status,url,jobs > out/run-view.json
+          gh run download "$RUN_ID" -n "foreman-run-${RUN_ID}" -D out 2>/dev/null || true
+          python3 scripts/team/i8_summarize_run.py --scene A --run-id "$RUN_ID" --issue "$ISSUE_NUM" --out out/summary.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: i8-live-evidence-A-${{ steps.trigger.outputs.run_id }}
+          path: out/
+
+  scene-d:
+    if: inputs.scene == 'D'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create I8-D issue
+        id: issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BODY=$(cat <<'EOF'
+          ## 目标
+          I8 活验场景 D：半套 artifact（validate 采认失败，complete=false）。
+
+          ## 交付物
+          仅新增 `docs/evidence/i8-scratch/d-marker.txt` 一行 `i8-live-d`。
+
+          ## 验收标准
+          - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/d-marker.txt`
+          EOF
+          )
+          NUM=$(gh issue create --title "[I8] API墙活验 D 半套artifact" --body "$BODY" --json number -q .number)
+          echo "number=$NUM" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger and cancel at validate (same as A)
+        id: trigger
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUM: ${{ steps.issue.outputs.number }}
+        run: |
+          gh issue comment "$NUM" --body "@team-droid I8-D 活验：半套 artifact"
+          for i in $(seq 1 30); do
+            RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
+              --jq "[.[] | select(.status!=\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*D\"))][0].databaseId")
+            if [ -n "$RUN" ] && [ "$RUN" != "null" ]; then
+              echo "run_id=$RUN" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+      - name: Cancel at validate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.trigger.outputs.run_id }}
+        run: |
+          python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
+          gh run cancel "$RUN_ID" || true
+          sleep 15
+
+      - name: Summarize
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.trigger.outputs.run_id }}
+          ISSUE_NUM: ${{ steps.issue.outputs.number }}
+        run: |
+          mkdir -p out
+          gh run view "$RUN_ID" --json conclusion,status,url,jobs > out/run-view.json
+          gh run download "$RUN_ID" -n "foreman-run-${RUN_ID}" -D out 2>/dev/null || true
+          python3 scripts/team/i8_summarize_run.py --scene D --run-id "$RUN_ID" --issue "$ISSUE_NUM" --out out/summary.md
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: i8-live-evidence-D-${{ steps.trigger.outputs.run_id }}
+          path: out/
