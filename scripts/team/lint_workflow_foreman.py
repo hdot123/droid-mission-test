@@ -11,6 +11,8 @@ from pathlib import Path
 FORBIDDEN = [
     (re.compile(r"failed_processes\s*!=\s*['\"]\\?\\[\\]['\"]"), "string compare failed_processes != '[]'"),
     (re.compile(r"needs\.validate\.result\s*==\s*['\"]success['\"]"), "replan bound to validate.result success only"),
+    (re.compile(r"fail_text\s*=\s*\{"), "static fail_text fallback in assemble"),
+    (re.compile(r'备料未启动'), "forbidden static phrase 备料未启动 in workflow"),
 ]
 
 

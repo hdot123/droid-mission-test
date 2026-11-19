@@ -1,6 +1,6 @@
 # 领班制整面 API 墙方案（v2.7 施工蓝图）
 
-> **施工状态（v2.7 实现 PR）**：已落盘 `schemas/foreman-run.v1.schema.json`、`scripts/team/*` 墙读写/采认/编排门脚本、`foreman-wall-ci.yml` 契约测试；`team.yml`/`env-check.yml` 已接 ForemanRun 传递与 W1–W6 机器门（详见实现 PR 描述）。
+> **施工状态（v2.7 实现 PR #505）**：L0–L6 主链已接 `foreman-run.json`；validate/validate2 采认+完整 upload；workers delta 合并（非 last-write）；assemble `chain_facts` 收口；PAT 写板 `project_state_write.py`；handoff/prep 硬评论。仍依赖运维配置 `PROJECTS_STATE_PAT` + 工单已挂 Projects #33；活验未拉 Actions 工件。
 >
 > **声明**：本文为 **v2.7 施工的权威蓝图**。它**取代** [PR #499](https://github.com/hdot123/droid-mission-test/pull/499) 中「按功能分墙」（`ValidatorCompletion` / `adopt-verdict` / `TeamDroidSession` / `ProjectStateWriter` / `CloseoutPublisher` / `AssembleChainFacts` / `WorkerMatrixResult` / `team-gate-*.json` / `foreman_mode` 各自独立接口）的旧稿写法，作为后续实现的**唯一设计依据**。  
 > 输入材料：`docs/领班制-API硬化修改方案.md`、`docs/领班制-API硬化修改方案-对抗审.md`（**不删不改**）。  

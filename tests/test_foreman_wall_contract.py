@@ -21,6 +21,7 @@ from foreman_run_lib import (  # noqa: E402
 )
 from compute_replan_gate import compute as compute_replan  # noqa: E402
 from compute_validate_conclusion import derive as derive_validate  # noqa: E402
+from merge_worker_deltas import apply_deltas  # noqa: E402
 
 
 def test_env_hard_fail_forbids_ok_true():
@@ -111,3 +112,25 @@ def test_assert_artifact_complete_script(tmp_path: Path):
         text=True,
     )
     assert r.returncode == 1
+
+
+def test_merge_worker_deltas_union():
+    wall = init_wall(run_id="8", issue_number=1)
+    wall = apply_deltas(
+        wall,
+        [
+            {"pid": "a", "result": "success"},
+            {"pid": "b", "result": "failure"},
+            {"pid": "c", "result": "cancelled", "cancel_reason": "job_wall_25m"},
+        ],
+    )
+    w = wall["workers"]
+    assert sorted(w["completed_pids"]) == ["a", "b"]
+    assert w["cancelled_pids"] == ["c"]
+    assert w["any_failed"]
+    assert w["any_cancelled"]
+
+
+def test_validate2_artifact_key_present():
+    wall = init_wall(run_id="9", issue_number=2)
+    assert "team-verdict2-issue-2-run-9" in wall["artifacts"]

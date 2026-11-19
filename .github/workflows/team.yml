@@ -672,9 +672,11 @@ jobs:
             echo ""
             cat "team/handoffs/${PROCESS_ID}.md"
           } > handoff-comment.md
-          gh issue comment "$ISSUE_NUMBER" --body-file handoff-comment.md
+          PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
+            --issue "$ISSUE_NUMBER" --body-file handoff-comment.md --hard-required
           if [ -n "${SUB_ISSUE_NUMBER:-}" ]; then
-            gh issue comment "$SUB_ISSUE_NUMBER" --body-file handoff-comment.md || echo "sub-issue handoff comment failed"
+            PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
+              --issue "$SUB_ISSUE_NUMBER" --body-file handoff-comment.md --hard-required
           fi
 
       - name: Fail the job when process checks failed
@@ -694,38 +696,66 @@ jobs:
           fi
           echo "no failed-checks marker for ${PROCESS_ID}; job outcome unchanged"
 
-      - name: Download ForemanRun wall for matrix merge
+      - name: Record worker delta for ForemanRun (W1 matrix)
         if: always() && !cancelled()
+        env:
+          PROCESS_ID: ${{ matrix.process.id }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          RESULT="success"
+          if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
+          if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
+          PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
+            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
+          if [ "$RESULT" = "cancelled" ]; then
+            python3 -c "import json; d=json.load(open('worker-delta.json')); d['cancel_reason']='job_wall_25m'; json.dump(d,open('worker-delta.json','w'))"
+          fi
+
+      - name: Upload worker delta artifact
+        if: always() && !cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-worker-delta-${{ matrix.process.id }}-${{ github.run_id }}
+          path: worker-delta.json
+          overwrite: true
+
+  workers-wall-merge:
+    name: workers-wall-merge (ForemanRun workers slice)
+    needs: [lead, worker]
+    if: >-
+      always() && needs.lead.result == 'success' &&
+      needs.lead.outputs.duplicate != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download ForemanRun wall
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           name: foreman-run-${{ github.run_id }}
           path: wall-in
 
-      - name: Merge worker slice into ForemanRun wall (W1 matrix)
-        if: always() && !cancelled()
-        env:
-          PROCESS_ID: ${{ matrix.process.id }}
-        run: |
-          if [ ! -f wall-in/foreman-run.json ]; then
-            echo "no foreman-run wall present; skip matrix merge"
-            exit 0
-          fi
-          cp wall-in/foreman-run.json foreman-run.json
-          python3 - <<'PY'
-          import os, sys
-          from pathlib import Path
-          sys.path.insert(0, "scripts/team")
-          from foreman_run_lib import load_wall, merge_worker_slice, save_wall
-          pid = os.environ["PROCESS_ID"]
-          res = "failure" if Path(f"team/status/{pid}.checks-failed.marker").exists() else "success"
-          wall = load_wall("foreman-run.json")
-          wall = merge_worker_slice(wall, pid, res)
-          save_wall(wall, "foreman-run.json")
-          PY
+      - name: Download all worker deltas
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: foreman-worker-delta-*-${{ github.run_id }}
+          path: deltas
 
-      - name: Upload foreman-run wall artifact (worker matrix)
-        if: always() && hashFiles('foreman-run.json') != ''
+      - name: Merge worker deltas into wall
+        run: |
+          if [ -f wall-in/foreman-run.json ]; then cp wall-in/foreman-run.json foreman-run.json; else
+            PYTHONPATH=scripts/team python3 -c "from foreman_run_lib import init_wall,save_wall; save_wall(init_wall(run_id='${{ github.run_id }}', issue_number=${{ github.event.issue.number }}),'foreman-run.json')"
+          fi
+          PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py --wall foreman-run.json --delta-dir deltas
+          PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
+            --job worker \
+            --result "${{ needs.worker.result }}" \
+            --produced "$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); print('true' if (w.get('workers') or {}).get('completed_pids') else 'false')")"
+
+      - name: Upload foreman-run wall artifact
         uses: actions/upload-artifact@v4
         with:
           name: foreman-run-${{ github.run_id }}
@@ -734,7 +764,7 @@ jobs:
 
   prep:
     name: prep (merge and pack evidence)
-    needs: [lead, worker]
+    needs: [lead, worker, workers-wall-merge]
     if: >-
       ${{ !cancelled() && needs.lead.result == 'success' &&
       (needs.worker.result == 'success' || needs.worker.result == 'failure') &&
@@ -749,6 +779,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Download ForemanRun wall
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: wall-in
 
       - name: Download plan artifact
         uses: actions/download-artifact@v4
@@ -1072,10 +1109,28 @@ jobs:
           open("prep-comment.md", "w").write("\n".join(lines))
           print("\n".join(lines))
           PY
-          gh issue comment "$ISSUE_NUMBER" --body-file prep-comment.md
+          PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
+            --issue "$ISSUE_NUMBER" --body-file prep-comment.md --hard-required
           if [ -n "${PLAN_ISSUE_NUMBER:-}" ]; then
-            gh issue comment "$PLAN_ISSUE_NUMBER" --body-file prep-comment.md || echo "plan prep comment failed"
+            PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
+              --issue "$PLAN_ISSUE_NUMBER" --body-file prep-comment.md --hard-required
           fi
+
+      - name: Patch ForemanRun (prep)
+        if: always()
+        run: |
+          [ -f wall-in/foreman-run.json ] && cp wall-in/foreman-run.json foreman-run.json
+          PREP_RESULT="${{ steps.prep.outcome == 'success' && 'success' || 'failure' }}"
+          PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
+            --job prep --result "$PREP_RESULT" --produced true
+
+      - name: Upload foreman-run wall artifact
+        if: always() && hashFiles('foreman-run.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: foreman-run.json
+          overwrite: true
 
   validate:
     name: validator (squad-leader style, evidence only)
@@ -2047,9 +2102,11 @@ jobs:
             echo ""
             cat "team/handoffs/${PROCESS_ID}.md"
           } > handoff-comment.md
-          gh issue comment "$ISSUE_NUMBER" --body-file handoff-comment.md
+          PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
+            --issue "$ISSUE_NUMBER" --body-file handoff-comment.md --hard-required
           if [ -n "${SUB_ISSUE_NUMBER:-}" ]; then
-            gh issue comment "$SUB_ISSUE_NUMBER" --body-file handoff-comment.md || echo "sub-issue handoff comment failed"
+            PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
+              --issue "$SUB_ISSUE_NUMBER" --body-file handoff-comment.md --hard-required
           fi
 
       - name: Fail the job when process checks failed
@@ -2069,10 +2126,66 @@ jobs:
           fi
           echo "no failed-checks marker for ${PROCESS_ID}; job outcome unchanged"
 
+      - name: Record worker2 delta for ForemanRun
+        if: always() && !cancelled()
+        env:
+          PROCESS_ID: ${{ matrix.process.id }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          RESULT="success"
+          if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
+          if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
+          PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
+            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
+
+      - name: Upload worker2 delta artifact
+        if: always() && !cancelled()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-worker2-delta-${{ matrix.process.id }}-${{ github.run_id }}
+          path: worker-delta.json
+          overwrite: true
+
+  workers2-wall-merge:
+    name: workers2-wall-merge (round 2 workers slice)
+    needs: [replan, worker2]
+    if: always() && needs.replan.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download ForemanRun wall
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: wall-in
+      - name: Download worker2 deltas
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: foreman-worker2-delta-*-${{ github.run_id }}
+          path: deltas
+      - name: Merge worker2 deltas
+        run: |
+          [ -f wall-in/foreman-run.json ] && cp wall-in/foreman-run.json foreman-run.json || exit 0
+          PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py \
+            --wall foreman-run.json --delta-dir deltas --round 2
+          PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
+            --job worker2 --result "${{ needs.worker2.result }}" --produced true
+      - name: Upload foreman-run wall artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: foreman-run.json
+          overwrite: true
+
   prep2:
     name: prep round 2 (replace rerun processes, repack evidence)
-    needs: [lead, prep, validate, replan, worker2]
-    if: ${{ !cancelled() && needs.replan.result == 'success' && needs.worker2.result != 'cancelled' }}
+    needs: [lead, prep, validate, replan, worker2, workers2-wall-merge]
+    if: >-
+      ${{ !cancelled() && needs.replan.result == 'success' &&
+      (needs.worker2.result == 'success' || needs.worker2.result == 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -2470,9 +2583,11 @@ jobs:
           open("prep2-comment.md", "w").write("\n".join(lines))
           print("\n".join(lines))
           PY
-          gh issue comment "$ISSUE_NUMBER" --body-file prep2-comment.md
+          PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
+            --issue "$ISSUE_NUMBER" --body-file prep2-comment.md --hard-required
           if [ -n "${PLAN_ISSUE_NUMBER:-}" ]; then
-            gh issue comment "$PLAN_ISSUE_NUMBER" --body-file prep2-comment.md || echo "plan prep2 comment failed"
+            PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
+              --issue "$PLAN_ISSUE_NUMBER" --body-file prep2-comment.md --hard-required
           fi
 
   validate2:
@@ -2487,10 +2602,21 @@ jobs:
       GH_TOKEN: ""
       EXPECTED_MANIFEST_SHA: ${{ needs.prep2.outputs.manifest_sha256 }}
     outputs:
-      overall: ${{ steps.verdict.outputs.overall }}
-      failed_processes: ${{ steps.verdict.outputs.failed_processes }}
-      flips: ${{ steps.verdict.outputs.flips }}
+      overall: ${{ steps.adopt2.outputs.overall }}
+      failed_processes: ${{ steps.adopt2.outputs.failed_processes }}
+      flips: ${{ steps.adopt2.outputs.flips }}
+      validate2_job_conclusion: ${{ steps.validate2_conclusion.outputs.validate_job_conclusion }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download ForemanRun wall (W1)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: wall-in
+
       - name: Download evidence round 2 artifact
         uses: actions/download-artifact@v4
         with:
@@ -2581,6 +2707,7 @@ jobs:
           PY
 
       - name: Validator judges evidence packs only (round 2)
+        id: droid_validate2
         if: steps.pre.outputs.judgeable != '[]'
         env:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
@@ -2625,10 +2752,13 @@ jobs:
           """
           open("validator-prompt.txt", "w").write(prompt)
           PY
+          set +e
           timeout --signal=TERM --kill-after=30s 600s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
+          echo $? > droid-exit.txt
 
       - name: Merge verdict, enforce gates, verify evidence untouched
         id: verdict
+        if: always()
         timeout-minutes: 3
         run: |
           python3 - <<'PY'
@@ -2640,8 +2770,8 @@ jobs:
               sys.exit(1)
           manifest = json.load(open("work/manifest.json"))
           plan = json.load(open("work/plan.json"))
-          judgeable = json.load(open("work/judgeable.json"))
-          blocked = json.load(open("work/blocked.json"))
+          judgeable = json.load(open("work/judgeable.json")) if os.path.exists("work/judgeable.json") else []
+          blocked = json.load(open("work/blocked.json")) if os.path.exists("work/blocked.json") else {}
 
           for path, digest in manifest["sha256"].items():
               local = "work/" + path[len("evidence/"):] if path.startswith("evidence/") else path
@@ -2650,10 +2780,7 @@ jobs:
                   sys.exit(1)
 
           verdicts = {}
-          if judgeable:
-              if not os.path.exists("work/verdict-droid.json"):
-                  print("validator produced no verdict-droid.json")
-                  sys.exit(1)
+          if judgeable and os.path.exists("work/verdict-droid.json"):
               droid = json.load(open("work/verdict-droid.json"))
               entries = droid.get("processes", [])
               if sorted(p.get("id") for p in entries) != sorted(judgeable):
@@ -2680,7 +2807,8 @@ jobs:
           # instead of failing the whole validation job (unlike the strict
           # processes coverage check above).
           conflicts = []
-          if judgeable:
+          if judgeable and os.path.exists("work/verdict-droid.json"):
+              droid = json.load(open("work/verdict-droid.json"))
               for centry in droid.get("conflicts") or []:
                   if isinstance(centry, dict) and centry.get("process") and centry.get("summary"):
                       conflicts.append({"process": centry["process"],
@@ -2746,8 +2874,56 @@ jobs:
           print("overall:", overall, "| failed:", failed, "| flips:", [f["id"] for f in flips])
           PY
 
+      - name: Adopt verdict into ForemanRun wall round 2 (P0-1)
+        id: adopt2
+        if: always()
+        run: |
+          if [ -f wall-in/foreman-run.json ]; then cp wall-in/foreman-run.json foreman-run.json; else
+            PYTHONPATH=scripts/team python3 -c "from foreman_run_lib import init_wall,save_wall; save_wall(init_wall(run_id='${{ github.run_id }}', issue_number=${{ github.event.issue.number }}),'foreman-run.json')"
+          fi
+          DROID_EXIT=-1
+          [ -f work/droid-exit.txt ] && DROID_EXIT=$(cat work/droid-exit.txt)
+          MERGE_FLAG=""
+          [ -f verdict.json ] && MERGE_FLAG="--merge-step-ran"
+          ROUND1=""
+          [ -f round1/verdict.json ] && ROUND1="--round1-verdict round1/verdict.json"
+          PYTHONPATH=scripts/team python3 scripts/team/adopt_verdict.py \
+            --wall foreman-run.json --work-dir work --droid-exit "$DROID_EXIT" \
+            --round 2 $MERGE_FLAG $ROUND1 || true
+          PYTHONPATH=scripts/team python3 - <<'PY'
+          import json, os
+          v = json.load(open("verdict.json"))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"overall={v.get('overall','fail')}\n")
+              failed = [p["id"] for p in v.get("processes",[]) if p.get("verdict")!="pass"]
+              out.write("failed_processes=" + json.dumps(failed) + "\n")
+              out.write("flips=" + json.dumps(v.get("flips") or [], ensure_ascii=False) + "\n")
+          PY
+
+      - name: Derive validate2 job conclusion (W4)
+        id: validate2_conclusion
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py \
+            --wall foreman-run.json --round 2 --github-output "$GITHUB_OUTPUT" || true
+          PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
+            --job validate2 \
+            --result "$(python3 -c "import json;print(json.load(open('foreman-run.json'))['validation'].get('job_conclusion_derived','failure'))")" \
+            --produced "$(python3 -c "import json;a=json.load(open('foreman-run.json'))['artifacts'];k='team-verdict2-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}';print('true' if a.get(k,{}).get('complete') else 'false')")"
+
+      - name: Assert verdict round 2 artifact complete (B2)
+        id: assert_verdict2
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/assert_artifact_complete.py \
+            --wall foreman-run.json \
+            --name team-verdict2-issue-${{ github.event.issue.number }}-run-${{ github.run_id }} \
+            || echo "verdict2 artifact not complete; skip upload"
+
       - name: Upload verdict round 2 artifact
-        if: success()
+        if: >-
+          steps.assert_verdict2.outcome == 'success' &&
+          steps.adopt2.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: team-verdict2-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
@@ -2755,6 +2931,19 @@ jobs:
             verdict.json
             verdict.md
           overwrite: true
+
+      - name: Upload foreman-run wall artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: foreman-run.json
+          overwrite: true
+
+      - name: Fail validate2 job when adoption failed (W6)
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py --wall foreman-run.json --round 2
 
   assemble:
     name: assemble (final status card, close-out, PR)
@@ -2773,6 +2962,13 @@ jobs:
         with:
           pattern: team-*-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
           path: dl
+
+      - name: Download ForemanRun wall
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: wall-root
 
       - name: Pick final verdict and candidate
         id: pick
@@ -2828,44 +3024,29 @@ jobs:
               evidence_tar = find("team-evidence-", "evidence.tar.gz")
               picked_round = 1
           if verdict_path is None:
-              # No verdict artifact from either round: synthesize a fallback
-              # verdict so the final status card is still posted, with the
-              # reason taken from the earliest failed link in the chain
-              # (lead -> worker -> prep -> validate -> ...).
-              fail_text = {
-                  "lead": "领班 job 失败，计划未落成（或落成未全）",
-                  "worker": "工人 job 失败，备料未启动",
-                  "prep": "备料未完成（prep job 红），验收未启动",
-                  "validate": "验收未产出判定（validate job 结构性失败）",
-                  "replan": "改计划回路失败（replan job 红），且无第 1 轮判定可收口",
-                  "worker2": "第 2 轮工人 job 失败，第 2 轮备料未启动",
-                  "prep2": "第 2 轮备料未完成（prep2 job 红），第 2 轮验收未启动",
-                  "validate2": "第 2 轮验收未产出判定（validate2 job 结构性失败）",
-              }
-              cancel_text = {
-                  "lead": "领班 job 被取消/硬超时，计划未落成",
-                  "worker": "工人 job 被取消/硬超时，备料未启动",
-                  "prep": "备料未完成（prep job 被取消/硬超时），验收未启动",
-                  "validate": "验收未产出判定（validate job 被取消/硬超时）",
-                  "replan": "改计划回路被取消/硬超时（replan job），且无第 1 轮判定可收口",
-                  "worker2": "第 2 轮工人 job 被取消/硬超时，第 2 轮备料未启动",
-                  "prep2": "第 2 轮备料未完成（prep2 job 被取消/硬超时），第 2 轮验收未启动",
-                  "validate2": "第 2 轮验收未产出判定（validate2 job 被取消/硬超时）",
-              }
               chain_order = ["lead", "worker", "prep", "validate", "replan", "worker2", "prep2", "validate2"]
-              results = {name: os.environ.get(f"{name.upper()}_RESULT", "") for name in chain_order}
-              fallback_reason = "验收未产出判定（validate job 结构性失败）"
-              for name in chain_order:
-                  if results[name] == "failure":
-                      fallback_reason = fail_text[name]
-                      break
-                  if results[name] == "cancelled":
-                      fallback_reason = cancel_text[name]
-                      break
+              results = {name: os.environ.get(f"{name.upper()}_RESULT", "") or "skipped" for name in chain_order}
+              fallback_reason = "验收未产出判定（chain_facts 兜底）"
+              wall_path = "wall-root/foreman-run.json"
+              if os.path.exists(wall_path):
+                  import sys
+                  sys.path.insert(0, "scripts/team")
+                  from foreman_run_lib import load_wall, save_wall
+                  from assemble_chain_facts import build_facts, pick_fallback_reason
+                  wall = load_wall(wall_path)
+                  evidence = bool(find("team-evidence-", "evidence.tar.gz") or find("team-evidence2-", "evidence.tar.gz"))
+                  if evidence:
+                      wall.setdefault("chain", {}).setdefault("prep", {})["produced_required_artifact"] = True
+                  completed = (wall.get("workers") or {}).get("completed_pids") or []
+                  if completed:
+                      wall.setdefault("chain", {}).setdefault("worker", {})["result"] = results.get("worker", "failure")
+                  wall = build_facts(wall, results)
+                  save_wall(wall, "foreman-run.json")
+                  fallback_reason = pick_fallback_reason(wall)
               verdict = {"overall": "fail", "pytest_exit": None,
                          "iteration": picked_round, "processes": [],
                          "reason": fallback_reason}
-              print(f"no verdict artifact found; using synthesized fallback verdict (results={results})")
+              print(f"no verdict artifact; chain_facts fallback (results={results}): {fallback_reason}")
           else:
               verdict = json.load(open(verdict_path))
           candidate = read_candidate(evidence_tar) if evidence_tar else ""
@@ -2884,8 +3065,23 @@ jobs:
           print("final overall:", verdict.get("overall"), "| candidate:", candidate)
           PY
 
+      - name: Write Projects board via PAT (P1-1)
+        id: board_write
+        env:
+          PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          OVERALL: ${{ steps.pick.outputs.overall }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          WALL="foreman-run.json"
+          [ -f wall-root/foreman-run.json ] && cp wall-root/foreman-run.json "$WALL"
+          [ -f foreman-run.json ] || [ -f "$WALL" ] || true
+          PYTHONPATH=scripts/team python3 scripts/team/project_state_write.py \
+            --wall "${WALL}" --overall "$OVERALL" --issue "$ISSUE_NUMBER"
+
       - name: Post final status card, close out, attempt PR
         id: closeout
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
@@ -3042,9 +3238,12 @@ jobs:
             --hard-required
 
       - name: Fail the run when validation did not pass or the PR failed
-        if: steps.pick.outputs.overall != 'pass' || steps.closeout.outputs.pr_failed == 'true'
+        if: >-
+          steps.pick.outputs.overall != 'pass' ||
+          steps.closeout.outputs.pr_failed == 'true' ||
+          steps.board_write.outcome == 'failure'
         run: |
-          echo "overall != pass or PR creation failed; run marked failed after posting the status card"
+          echo "run must fail: overall/pr/board_write"
           exit 1
 
       - name: Post minimal status card when pick failed

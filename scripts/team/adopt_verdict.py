@@ -32,17 +32,48 @@ def detect_droid_failure(work_dir: Path) -> str | None:
     return None
 
 
+def compute_flips(
+    verdicts: dict[str, dict], round1_path: Path | None
+) -> list[dict]:
+    if not round1_path or not round1_path.exists():
+        return []
+    try:
+        r1 = {p["id"]: p for p in json.loads(round1_path.read_text()).get("processes", [])}
+    except Exception:
+        return []
+    flips = []
+    for pid, v in verdicts.items():
+        prev = r1.get(pid)
+        if prev and prev.get("verdict") == "pass" and v["verdict"] != "pass":
+            flips.append(
+                {
+                    "id": pid,
+                    "round1_verdict": prev["verdict"],
+                    "round1_reason": prev.get("reason", ""),
+                    "round2_verdict": v["verdict"],
+                    "round2_reason": v.get("reason", ""),
+                }
+            )
+    return flips
+
+
 def adopt(
     work_dir: Path,
     wall_path: Path,
     *,
     droid_exit: int | None,
     merge_step_ran: bool,
+    round_num: int = 1,
+    round1_verdict: Path | None = None,
 ) -> int:
     wall = load_wall(wall_path)
     issue = wall["issue_number"]
     run_id = wall["run_id"]
-    art_key = f"team-verdict-issue-{issue}-run-{run_id}"
+    art_key = (
+        f"team-verdict2-issue-{issue}-run-{run_id}"
+        if round_num == 2
+        else f"team-verdict-issue-{issue}-run-{run_id}"
+    )
 
     adoption_status = "ok"
     adoption_error = None
@@ -149,10 +180,12 @@ def adopt(
                         unattributed = True
                     else:
                         failing_tests = []
+                    flips = compute_flips(verdicts, round1_verdict) if round_num == 2 else []
+                    iteration = manifest.get("iteration", round_num)
                     verdict = {
                         "overall": overall,
                         "pytest_exit": pytest_exit,
-                        "iteration": manifest.get("iteration", 1),
+                        "iteration": iteration,
                         "processes": [verdicts[p["id"]] for p in plan["processes"]],
                         "conflicts": conflicts,
                         "failing_tests": failing_tests[:50],
@@ -161,6 +194,8 @@ def adopt(
                         "adoption_error": adoption_error,
                         "verdict_schema_version": "foreman-run.v1",
                     }
+                    if flips:
+                        verdict["flips"] = flips
                     Path("verdict.json").write_text(
                         json.dumps(verdict, ensure_ascii=False, indent=2) + "\n",
                         encoding="utf-8",
@@ -198,7 +233,7 @@ def adopt(
     patch = {
         "validation": {
             "schema_version": "validation-slice.v1",
-            "round": 1,
+            "round": round_num,
             "draft_path": "work/verdict-droid.json",
             "verdict_path": "verdict.json",
             "adoption_status": adoption_status,
@@ -228,13 +263,19 @@ def adopt(
         session_status = "timeout"
     elif droid_exit not in (None, 0):
         session_status = "droid_failed"
+    role = "validator" if round_num == 1 else "validator2"
     patch["budgets"] = {
         "session_outcome": {
-            "role": "validator",
+            "role": role,
             "completion_status": session_status,
             "exit_code": droid_exit if droid_exit is not None else -1,
         }
     }
+    if round_num == 2:
+        patch["round2"] = {
+            "validation": patch["validation"],
+            "artifacts_verdict2": art_key,
+        }
     merged = deep_merge(wall, patch)
     save_wall(merged, wall_path)
     print("adoption:", adoption_status, adoption_error or "")
@@ -247,8 +288,18 @@ def main() -> int:
     p.add_argument("--work-dir", default="work")
     p.add_argument("--droid-exit", type=int, default=-1)
     p.add_argument("--merge-step-ran", action="store_true")
+    p.add_argument("--round", type=int, default=1)
+    p.add_argument("--round1-verdict", default="")
     args = p.parse_args()
-    return adopt(Path(args.work_dir), Path(args.wall), droid_exit=args.droid_exit if args.droid_exit >= 0 else None, merge_step_ran=args.merge_step_ran)
+    r1 = Path(args.round1_verdict) if args.round1_verdict else None
+    return adopt(
+        Path(args.work_dir),
+        Path(args.wall),
+        droid_exit=args.droid_exit if args.droid_exit >= 0 else None,
+        merge_step_ran=args.merge_step_ran,
+        round_num=args.round,
+        round1_verdict=r1,
+    )
 
 
 if __name__ == "__main__":

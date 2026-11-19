@@ -89,13 +89,16 @@ def default_chain() -> dict[str, Any]:
 
 def default_artifacts(issue_number: int, run_id: str) -> dict[str, Any]:
     key = f"team-verdict-issue-{issue_number}-run-{run_id}"
+    key2 = f"team-verdict2-issue-{issue_number}-run-{run_id}"
+    verdict_art = {
+        "complete": False,
+        "missing": ["verdict.json", "verdict.md"],
+        "required_members": ["verdict.json", "verdict.md"],
+        "forbidden_partial": ["work/validator-stream.jsonl"],
+    }
     return {
-        key: {
-            "complete": False,
-            "missing": ["verdict.json", "verdict.md"],
-            "required_members": ["verdict.json", "verdict.md"],
-            "forbidden_partial": ["work/validator-stream.jsonl"],
-        },
+        key: dict(verdict_art),
+        key2: dict(verdict_art),
         f"foreman-run-{run_id}": {
             "complete": False,
             "missing": ["foreman-run.json"],
