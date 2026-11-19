@@ -1,0 +1,21 @@
+{
+  "id": "massconv",
+  "title": "Mass unit conversion (mass_convert)",
+  "state": "done",
+  "files": [
+    "massconv.py",
+    "tests/test_massconv.py",
+    "team/handoffs/massconv.md",
+    "team/status/massconv.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_massconv.py -q",
+      "result": "18 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "29 passed in 0.04s"
+    }
+  ]
+}
