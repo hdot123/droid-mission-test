@@ -18,6 +18,14 @@ FORBIDDEN = [
     (re.compile(r"adopt_verdict\.py[^\n]*\|\|\s*true"), "adopt_verdict must not use || true (I5)"),
     (re.compile(r"compute_validate_conclusion\.py[^\n]*\|\|\s*true"), "derive must not use || true (I5)"),
     (re.compile(r"init_wall"), "init_wall forbidden in team.yml except via env-check (I3)"),
+    (
+        re.compile(r"pick_verdict_from_wall\.py[\s\S]{0,800}?--chain-result"),
+        "pick_verdict must not inject needs.*_RESULT (I2 fail-closed)",
+    ),
+    (
+        re.compile(r"env_check_wall\.py[^\n]*\|\|\s*true"),
+        "env_check_wall must not use || true (W3 fail-closed)",
+    ),
 ]
 
 PREP_GATE = re.compile(
@@ -26,6 +34,15 @@ PREP_GATE = re.compile(
 PREP2_GATE = re.compile(
     r"name: prep round 2[\s\S]{0,800}?workers2-wall-merge\.outputs\.prep_should_run",
 )
+
+
+def worker_delta_download_lax(text: str) -> list[str]:
+    errs: list[str] = []
+    for m in re.finditer(r"Download (?:all )?worker2? deltas", text):
+        chunk = text[m.start() : m.start() + 220]
+        if "continue-on-error: true" in chunk:
+            errs.append("worker delta download must not use continue-on-error (W1)")
+    return errs
 
 
 def foreman_run_download_lax(text: str) -> list[str]:
@@ -77,11 +94,15 @@ def main() -> int:
     if not PREP2_GATE.search(text):
         errors.append("prep2 job must gate on workers2-wall-merge.outputs.prep_should_run (I1)")
     errors.extend(foreman_run_download_lax(text))
+    errors.extend(worker_delta_download_lax(text))
     errors.extend(post_comment_hard_has_gh_token(text))
     repo_root = Path(args.workflow).resolve().parent.parent.parent
     env_check = repo_root / ".github" / "workflows" / "env-check.yml"
     if env_check.is_file():
-        errors.extend(post_comment_hard_has_gh_token(env_check.read_text(encoding="utf-8")))
+        env_text = env_check.read_text(encoding="utf-8")
+        errors.extend(post_comment_hard_has_gh_token(env_text))
+        if re.compile(r"env_check_wall\.py[^\n]*\|\|\s*true").search(env_text):
+            errors.append("env_check_wall must not use || true (W3 fail-closed)")
     for m in re.finditer(r"- name: Upload verdict(?: round 2)? artifact", text):
         chunk = text[m.start() : m.start() + 180]
         if re.search(r"if:\s*always\(\)", chunk):

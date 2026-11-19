@@ -137,6 +137,41 @@ def test_validate2_artifact_key_present():
     assert "team-verdict2-issue-2-run-9" in wall["artifacts"]
 
 
+def test_pick_verdict_incomplete_wall_fail_closed(tmp_path: Path):
+    from pick_verdict_from_wall import pick  # noqa: E402
+
+    wall = init_wall(run_id="10", issue_number=4)
+    key = "team-verdict-issue-4-run-10"
+    wall["artifacts"][key]["complete"] = False
+    wall["artifacts"][key]["missing"] = ["verdict.json"]
+    wall_path = tmp_path / "foreman-run.json"
+    save_wall(wall, wall_path)
+    dl = tmp_path / "dl"
+    dl.mkdir()
+    with pytest.raises(SystemExit, match="fail-closed"):
+        pick(wall_path, dl, issue_number=4, run_id="10")
+
+
+def test_pick_verdict_rejects_needs_chain_results(tmp_path: Path):
+    from pick_verdict_from_wall import pick  # noqa: E402
+
+    wall = init_wall(run_id="10b", issue_number=4)
+    key = "team-verdict-issue-4-run-10b"
+    wall["artifacts"][key]["complete"] = True
+    wall_path = tmp_path / "foreman-run.json"
+    save_wall(wall, wall_path)
+    dl = tmp_path / "dl"
+    dl.mkdir()
+    with pytest.raises(SystemExit, match="chain_results forbidden"):
+        pick(
+            wall_path,
+            dl,
+            issue_number=4,
+            run_id="10b",
+            chain_results={"worker": "success"},
+        )
+
+
 def test_pick_verdict_prefers_wall_over_empty_dl(tmp_path: Path):
     from pick_verdict_from_wall import pick  # noqa: E402
 

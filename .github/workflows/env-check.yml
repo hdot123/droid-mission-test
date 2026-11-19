@@ -246,7 +246,7 @@ jobs:
             --issue "$ISSUE" \
             --run-id "${{ github.run_id }}" \
             --out foreman-run.json \
-            --github-output "$GITHUB_OUTPUT" || true
+            --github-output "$GITHUB_OUTPUT"
 
       - name: Upload foreman-run wall artifact (W1)
         if: always() && hashFiles('foreman-run.json') != ''
