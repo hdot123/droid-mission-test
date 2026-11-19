@@ -1,0 +1,19 @@
+{
+  "id": "century",
+  "title": "Implement year to century and millennium helpers",
+  "state": "done",
+  "files": [
+    "century.py",
+    "tests/test_century.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_century.py -q",
+      "result": "22 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "33 passed in 0.04s"
+    }
+  ]
+}
