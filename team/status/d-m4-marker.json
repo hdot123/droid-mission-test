@@ -1,0 +1,14 @@
+{
+  "id": "d-m4-marker",
+  "title": "Create d-m4.txt half-set artifact marker",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/d-m4.txt"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/d-m4.txt",
+      "result": "pass"
+    }
+  ]
+}
