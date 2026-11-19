@@ -186,3 +186,30 @@ def test_post_comment_hard_patches_wall(tmp_path: Path, monkeypatch: pytest.Monk
     patch_wall_comment(str(wall_path), "plan_dispatch", posted=True)
     patched = json.loads(wall_path.read_text(encoding="utf-8"))
     assert patched["closeout"]["comments"]["plan_dispatch"]["posted"] is True
+
+
+def test_post_comment_hard_hard_required_fails_on_gh_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Locked issue / missing token surfaces as gh failure → exit 1 when --hard-required (B4)."""
+    import post_comment_hard  # noqa: E402
+
+    body = tmp_path / "body.md"
+    body.write_text("ping", encoding="utf-8")
+
+    def fake_run(cmd, **kwargs):
+        assert cmd[0] == "gh"
+        return subprocess.CompletedProcess(cmd, 1, "", "GraphQL: Resource not accessible")
+
+    monkeypatch.setattr(post_comment_hard.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["post_comment_hard", "--issue", "1", "--body-file", str(body), "--hard-required"],
+    )
+    assert post_comment_hard.main() == 1
+
+
+def test_workflow_post_comment_hard_steps_set_gh_token():
+    lint = ROOT / "scripts" / "team" / "lint_workflow_foreman.py"
+    r = subprocess.run([sys.executable, str(lint)], capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert "post_comment_hard step missing GH_TOKEN" not in (r.stderr + r.stdout)
