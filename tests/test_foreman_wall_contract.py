@@ -254,3 +254,9 @@ def test_workflow_post_comment_hard_steps_set_gh_token():
     r = subprocess.run([sys.executable, str(lint)], capture_output=True, text=True, cwd=ROOT)
     assert r.returncode == 0, r.stderr + r.stdout
     assert "post_comment_hard step missing GH_TOKEN" not in (r.stderr + r.stdout)
+
+
+def test_workflow_wall_exit_lint_in_contract_gate():
+    lint = ROOT / "scripts" / "team" / "lint_workflow_wall_exits.py"
+    r = subprocess.run([sys.executable, str(lint)], capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr + r.stdout

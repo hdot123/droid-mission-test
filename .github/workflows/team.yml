@@ -409,28 +409,38 @@ jobs:
           PYTHONPATH=scripts/team python3 scripts/team/validate_foreman_mode.py \
             --plan team-plan.json --mode "$FOREMAN_MODE"
 
-      - name: Patch and upload ForemanRun wall (lead)
-        if: steps.dup.outputs.duplicate != 'true'
+      - name: Record lead exit on ForemanRun wall (batch-2 / W-9)
+        if: always() && steps.dup.outputs.duplicate != 'true'
         env:
           PLAN_ISSUE_NUMBER: ${{ steps.plan.outputs.plan_issue_number }}
           FOREMAN_MODE: ${{ vars.FOREMAN_MODE || 'test' }}
+          JOB_STATUS: ${{ job.status }}
         run: |
+          if [ ! -f wall-in/foreman-run.json ]; then
+            echo "foreman-run missing for lead wall sync"
+            exit 1
+          fi
           [ -f foreman-run.json ] || cp wall-in/foreman-run.json foreman-run.json
+          RESULT="success"
+          if [ "$JOB_STATUS" = "failure" ]; then RESULT="failure"; fi
+          if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
+          PRODUCED="false"
+          if [ -f team-plan.json ]; then PRODUCED="true"; fi
           python3 - <<'PY' > /tmp/lead-patch.json
           import json, os
           p = os.environ.get("PLAN_ISSUE_NUMBER", "")
           patch = {
-              "plan_issue_number": int(p) if p else None,
+              "plan_issue_number": int(p) if (p and str(p).isdigit()) else None,
               "foreman_mode": os.environ.get("FOREMAN_MODE", "test"),
           }
           print(json.dumps(patch))
           PY
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
-            --job lead --result success --produced true \
+            --job lead --result "$RESULT" --produced "$PRODUCED" \
             --patch "$(cat /tmp/lead-patch.json)"
 
-      - name: Upload foreman-run wall artifact
-        if: steps.dup.outputs.duplicate != 'true'
+      - name: Upload foreman-run wall artifact (lead exit)
+        if: always() && steps.dup.outputs.duplicate != 'true' && hashFiles('foreman-run.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: foreman-run-${{ github.run_id }}
@@ -724,7 +734,7 @@ jobs:
           echo "no failed-checks marker for ${PROCESS_ID}; job outcome unchanged"
 
       - name: Record worker delta for ForemanRun (W1 matrix)
-        if: always() && !cancelled()
+        if: always()
         env:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
@@ -739,7 +749,7 @@ jobs:
           fi
 
       - name: Upload worker delta artifact
-        if: always() && !cancelled()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: foreman-worker-delta-${{ matrix.process.id }}-${{ github.run_id }}
@@ -750,8 +760,9 @@ jobs:
     name: workers-wall-merge (ForemanRun workers slice)
     needs: [lead, worker]
     if: >-
-      always() && needs.lead.result == 'success' &&
-      needs.lead.outputs.duplicate != 'true'
+      always() && needs.lead.outputs.duplicate != 'true' &&
+      (needs.lead.result == 'success' || needs.lead.result == 'failure' ||
+      needs.lead.result == 'cancelled')
     runs-on: ubuntu-latest
     outputs:
       prep_should_run: ${{ steps.prep_gate.outputs.prep_should_run }}
@@ -772,6 +783,7 @@ jobs:
           path: deltas
 
       - name: Merge worker deltas into wall
+        id: merge_worker_deltas
         run: |
           if [ ! -f wall-in/foreman-run.json ]; then
             echo "foreman-run artifact missing in workers-wall-merge"
@@ -779,10 +791,25 @@ jobs:
           fi
           cp wall-in/foreman-run.json foreman-run.json
           PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py --wall foreman-run.json --delta-dir deltas
+
+      - name: Record worker job exit on ForemanRun wall
+        if: always()
+        run: |
+          if [ ! -f foreman-run.json ]; then
+            if [ ! -f wall-in/foreman-run.json ]; then
+              echo "foreman-run missing for worker wall sync"
+              exit 1
+            fi
+            cp wall-in/foreman-run.json foreman-run.json
+          fi
+          if [ -d deltas ] && [ "${{ steps.merge_worker_deltas.outcome }}" = "success" ]; then
+            PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py --wall foreman-run.json --delta-dir deltas
+          fi
+          PRODUCED="$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); print('true' if (w.get('workers') or {}).get('completed_pids') else 'false')")"
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
             --job worker \
             --result "${{ needs.worker.result }}" \
-            --produced "$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); print('true' if (w.get('workers') or {}).get('completed_pids') else 'false')")"
+            --produced "$PRODUCED"
 
       - name: Prep gate from wall (I1)
         id: prep_gate
@@ -798,6 +825,7 @@ jobs:
           PY
 
       - name: Upload foreman-run wall artifact
+        if: always() && hashFiles('foreman-run.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: foreman-run-${{ github.run_id }}
@@ -1916,7 +1944,29 @@ jobs:
             --hard-required \
             --wall-patch '{"key":"replan_notice_order","wall":"foreman-run.json"}'
 
-      - name: Upload foreman-run wall after replan comments
+      - name: Record replan exit on ForemanRun wall
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ -f foreman-run.json ]; then
+            :
+          elif [ -f wall-in/foreman-run.json ]; then
+            cp wall-in/foreman-run.json foreman-run.json
+          else
+            echo "foreman-run missing for replan wall sync"
+            exit 1
+          fi
+          RESULT="success"
+          if [ "$JOB_STATUS" = "failure" ]; then RESULT="failure"; fi
+          if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
+          PRODUCED="false"
+          if [ -f team-plan-v2.json ]; then PRODUCED="true"; fi
+          PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
+            --job replan --result "$RESULT" --produced "$PRODUCED"
+
+      - name: Upload foreman-run wall artifact (replan exit)
+        if: always() && hashFiles('foreman-run.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: foreman-run-${{ github.run_id }}
@@ -2212,7 +2262,7 @@ jobs:
           echo "no failed-checks marker for ${PROCESS_ID}; job outcome unchanged"
 
       - name: Record worker2 delta for ForemanRun
-        if: always() && !cancelled()
+        if: always()
         env:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
@@ -2224,7 +2274,7 @@ jobs:
             --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
 
       - name: Upload worker2 delta artifact
-        if: always() && !cancelled()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: foreman-worker2-delta-${{ matrix.process.id }}-${{ github.run_id }}
@@ -2234,7 +2284,10 @@ jobs:
   workers2-wall-merge:
     name: workers2-wall-merge (round 2 workers slice)
     needs: [replan, worker2]
-    if: always() && needs.replan.result == 'success'
+    if: >-
+      always() &&
+      (needs.replan.result == 'success' || needs.replan.result == 'failure' ||
+      needs.replan.result == 'cancelled')
     runs-on: ubuntu-latest
     outputs:
       prep_should_run: ${{ steps.prep2_gate.outputs.prep_should_run }}
@@ -2252,6 +2305,7 @@ jobs:
           pattern: foreman-worker2-delta-*-${{ github.run_id }}
           path: deltas
       - name: Merge worker2 deltas
+        id: merge_worker2_deltas
         run: |
           if [ ! -f wall-in/foreman-run.json ]; then
             echo "foreman-run missing in workers2-wall-merge"
@@ -2260,8 +2314,23 @@ jobs:
           cp wall-in/foreman-run.json foreman-run.json
           PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py \
             --wall foreman-run.json --delta-dir deltas --round 2
+      - name: Record worker2 job exit on ForemanRun wall
+        if: always()
+        run: |
+          if [ ! -f foreman-run.json ]; then
+            if [ ! -f wall-in/foreman-run.json ]; then
+              echo "foreman-run missing for worker2 wall sync"
+              exit 1
+            fi
+            cp wall-in/foreman-run.json foreman-run.json
+          fi
+          if [ -d deltas ] && [ "${{ steps.merge_worker2_deltas.outcome }}" = "success" ]; then
+            PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py \
+              --wall foreman-run.json --delta-dir deltas --round 2
+          fi
+          PRODUCED="$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); print('true' if (w.get('workers') or {}).get('completed_pids') else 'false')")"
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
-            --job worker2 --result "${{ needs.worker2.result }}" --produced true
+            --job worker2 --result "${{ needs.worker2.result }}" --produced "$PRODUCED"
       - name: Prep2 gate from wall (I1)
         id: prep2_gate
         run: |
@@ -2275,6 +2344,7 @@ jobs:
           print("prep2_should_run:", flag)
           PY
       - name: Upload foreman-run wall artifact
+        if: always() && hashFiles('foreman-run.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: foreman-run-${{ github.run_id }}
@@ -2298,6 +2368,12 @@ jobs:
         with:
           ref: ${{ needs.prep.outputs.candidate_branch }}
           fetch-depth: 0
+
+      - name: Download ForemanRun wall
+        uses: actions/download-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: wall-in
 
       - name: Download plan, plan v2, and round 1 evidence
         uses: actions/download-artifact@v4
@@ -2690,6 +2766,28 @@ jobs:
             PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
               --issue "$PLAN_ISSUE_NUMBER" --body-file prep2-comment.md --hard-required
           fi
+
+      - name: Patch ForemanRun (prep2)
+        if: always()
+        run: |
+          if [ ! -f wall-in/foreman-run.json ]; then
+            echo "foreman-run missing in prep2 patch"
+            exit 1
+          fi
+          cp wall-in/foreman-run.json foreman-run.json
+          PREP2_RESULT="${{ steps.prep2.outcome == 'success' && 'success' || 'failure' }}"
+          PRODUCED="false"
+          if [ -f evidence/manifest.json ]; then PRODUCED="true"; fi
+          PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
+            --job prep2 --result "$PREP2_RESULT" --produced "$PRODUCED"
+
+      - name: Upload foreman-run wall artifact (prep2)
+        if: always() && hashFiles('foreman-run.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: foreman-run.json
+          overwrite: true
 
   validate2:
     name: validator round 2 (squad-leader style, evidence only)
@@ -3263,6 +3361,34 @@ jobs:
             --issue "$ISSUE_NUMBER" \
             --body-file final-comment.md \
             --hard-required
+
+      - name: Record assemble exit on ForemanRun wall (W5, no backfill)
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ ! -f foreman-run.json ]; then
+            if [ ! -f wall-root/foreman-run.json ]; then
+              echo "foreman-run missing for assemble wall sync"
+              exit 1
+            fi
+            cp wall-root/foreman-run.json foreman-run.json
+          fi
+          RESULT="success"
+          if [ "$JOB_STATUS" = "failure" ]; then RESULT="failure"; fi
+          if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
+          PRODUCED="false"
+          if [ -f final-verdict.json ]; then PRODUCED="true"; fi
+          PYTHONPATH=scripts/team python3 scripts/team/assemble_chain_facts.py \
+            --wall foreman-run.json --assemble-exit --result "$RESULT" --produced "$PRODUCED"
+
+      - name: Upload foreman-run wall artifact (assemble exit)
+        if: always() && hashFiles('foreman-run.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: foreman-run.json
+          overwrite: true
 
       - name: Fail the run when validation did not pass or the PR failed
         if: >-
