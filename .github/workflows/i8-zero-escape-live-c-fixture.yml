@@ -1,0 +1,71 @@
+name: I8 zero-escape live — scene C (PAT absent fixture)
+
+# Controlled equivalence for I8-C when production PROJECTS_STATE_PAT must not be removed.
+# Replays env-check L0 wall build with PAT intentionally absent; documents team.yml lead gate.
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Synthetic issue number for foreman-run wall (0 ok)"
+        required: false
+        default: "99901"
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  pat-absent-l0:
+    name: L0 env slice — PROJECTS_STATE_PAT absent (I8-C)
+    runs-on: ubuntu-latest
+    outputs:
+      foreman_ok: ${{ steps.wall.outputs.foreman_ok }}
+      hard_fail_count: ${{ steps.wall.outputs.hard_fail_count }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build synthetic env-check results (PAT missing)
+        run: |
+          : > env-check-results.tsv
+          printf 'FAIL\tSecret 名单\tPROJECTS_STATE_PAT 缺失\n' >> env-check-results.tsv
+          printf 'PASS\t并发队伍\tI8-C fixture (synthetic)\n' >> env-check-results.tsv
+
+      - name: Build ForemanRun wall (L0)
+        id: wall
+        env:
+          S_FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+          S_WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          S_PROJECTS_STATE_PAT: ""
+          FOREMAN_MODE: ${{ vars.FOREMAN_MODE || 'test' }}
+        run: |
+          ISSUE="${{ inputs.issue_number }}"
+          python3 scripts/team/env_check_wall.py \
+            --results-tsv env-check-results.tsv \
+            --issue "$ISSUE" \
+            --run-id "${{ github.run_id }}" \
+            --out foreman-run.json \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Assert team.yml lead would not start
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          w = json.load(open("foreman-run.json"))
+          env = w.get("env") or {}
+          assert env.get("hard_fail_count", 0) > 0, env
+          assert env.get("secrets_required", {}).get("PROJECTS_STATE_PAT") is False
+          assert env.get("ok") is False
+          # team.yml lead: needs.env-check.outputs.foreman_ok == 'true'
+          foreman_ok = "false" if env.get("hard_fail_count", 0) else "true"
+          assert foreman_ok == "false"
+          print("I8-C criteria: hard_fail_count=", env.get("hard_fail_count"),
+                "PROJECTS_STATE_PAT present=", env.get("secrets_required", {}).get("PROJECTS_STATE_PAT"),
+                "foreman_ok=", foreman_ok)
+          PY
+
+      - name: Upload foreman-run wall artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}-i8-c
+          path: foreman-run.json
