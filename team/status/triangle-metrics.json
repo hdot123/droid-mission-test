@@ -1,0 +1,21 @@
+{
+  "id": "triangle-metrics",
+  "title": "Implement triangle classification and metrics (triangle.py)",
+  "state": "done",
+  "files": [
+    "triangle.py",
+    "tests/test_triangle.py",
+    "team/handoffs/triangle-metrics.md",
+    "team/status/triangle-metrics.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_triangle.py -q",
+      "result": "20 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "31 passed"
+    }
+  ]
+}
