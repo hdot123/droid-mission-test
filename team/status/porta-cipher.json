@@ -1,0 +1,21 @@
+{
+  "id": "porta-cipher",
+  "title": "Implement porta.py (Porta cipher, reciprocal table)",
+  "state": "done",
+  "files": [
+    "porta.py",
+    "tests/test_porta.py",
+    "team/handoffs/porta-cipher.md",
+    "team/status/porta-cipher.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_porta.py -q",
+      "result": "passed: 21 tests"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 32 tests"
+    }
+  ]
+}
