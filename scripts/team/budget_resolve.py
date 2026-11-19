@@ -28,21 +28,36 @@ def droid_wall_sec(
 ) -> int:
     if override_sec is not None:
         return int(override_sec)
-    return int(role_budget(wall, role).get("droid_wall_sec", 600))
+    rb = role_budget(wall, role)
+    # Role defaults come from default_budgets() merge — no silent 600 for validator.
+    if "droid_wall_sec" not in rb:
+        raise ValueError(f"budgets.roles.{role}.droid_wall_sec missing after merge")
+    return int(rb["droid_wall_sec"])
 
 
 def adopt_reserve_sec(wall: dict[str, Any] | None, role: str = "validator") -> int:
-    return int(role_budget(wall, role).get("adopt_reserve_sec", 0))
+    rb = role_budget(wall, role)
+    if role == "validator":
+        if "adopt_reserve_sec" not in rb:
+            raise ValueError("budgets.roles.validator.adopt_reserve_sec missing after merge")
+        return int(rb["adopt_reserve_sec"])
+    return int(rb.get("adopt_reserve_sec", 0))
 
 
 def validator_session_budget(wall: dict[str, Any] | None) -> tuple[int, int]:
     """Return (droid_wall_sec, adopt_reserve_sec) from wall config."""
     rb = role_budget(wall, "validator")
-    return int(rb.get("droid_wall_sec", 480)), int(rb.get("adopt_reserve_sec", 120))
+    return int(rb["droid_wall_sec"]), int(rb["adopt_reserve_sec"])
 
 
 def job_wall_min(wall: dict[str, Any] | None, role: str) -> int:
-    return int(role_budget(wall, role).get("job_wall_min", 15))
+    return int(role_budget(wall, role)["job_wall_min"])
+
+
+# ForemanRun `budgets.roles.validator.job_wall_min` (12) is the contractual slice
+# for droid+adopt budgeting. GitHub Actions `timeout-minutes: 15` is a wider
+# platform job envelope (precheck/droid/merge/adopt/upload); do not conflate them.
+GITHUB_VALIDATE_JOB_TIMEOUT_MIN = 15
 
 
 def assert_validator_job_budget(wall: dict[str, Any] | None, *, job_timeout_min: int) -> list[str]:

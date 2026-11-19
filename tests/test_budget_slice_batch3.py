@@ -82,3 +82,92 @@ def test_lint_workflow_budgets_green():
     lint = ROOT / "scripts" / "team" / "lint_workflow_budgets.py"
     r = subprocess.run([sys.executable, str(lint)], capture_output=True, text=True, cwd=ROOT)
     assert r.returncode == 0, r.stderr + r.stdout
+
+
+def test_validator_droid_wall_not_600_when_role_stripped():
+    wall = init_wall(run_id="b3e", issue_number=5)
+    del wall["budgets"]["roles"]["validator"]["droid_wall_sec"]
+    assert droid_wall_sec(wall, "validator") == 480
+    del wall["budgets"]["roles"]["validator"]
+    assert droid_wall_sec(wall, "validator") == 480
+
+
+def test_validator_droid_subprocess_uses_480s_timeout(tmp_path: Path, monkeypatch):
+    import run_droid_session  # noqa: E402
+
+    wall = init_wall(run_id="b3f", issue_number=6)
+    wall_path = tmp_path / "foreman-run.json"
+    save_wall(wall, wall_path)
+    prompt = tmp_path / "p.txt"
+    prompt.write_text("prompt", encoding="utf-8")
+    captured: list[list[str]] = []
+
+    def fake_run(cmd, **kwargs):
+        captured.append(list(cmd))
+        from types import SimpleNamespace
+
+        return SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setenv("FOREMAN_RUN_PATCH", "1")
+    monkeypatch.setattr(run_droid_session.subprocess, "run", fake_run)
+    code = run_droid_session.run_session(
+        wall_path=wall_path,
+        role="validator",
+        prompt_file=prompt,
+        stream_out=tmp_path / "s.jsonl",
+        exit_out=tmp_path / "exit.txt",
+        wall_override_sec=None,
+        enable_heartbeat=False,
+    )
+    assert code == 0
+    assert captured, "subprocess.run was not called"
+    assert "480s" in captured[0]
+    assert "600s" not in captured[0]
+
+
+def test_validator_override_replaces_480s_only_when_set(tmp_path: Path):
+    import run_droid_session  # noqa: E402
+
+    wall = init_wall(run_id="b3g", issue_number=7)
+    wall_path = tmp_path / "foreman-run.json"
+    save_wall(wall, wall_path)
+    cmd, sec = run_droid_session.build_droid_timeout_cmd(
+        wall_path=wall_path,
+        role="validator",
+        prompt_text="x",
+        wall_override_sec=15,
+    )
+    assert sec == 15
+    assert "15s" in cmd
+    assert "480s" not in cmd
+
+
+def test_adopt_step_wraps_gnu_timeout_from_wall(tmp_path: Path, monkeypatch):
+    import run_adopt_step  # noqa: E402
+
+    wall = init_wall(run_id="b3h", issue_number=8)
+    wall_path = tmp_path / "foreman-run.json"
+    save_wall(wall, wall_path)
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "manifest.json").write_text("{}", encoding="utf-8")
+    captured: list[list[str]] = []
+
+    def fake_run(cmd, env=None):
+        captured.append(list(cmd))
+        return subprocess.CompletedProcess(cmd, 1)
+
+    monkeypatch.setenv("FOREMAN_RUN_PATCH", "1")
+    monkeypatch.setattr(run_adopt_step.subprocess, "run", fake_run)
+    run_adopt_step.run_adopt(
+        wall_path=wall_path,
+        work_dir=work,
+        droid_exit=None,
+        merge_step_ran=False,
+        round_num=1,
+        round1_verdict=None,
+        github_output=None,
+    )
+    assert captured
+    assert "120s" in captured[0]
+    assert captured[0][0] == "timeout"

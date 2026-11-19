@@ -1531,7 +1531,6 @@ jobs:
       - name: Adopt verdict into ForemanRun wall (P0-1)
         id: adopt
         if: always()
-        timeout-minutes: 2
         run: |
           if [ ! -f foreman-run.json ]; then
             if [ ! -f wall-in/foreman-run.json ]; then
@@ -1540,23 +1539,13 @@ jobs:
             fi
             cp wall-in/foreman-run.json foreman-run.json
           fi
-          ADOPT_RESERVE_SEC=$(PYTHONPATH=scripts/team python3 -c "import json; from budget_resolve import adopt_reserve_sec; print(adopt_reserve_sec(json.load(open('foreman-run.json'))))")
-          echo "adopt step within wall adopt_reserve budget: ${ADOPT_RESERVE_SEC}s"
           DROID_EXIT=-1
           [ -f work/droid-exit.txt ] && DROID_EXIT=$(cat work/droid-exit.txt)
           MERGE_FLAG=""
           [ -f verdict.json ] && MERGE_FLAG="--merge-step-ran"
-          PYTHONPATH=scripts/team python3 scripts/team/adopt_verdict.py \
-            --wall foreman-run.json --work-dir work --droid-exit "$DROID_EXIT" $MERGE_FLAG
-          PYTHONPATH=scripts/team python3 - <<'PY'
-          import json, os
-          v = json.load(open("verdict.json"))
-          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-              out.write(f"overall={v.get('overall','fail')}\n")
-              failed = [p["id"] for p in v.get("processes",[]) if p.get("verdict")!="pass"]
-              out.write("failed_processes=" + json.dumps(failed) + "\n")
-              out.write(f"unattributed_failure={'true' if v.get('unattributed_failure') else 'false'}\n")
-          PY
+          FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_adopt_step.py \
+            --wall foreman-run.json --work-dir work --droid-exit "$DROID_EXIT" \
+            --github-output "$GITHUB_OUTPUT" $MERGE_FLAG
         env:
           PYTHONPATH: scripts/team
 
@@ -3137,7 +3126,6 @@ jobs:
       - name: Adopt verdict into ForemanRun wall round 2 (P0-1)
         id: adopt2
         if: always()
-        timeout-minutes: 2
         run: |
           if [ ! -f foreman-run.json ]; then
             if [ ! -f wall-in/foreman-run.json ]; then
@@ -3146,26 +3134,17 @@ jobs:
             fi
             cp wall-in/foreman-run.json foreman-run.json
           fi
-          ADOPT_RESERVE_SEC=$(PYTHONPATH=scripts/team python3 -c "import json; from budget_resolve import adopt_reserve_sec; print(adopt_reserve_sec(json.load(open('foreman-run.json'))))")
-          echo "adopt step within wall adopt_reserve budget: ${ADOPT_RESERVE_SEC}s"
           DROID_EXIT=-1
           [ -f work/droid-exit.txt ] && DROID_EXIT=$(cat work/droid-exit.txt)
           MERGE_FLAG=""
           [ -f verdict.json ] && MERGE_FLAG="--merge-step-ran"
           ROUND1=""
           [ -f round1/verdict.json ] && ROUND1="--round1-verdict round1/verdict.json"
-          PYTHONPATH=scripts/team python3 scripts/team/adopt_verdict.py \
+          FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_adopt_step.py \
             --wall foreman-run.json --work-dir work --droid-exit "$DROID_EXIT" \
-            --round 2 $MERGE_FLAG $ROUND1
-          PYTHONPATH=scripts/team python3 - <<'PY'
-          import json, os
-          v = json.load(open("verdict.json"))
-          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-              out.write(f"overall={v.get('overall','fail')}\n")
-              failed = [p["id"] for p in v.get("processes",[]) if p.get("verdict")!="pass"]
-              out.write("failed_processes=" + json.dumps(failed) + "\n")
-              out.write("flips=" + json.dumps(v.get("flips") or [], ensure_ascii=False) + "\n")
-          PY
+            --round 2 --github-output "$GITHUB_OUTPUT" $MERGE_FLAG $ROUND1
+        env:
+          PYTHONPATH: scripts/team
 
       - name: Derive validate2 job conclusion (W4)
         id: validate2_conclusion

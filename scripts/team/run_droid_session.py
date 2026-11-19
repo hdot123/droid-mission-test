@@ -92,27 +92,18 @@ def _patch_session_outcome(
     save_wall(deep_merge(wall, patch), wall_path)
 
 
-def run_session(
+def build_droid_timeout_cmd(
     *,
-    wall_path: Path,
+    wall_path: Path | None,
     role: str,
-    prompt_file: Path,
-    stream_out: Path,
-    exit_out: Path,
-    wall_override_sec: int | None,
-    enable_heartbeat: bool,
-) -> int:
-    if os.environ.get(FOREMAN_RUN_PATCH_ENV) != "1":
-        print(f"{FOREMAN_RUN_PATCH_ENV}=1 required for foreman droid session", file=sys.stderr)
-        return 2
-    if not prompt_file.is_file():
-        print(f"prompt file missing: {prompt_file}", file=sys.stderr)
-        return 2
-    wall = load_wall(wall_path) if wall_path.is_file() else None
+    prompt_text: str,
+    wall_override_sec: int | None = None,
+    droid_bin: str = DROID_BIN,
+) -> tuple[list[str], int]:
+    wall = load_wall(wall_path) if wall_path and wall_path.is_file() else None
     wall_sec = droid_wall_sec(wall, role, override_sec=wall_override_sec)
-    prompt_text = prompt_file.read_text(encoding="utf-8")
     droid_cmd = [
-        DROID_BIN,
+        droid_bin,
         "exec",
         "--auto",
         "high",
@@ -129,6 +120,32 @@ def run_session(
         f"{wall_sec}s",
         *droid_cmd,
     ]
+    return timeout_cmd, wall_sec
+
+
+def run_session(
+    *,
+    wall_path: Path,
+    role: str,
+    prompt_file: Path,
+    stream_out: Path,
+    exit_out: Path,
+    wall_override_sec: int | None,
+    enable_heartbeat: bool,
+) -> int:
+    if os.environ.get(FOREMAN_RUN_PATCH_ENV) != "1":
+        print(f"{FOREMAN_RUN_PATCH_ENV}=1 required for foreman droid session", file=sys.stderr)
+        return 2
+    if not prompt_file.is_file():
+        print(f"prompt file missing: {prompt_file}", file=sys.stderr)
+        return 2
+    prompt_text = prompt_file.read_text(encoding="utf-8")
+    timeout_cmd, wall_sec = build_droid_timeout_cmd(
+        wall_path=wall_path,
+        role=role,
+        prompt_text=prompt_text,
+        wall_override_sec=wall_override_sec,
+    )
     print(
         "foreman droid session:",
         f"role={role}",

@@ -7,8 +7,10 @@ import re
 import sys
 from pathlib import Path
 
-from budget_resolve import assert_validator_job_budget
+from budget_resolve import GITHUB_VALIDATE_JOB_TIMEOUT_MIN, assert_validator_job_budget
 from foreman_run_lib import default_budgets, init_wall
+
+ADOPT_STEP = "run_adopt_step.py"
 
 
 SESSION_RUNNER = "run_droid_session.py"
@@ -89,6 +91,33 @@ def lint_team_yml(workflow: Path) -> list[str]:
 
     if "DROID_TIMEOUT_SEC=600" in text:
         errs.append("hardcoded validator DROID_TIMEOUT_SEC=600 remains in team.yml")
+
+    vmin = default_budgets()["roles"]["validator"].get("job_wall_min")
+    if vmin != 12:
+        errs.append("wall validator job_wall_min must stay 12 (contractual slice)")
+    if f"timeout-minutes: {GITHUB_VALIDATE_JOB_TIMEOUT_MIN}" not in vchunk:
+        errs.append(
+            f"validate GitHub job must keep timeout-minutes: {GITHUB_VALIDATE_JOB_TIMEOUT_MIN} "
+            f"(platform envelope; wall job_wall_min={vmin} is separate)"
+        )
+
+    for adopt_label in (
+        "Adopt verdict into ForemanRun wall (P0-1)",
+        "Adopt verdict into ForemanRun wall round 2 (P0-1)",
+    ):
+        chunk = _step_chunk(adopt_label)
+        if not chunk:
+            errs.append(f"missing adopt step: {adopt_label}")
+            continue
+        if ADOPT_STEP not in chunk:
+            errs.append(f"{adopt_label} must invoke {ADOPT_STEP}")
+        if "FOREMAN_RUN_PATCH=1" not in chunk:
+            errs.append(f"{adopt_label} must set FOREMAN_RUN_PATCH=1")
+        if re.search(r"timeout-minutes:\s*2\b", chunk):
+            errs.append(
+                f"{adopt_label} must not hardcode timeout-minutes: 2; "
+                "adopt reserve comes from wall via GNU timeout in run_adopt_step.py"
+            )
 
     return errs
 
