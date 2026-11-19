@@ -1,0 +1,20 @@
+{
+  "id": "i8-live-a-marker",
+  "title": "Write I8 live scenario A marker file",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/a-marker.txt",
+    "team/handoffs/i8-live-a-marker.md",
+    "team/status/i8-live-a-marker.json"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/a-marker.txt",
+      "result": "pass"
+    },
+    {
+      "command": "grep -qx i8-live-a docs/evidence/i8-scratch/a-marker.txt",
+      "result": "pass"
+    }
+  ]
+}
