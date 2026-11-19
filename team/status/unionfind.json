@@ -1,0 +1,19 @@
+{
+  "id": "unionfind",
+  "title": "Implement unionfind.py with path compression and union by rank",
+  "state": "done",
+  "files": [
+    "unionfind.py",
+    "tests/test_unionfind.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_unionfind.py -q",
+      "result": "9 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "89 passed in 3.41s"
+    }
+  ]
+}
