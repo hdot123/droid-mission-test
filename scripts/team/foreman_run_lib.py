@@ -166,13 +166,10 @@ def chain_summary_code_for_result(result: str) -> str:
 
 
 def parse_project_item_list(payload: Any) -> list[dict[str, Any]]:
-    """Normalize `gh project item-list` JSON into a list of items (W-1)."""
-    if isinstance(payload, list):
-        return payload
-    if isinstance(payload, dict):
-        items = payload.get("items")
-        return items if isinstance(items, list) else []
-    return []
+    """Backward-compatible alias; implementation lives in gh_project_parse."""
+    from gh_project_parse import parse_project_item_list as _parse
+
+    return _parse(payload)
 
 
 def patch_chain_job(

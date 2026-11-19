@@ -19,6 +19,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - name: Schema + contract pytest
-        run: pytest tests/test_foreman_wall_contract.py -q
+        run: pytest tests/test_foreman_wall_contract.py tests/test_foreman_wall_failure_paths.py tests/test_gh_project_parse_contract.py -q
       - name: Workflow foreman lint
         run: python3 scripts/team/lint_workflow_foreman.py
+      - name: gh project parse lint
+        run: python3 scripts/team/lint_gh_project_parse.py
