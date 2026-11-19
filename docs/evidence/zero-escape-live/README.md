@@ -2,7 +2,7 @@
 
 **墙合入**：`96051ba`（#508） · **lead GH_TOKEN**：`997240f`（[#553](https://github.com/hdot123/droid-mission-test/pull/553)）
 
-**声明**：活验 **A/B/C/C-team/D 均有达标归档**（B：[44529296626-B.md](./44529296626-B.md)）；旧 B run 44468619417、44527919288 **无效/未达标**。**P4 有条件通过 → 不得宣称零逃逸**。
+**声明**：活验 **A/B/C/C-team/D 均有达标归档**（B：[44529296626-B.md](./44529296626-B.md)）；旧 B run 44468619417、44527919288 **无效/未达标**。**P4 复审改判「通过」**（[#628](https://github.com/hdot123/droid-mission-test/pull/628)，见 [P4 报告 §10](../../领班制-API墙零逃逸-P4独立对抗审.md)）；范围仅限本仓 `main`。
 
 **Billing（2026-11-19）**：曾阻塞 hosted runner（见 [44476313896-orchestrator-D-blocked.md](./44476313896-orchestrator-D-blocked.md)）；恢复后 orchestrator [44522049816](https://github.com/hdot123/droid-mission-test/actions/runs/44522049816) 已正常。编排 **watch 无 cancel**（#574/#578）。
 
