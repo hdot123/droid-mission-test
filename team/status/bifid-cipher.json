@@ -1,0 +1,21 @@
+{
+  "id": "bifid-cipher",
+  "title": "Bifid cipher (Polybius square + period transposition)",
+  "state": "done",
+  "files": [
+    "bifid.py",
+    "tests/test_bifid.py",
+    "team/handoffs/bifid-cipher.md",
+    "team/status/bifid-cipher.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bifid.py -q",
+      "result": "15 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "44 passed in 2.82s"
+    }
+  ]
+}
