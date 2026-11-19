@@ -20,9 +20,12 @@ DEATH_MATRIX = (
     ("lead", "failure"),
     ("lead", "cancelled"),
     ("worker", "failure"),
+    ("worker", "cancelled"),
+    ("worker", "skipped"),
     ("prep", "failure"),
     ("validate", "failure"),
     ("replan", "cancelled"),
+    ("worker2", "cancelled"),
     ("prep2", "failure"),
     ("assemble", "failure"),
 )
@@ -56,8 +59,12 @@ def test_chain_seat_records_non_success_exit(tmp_path: Path, job: str, result: s
     synced = json.loads(wall_path.read_text(encoding="utf-8"))
     node = synced["chain"][job]
     assert node["result"] == result, node
-    assert node["started"] is True
-    assert node["chain_facts"]["summary_code"] in ("failed", "cancelled")
+    if result == "skipped":
+        assert node["started"] is False
+        assert node["chain_facts"]["summary_code"] == "not_started"
+    else:
+        assert node["started"] is True
+        assert node["chain_facts"]["summary_code"] in ("failed", "cancelled")
     schema_errs = validate_with_jsonschema(synced)
     assert not schema_errs, schema_errs
 

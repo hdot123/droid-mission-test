@@ -734,7 +734,7 @@ jobs:
           echo "no failed-checks marker for ${PROCESS_ID}; job outcome unchanged"
 
       - name: Record worker delta for ForemanRun (W1 matrix)
-        if: always() && !cancelled()
+        if: always()
         env:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
@@ -749,7 +749,7 @@ jobs:
           fi
 
       - name: Upload worker delta artifact
-        if: always() && !cancelled()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: foreman-worker-delta-${{ matrix.process.id }}-${{ github.run_id }}
@@ -760,8 +760,9 @@ jobs:
     name: workers-wall-merge (ForemanRun workers slice)
     needs: [lead, worker]
     if: >-
-      always() && !cancelled() && needs.lead.outputs.duplicate != 'true' &&
-      (needs.lead.result == 'success' || needs.lead.result == 'failure')
+      always() && needs.lead.outputs.duplicate != 'true' &&
+      (needs.lead.result == 'success' || needs.lead.result == 'failure' ||
+      needs.lead.result == 'cancelled')
     runs-on: ubuntu-latest
     outputs:
       prep_should_run: ${{ steps.prep_gate.outputs.prep_should_run }}
@@ -792,7 +793,7 @@ jobs:
           PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py --wall foreman-run.json --delta-dir deltas
 
       - name: Record worker job exit on ForemanRun wall
-        if: always() && !cancelled()
+        if: always()
         run: |
           if [ ! -f foreman-run.json ]; then
             if [ ! -f wall-in/foreman-run.json ]; then
@@ -1944,7 +1945,7 @@ jobs:
             --wall-patch '{"key":"replan_notice_order","wall":"foreman-run.json"}'
 
       - name: Record replan exit on ForemanRun wall
-        if: always() && !cancelled()
+        if: always()
         env:
           JOB_STATUS: ${{ job.status }}
         run: |
@@ -1965,7 +1966,7 @@ jobs:
             --job replan --result "$RESULT" --produced "$PRODUCED"
 
       - name: Upload foreman-run wall artifact (replan exit)
-        if: always() && !cancelled() && hashFiles('foreman-run.json') != ''
+        if: always() && hashFiles('foreman-run.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: foreman-run-${{ github.run_id }}
@@ -2261,7 +2262,7 @@ jobs:
           echo "no failed-checks marker for ${PROCESS_ID}; job outcome unchanged"
 
       - name: Record worker2 delta for ForemanRun
-        if: always() && !cancelled()
+        if: always()
         env:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
@@ -2273,7 +2274,7 @@ jobs:
             --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
 
       - name: Upload worker2 delta artifact
-        if: always() && !cancelled()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: foreman-worker2-delta-${{ matrix.process.id }}-${{ github.run_id }}
@@ -2284,8 +2285,9 @@ jobs:
     name: workers2-wall-merge (round 2 workers slice)
     needs: [replan, worker2]
     if: >-
-      always() && !cancelled() &&
-      (needs.replan.result == 'success' || needs.replan.result == 'failure')
+      always() &&
+      (needs.replan.result == 'success' || needs.replan.result == 'failure' ||
+      needs.replan.result == 'cancelled')
     runs-on: ubuntu-latest
     outputs:
       prep_should_run: ${{ steps.prep2_gate.outputs.prep_should_run }}
@@ -2313,7 +2315,7 @@ jobs:
           PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py \
             --wall foreman-run.json --delta-dir deltas --round 2
       - name: Record worker2 job exit on ForemanRun wall
-        if: always() && !cancelled()
+        if: always()
         run: |
           if [ ! -f foreman-run.json ]; then
             if [ ! -f wall-in/foreman-run.json ]; then

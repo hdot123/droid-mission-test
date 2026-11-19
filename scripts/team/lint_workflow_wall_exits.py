@@ -20,6 +20,17 @@ CHAIN_EXIT_OWNERS: dict[str, str] = {
     "assemble": "assemble",
 }
 
+MERGE_UPSTREAM_CANCELLED: dict[str, str] = {
+    "workers-wall-merge": "needs.lead.result == 'cancelled'",
+    "workers2-wall-merge": "needs.replan.result == 'cancelled'",
+}
+
+WALL_ACCOUNTING_MARKERS = (
+    "wall_sync_job.py",
+    "assemble_chain_facts.py",
+    "write_worker_delta.py",
+)
+
 JOB_HEADER = re.compile(r"^  (?P<name>[a-z0-9-]+):\n", re.MULTILINE)
 
 
@@ -54,13 +65,72 @@ def wall_sync_always_ok(job_text: str, chain_job: str) -> tuple[bool, str]:
     return False, f"no wall_sync/assemble-exit step with if: always() for chain.{chain_job}"
 
 
+def step_if_expr(step_text: str) -> str | None:
+    """First step-level if: in the chunk (before run:/uses:), not downstream job if."""
+    for line in step_text.splitlines()[1:14]:
+        if re.match(r"\s+(run:|uses:)", line):
+            break
+        m = re.match(r"\s+if:\s*\$\{\{([^}]+)\}\}", line)
+        if m:
+            return m.group(1).strip()
+        m2 = re.match(r"\s+if:\s*(.+)", line)
+        if m2:
+            return m2.group(1).strip()
+    return None
+
+
 def step_has_always(step_text: str) -> bool:
-    first_lines = "\n".join(step_text.splitlines()[:12])
-    if re.search(r"if:\s*always\(\)", first_lines):
-        return True
-    if re.search(r"if:\s*\$\{\{\s*always\(\)", first_lines):
-        return True
-    return bool(re.search(r"if:\s*always\(\)", step_text[:400]))
+    expr = step_if_expr(step_text)
+    if not expr:
+        return "if:" not in step_text[:120]
+    if "!cancelled()" in expr:
+        return False
+    return "always()" in expr
+
+
+def merge_jobs_admit_upstream_cancelled(text: str, spans: dict[str, tuple[int, int]]) -> list[str]:
+    errs: list[str] = []
+    for job, need_cancelled in MERGE_UPSTREAM_CANCELLED.items():
+        if job not in spans:
+            errs.append(f"{job}: workflow job not found (cancelled merge gate)")
+            continue
+        start, end = spans[job]
+        job_text = text[start:end]
+        m = re.search(r"\n    if:\s*([\s\S]*?)\n    runs-on:", job_text)
+        if not m:
+            errs.append(f"{job}: missing job-level if (cancelled merge gate)")
+            continue
+        block = re.sub(r"\s+", " ", m.group(1).replace(">-", " "))
+        if need_cancelled.replace(" ", "") not in block.replace(" ", ""):
+            errs.append(f"{job}: job if must include {need_cancelled}")
+        if "!cancelled()" in block:
+            errs.append(f"{job}: merge job if must not use !cancelled() (workflow-cancel wall sync)")
+    return errs
+
+
+def wall_accounting_steps_no_cancelled(text: str) -> list[str]:
+    """写账/上传步在 workflow cancel 时仍须可执行；禁止 always() && !cancelled()."""
+    errs: list[str] = []
+    for part in re.split(r"\n      - name:", text):
+        if not part.strip():
+            continue
+        chunk = "- name:" + part if not part.startswith("- name:") else part
+        name_m = re.search(r"name:\s*(.+)", chunk)
+        step_name = name_m.group(1).strip() if name_m else "(unknown)"
+        is_wall_sync = any(marker in chunk for marker in WALL_ACCOUNTING_MARKERS)
+        is_wall_upload = "Upload foreman-run" in step_name or (
+            "Upload worker" in step_name and "delta" in step_name.lower()
+        )
+        if not is_wall_sync and not is_wall_upload:
+            continue
+        if "assemble_chain_facts.py" in chunk and "--assemble-exit" not in chunk:
+            continue
+        expr = step_if_expr(chunk)
+        if expr and "!cancelled()" in expr:
+            errs.append(
+                f"wall accounting step must not guard on !cancelled(): {step_name}"
+            )
+    return errs
 
 
 def upload_always_ok(job_text: str, owner: str) -> tuple[bool, str]:
@@ -128,6 +198,9 @@ def main() -> int:
 
     if "lead" in spans:
         errors.extend(lead_not_success_only(text[spans["lead"][0] : spans["lead"][1]]))
+
+    errors.extend(merge_jobs_admit_upstream_cancelled(text, spans))
+    errors.extend(wall_accounting_steps_no_cancelled(text))
 
     if errors:
         print("wall exit lint failures:", *errors, sep="\n", file=sys.stderr)
