@@ -30,10 +30,18 @@ on:
         required: false
       GO_GITHUB_RUN_TOKEN:
         required: false
+      PROJECTS_STATE_PAT:
+        required: false
     outputs:
       ok:
         description: "true when no hard check failed"
         value: ${{ jobs.envcheck.outputs.ok }}
+      foreman_ok:
+        description: "ForemanRun env slice ok (hard_fail_count==0)"
+        value: ${{ jobs.envcheck.outputs.foreman_ok }}
+      hard_fail_count:
+        description: "env hard failures (W3)"
+        value: ${{ jobs.envcheck.outputs.hard_fail_count }}
   workflow_dispatch:
     inputs:
       issue_number:
@@ -59,6 +67,8 @@ jobs:
     timeout-minutes: 5
     outputs:
       ok: ${{ steps.gate.outputs.ok }}
+      foreman_ok: ${{ steps.wall.outputs.foreman_ok }}
+      hard_fail_count: ${{ steps.wall.outputs.hard_fail_count }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,6 +83,7 @@ jobs:
           S_WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
           S_GW_TOKEN_KNOWN: ${{ secrets.GW_TOKEN_KNOWN }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
         run: |
           RESULTS=env-check-results.tsv
           : > "$RESULTS"
@@ -144,7 +155,7 @@ jobs:
           # 4. Secrets presence (names only, values never printed)
           python3 - <<'PY' >> "$RESULTS"
           import os
-          for name in ("FACTORY_API_KEY", "WORKER_CI_KEY", "GW_TOKEN_KNOWN", "GO_GITHUB_RUN_TOKEN"):
+          for name in ("FACTORY_API_KEY", "WORKER_CI_KEY", "GW_TOKEN_KNOWN", "GO_GITHUB_RUN_TOKEN", "PROJECTS_STATE_PAT"):
               present = bool(os.environ.get("S_" + name))
               print(f"{'PASS' if present else 'FAIL'}\tSecret 名单\t{name} {'在册' if present else '缺失'}")
           PY
@@ -179,11 +190,21 @@ jobs:
           # 6. Board config surface (GITHUB_TOKEN has no Projects access: boundary, not a pass)
           if [ "${PROJECT_NUMBER:-0}" != "0" ]; then
             OWNER="${GITHUB_REPOSITORY%%/*}"
-            if gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json > project.json 2> project-err.txt; then
-              add PASS "板面配置" "项目板 #$PROJECT_NUMBER 可读（字段细查见板面纪律，字段值由 workflow 代偿记录）"
+            PROJECT_TOKEN="${GH_TOKEN}"
+            if [ -n "${S_PROJECTS_STATE_PAT:-}" ]; then
+              PROJECT_TOKEN="$S_PROJECTS_STATE_PAT"
+            fi
+            GH_TOKEN="$PROJECT_TOKEN" gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json > project.json 2> project-err.txt
+            if [ -s project.json ]; then
+              add PASS "板面配置" "项目板 #$PROJECT_NUMBER 可读（PAT 探测）"
+            elif [ -z "${S_PROJECTS_STATE_PAT:-}" ]; then
+              ERR_LINE=$(head -c 300 project-err.txt | tr '\n' ' ')
+              add FAIL "板面配置" "PROJECTS_STATE_PAT 缺失且板面不可读：$ERR_LINE"
+              HARD_FAIL=1
             else
               ERR_LINE=$(head -c 300 project-err.txt | tr '\n' ' ')
-              add WARN "板面配置" "项目板读不到（令牌边界，非通过）：$ERR_LINE"
+              add FAIL "板面配置" "项目板不可读（硬失败）：$ERR_LINE"
+              HARD_FAIL=1
             fi
           else
             add WARN "板面配置" "未提供板号；且 GITHUB_TOKEN 无 Projects 权限，板面字段不在本门核查面内（边界明示）"
@@ -209,6 +230,31 @@ jobs:
           echo "---- env-check results ----"
           cat "$RESULTS"
           exit "$HARD_FAIL"
+
+      - name: Build ForemanRun wall (L0)
+        id: wall
+        if: always()
+        env:
+          S_FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+          S_WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
+          FOREMAN_MODE: ${{ vars.FOREMAN_MODE || 'test' }}
+        run: |
+          ISSUE="${{ inputs.issue_number }}"
+          python3 scripts/team/env_check_wall.py \
+            --results-tsv env-check-results.tsv \
+            --issue "$ISSUE" \
+            --run-id "${{ github.run_id }}" \
+            --out foreman-run.json \
+            --github-output "$GITHUB_OUTPUT" || true
+
+      - name: Upload foreman-run wall artifact (W1)
+        if: always() && hashFiles('foreman-run.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: foreman-run.json
+          overwrite: true
 
       - name: Render and post report
         if: always()
@@ -242,5 +288,8 @@ jobs:
           print(report)
           PY
           if [ "${ISSUE_NUMBER:-0}" != "0" ]; then
-            gh issue comment "$ISSUE_NUMBER" --body-file env-check-report.md || echo "report comment failed (report is in the run summary)"
+            PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
+              --issue "$ISSUE_NUMBER" \
+              --body-file env-check-report.md \
+              --hard-required
           fi
