@@ -74,7 +74,7 @@ jobs:
         run: |
           BODY=$(cat <<'EOF'
           ## 目标
-          I8 活验场景 B：评论硬失败（工单已锁定，派单 `--hard-required` 应失败）。
+          I8 活验场景 B：评论硬失败（lead 派单 `post_comment_hard --hard-required` 在无效 PAT 夹具下 API 401/403；工单可额外 lock，验收不依赖 lock）。
 
           ## 交付物
           仅新增 `docs/evidence/i8-scratch/b-marker.txt` 一行 `i8-live-b`。
