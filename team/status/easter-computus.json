@@ -1,0 +1,19 @@
+{
+  "id": "easter-computus",
+  "title": "公历复活节日期计算 (easter.py)",
+  "state": "done",
+  "files": [
+    "easter.py",
+    "tests/test_easter.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_easter.py -q",
+      "result": "3 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "14 passed in 0.03s (exit 0)"
+    }
+  ]
+}
