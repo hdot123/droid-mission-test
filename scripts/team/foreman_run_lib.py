@@ -143,6 +143,38 @@ def init_wall(
     }
 
 
+def normalize_chain_job_result(result: str) -> str:
+    """Map GitHub job conclusions onto chain `result` vocabulary."""
+    r = (result or "unknown").strip().lower()
+    if r == "failed":
+        return "failure"
+    if r in ("success", "failure", "cancelled", "skipped", "unknown"):
+        return r
+    return "unknown"
+
+
+def chain_summary_code_for_result(result: str) -> str:
+    """Map chain job `result` to `chain_facts.summary_code` (wall vocabulary)."""
+    normalized = normalize_chain_job_result(result)
+    return {
+        "success": "ok",
+        "failure": "failed",
+        "cancelled": "cancelled",
+        "skipped": "not_started",
+        "unknown": "not_started",
+    }[normalized]
+
+
+def parse_project_item_list(payload: Any) -> list[dict[str, Any]]:
+    """Normalize `gh project item-list` JSON into a list of items (W-1)."""
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict):
+        items = payload.get("items")
+        return items if isinstance(items, list) else []
+    return []
+
+
 def patch_chain_job(
     wall: dict[str, Any],
     job: str,
@@ -153,6 +185,7 @@ def patch_chain_job(
     chain_facts: dict[str, Any] | None = None,
     downstream_blocker: str | None = None,
 ) -> dict[str, Any]:
+    result = normalize_chain_job_result(result)
     patch: dict[str, Any] = {
         "chain": {
             job: {

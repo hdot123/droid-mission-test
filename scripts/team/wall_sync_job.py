@@ -6,7 +6,13 @@ import argparse
 import json
 import sys
 
-from foreman_run_lib import load_wall, patch_chain_job, save_wall
+from foreman_run_lib import (
+    chain_summary_code_for_result,
+    load_wall,
+    normalize_chain_job_result,
+    patch_chain_job,
+    save_wall,
+)
 
 
 def main() -> int:
@@ -17,15 +23,17 @@ def main() -> int:
     p.add_argument("--produced", choices=["true", "false"], default="false")
     p.add_argument("--patch", default="{}", help="extra JSON patch")
     args = p.parse_args()
+    job_result = normalize_chain_job_result(args.result)
+    summary_code = chain_summary_code_for_result(job_result)
     wall = load_wall(args.wall)
     wall = patch_chain_job(
         wall,
         args.job,
-        result=args.result,
+        result=job_result,
         produced_required_artifact=args.produced == "true",
         chain_facts={
-            "summary_code": "ok" if args.result == "success" else args.result,
-            "detail": f"{args.job} job result={args.result}",
+            "summary_code": summary_code,
+            "detail": f"{args.job} job result={job_result}",
             "forbidden_phrases": [],
         },
     )
