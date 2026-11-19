@@ -1,0 +1,21 @@
+{
+  "id": "eliasgamma-module",
+  "title": "Elias gamma 编码 eliasgamma.py（比特串）",
+  "state": "done",
+  "files": [
+    "eliasgamma.py",
+    "tests/test_eliasgamma.py",
+    "team/handoffs/eliasgamma-module.md",
+    "team/status/eliasgamma-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_eliasgamma.py -q",
+      "result": "47 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "76 passed in 2.28s"
+    }
+  ]
+}
