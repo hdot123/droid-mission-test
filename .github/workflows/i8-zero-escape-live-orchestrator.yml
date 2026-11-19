@@ -313,10 +313,16 @@ jobs:
           I8 活验场景 D：半套 artifact（validate 采认失败，complete=false）。
 
           ## 交付物
-          仅新增 `docs/evidence/i8-scratch/d-marker.txt` 一行 `i8-live-d`。
+          在 `docs/evidence/i8-scratch/` 下各新增一行标记文件（共 6 个）：
+          - `d-m1.txt` → `i8-live-d-m1`
+          - `d-m2.txt` → `i8-live-d-m2`
+          - `d-m3.txt` → `i8-live-d-m3`
+          - `d-m4.txt` → `i8-live-d-m4`
+          - `d-m5.txt` → `i8-live-d-m5`
+          - `d-m6.txt` → `i8-live-d-m6`
 
           ## 验收标准
-          - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/d-marker.txt`
+          - 6 张工序卡；各卡 checks 为 `test -f docs/evidence/i8-scratch/d-mN.txt`（N=1..6）
           EOF
           )
           URL=$(gh issue create --title "[I8] API墙活验 D 半套artifact" --body "$BODY")
