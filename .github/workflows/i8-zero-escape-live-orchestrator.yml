@@ -282,11 +282,15 @@ jobs:
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: |
           python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
-          # I8 harness: let validator enter adoption/upload before cancel (not wall logic)
-          sleep 240
+          for _ in $(seq 1 90); do
+            ADOPT=$(gh run view "$RUN_ID" --json jobs --jq '[.jobs[]|select((.name|test("validator")) and (.name|test("round 2")|not))][0].steps[]?|select(.name|test("Adopt verdict"))|.status' 2>/dev/null || true)
+            if [ "$ADOPT" = "in_progress" ]; then sleep 60; break; fi
+            if [ "$ADOPT" = "completed" ]; then break; fi
+            sleep 10
+          done
           source scripts/team/i8_select_gh_trigger_token.sh
           gh run cancel "$RUN_ID" || true
-          sleep 30
+          sleep 45
 
       - name: Collect partial evidence
         env:
@@ -358,15 +362,22 @@ jobs:
 
       - name: Cancel at validate
         env:
+          GH_TOKEN: ${{ github.token }}
           S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: |
           python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
+          for _ in $(seq 1 90); do
+            ADOPT=$(gh run view "$RUN_ID" --json jobs --jq '[.jobs[]|select((.name|test("validator")) and (.name|test("round 2")|not))][0].steps[]?|select(.name|test("Adopt verdict"))|.status' 2>/dev/null || true)
+            if [ "$ADOPT" = "in_progress" ]; then sleep 60; break; fi
+            if [ "$ADOPT" = "completed" ]; then break; fi
+            sleep 10
+          done
           source scripts/team/i8_select_gh_trigger_token.sh
           gh run cancel "$RUN_ID" || true
-          sleep 15
+          sleep 45
 
       - name: Summarize
         env:
