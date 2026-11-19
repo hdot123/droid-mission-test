@@ -1,0 +1,14 @@
+{
+  "id": "i8-d-m5",
+  "title": "Create d-m5 marker file",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/d-m5.txt"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/d-m5.txt",
+      "result": "pass"
+    }
+  ]
+}
