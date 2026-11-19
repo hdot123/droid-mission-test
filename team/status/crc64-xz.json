@@ -1,0 +1,21 @@
+{
+  "id": "crc64-xz",
+  "title": "Implement crc64.py CRC-64/XZ checksum",
+  "state": "done",
+  "files": [
+    "crc64.py",
+    "tests/test_crc64.py",
+    "team/handoffs/crc64-xz.md",
+    "team/status/crc64-xz.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_crc64.py -q",
+      "result": "8 passed in 0.01s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "19 passed in 0.03s"
+    }
+  ]
+}
