@@ -7,7 +7,7 @@ import json
 import os
 import sys
 
-from foreman_run_lib import deep_merge, load_wall, save_wall
+from foreman_run_lib import chain_summary_code_for_result, load_wall, patch_chain_job, save_wall
 
 CHAIN_ORDER = [
     "lead",
@@ -97,6 +97,33 @@ def build_facts(wall: dict, env_results: dict[str, str]) -> dict:
     return wall
 
 
+def sync_assemble_exit(
+    wall: dict,
+    *,
+    job_result: str,
+    produced_required_artifact: bool,
+) -> dict:
+    """Patch only chain.assemble; never backfill other seats from needs.*."""
+    summary = chain_summary_code_for_result(job_result)
+    if job_result == "success":
+        detail = "assemble 收口完成"
+        forbidden: list[str] = []
+    else:
+        detail = pick_fallback_reason(wall)
+        forbidden = []
+    return patch_chain_job(
+        wall,
+        "assemble",
+        result=job_result,
+        produced_required_artifact=produced_required_artifact,
+        chain_facts={
+            "summary_code": summary,
+            "detail": detail,
+            "forbidden_phrases": forbidden,
+        },
+    )
+
+
 def pick_fallback_reason(wall: dict) -> str:
     for job in CHAIN_ORDER:
         node = (wall.get("chain") or {}).get(job) or {}
@@ -120,8 +147,28 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--wall", default="foreman-run.json")
     p.add_argument("--github-output", default="")
+    p.add_argument(
+        "--assemble-exit",
+        action="store_true",
+        help="Only record chain.assemble exit; do not merge needs.* into chain",
+    )
+    p.add_argument("--result", default="")
+    p.add_argument("--produced", choices=["true", "false"], default="false")
     args = p.parse_args()
     wall = load_wall(args.wall)
+    if args.assemble_exit:
+        job_result = args.result or os.environ.get("JOB_STATUS", "success")
+        produced = args.produced == "true"
+        merged = sync_assemble_exit(
+            wall, job_result=job_result, produced_required_artifact=produced
+        )
+        save_wall(merged, args.wall)
+        reason = pick_fallback_reason(merged)
+        print("assemble_exit:", job_result, "fallback_reason:", reason)
+        if args.github_output:
+            with open(args.github_output, "a", encoding="utf-8") as out:
+                out.write(f"fallback_reason={reason}\n")
+        return 0
     env_results = {
         job.upper(): os.environ.get(f"{job.upper()}_RESULT", "")
         for job in CHAIN_ORDER
