@@ -1,0 +1,21 @@
+{
+  "id": "truncate",
+  "title": "文本截断（词界优先）",
+  "state": "done",
+  "files": [
+    "truncate.py",
+    "tests/test_truncate.py",
+    "team/handoffs/truncate.md",
+    "team/status/truncate.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_truncate.py -q",
+      "result": "11 passed (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "47 passed (exit 0)"
+    }
+  ]
+}
