@@ -1,0 +1,19 @@
+{
+  "id": "primorial-product",
+  "title": "Implement primorial.py (product of first n primes)",
+  "state": "done",
+  "files": [
+    "primorial.py",
+    "tests/test_primorial.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_primorial.py -q",
+      "result": "15 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "26 passed in 0.03s"
+    }
+  ]
+}
