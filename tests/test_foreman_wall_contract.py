@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -134,3 +135,54 @@ def test_merge_worker_deltas_union():
 def test_validate2_artifact_key_present():
     wall = init_wall(run_id="9", issue_number=2)
     assert "team-verdict2-issue-2-run-9" in wall["artifacts"]
+
+
+def test_pick_verdict_prefers_wall_over_empty_dl(tmp_path: Path):
+    from pick_verdict_from_wall import pick  # noqa: E402
+
+    wall = init_wall(run_id="11", issue_number=5)
+    key = "team-verdict-issue-5-run-11"
+    wall["artifacts"][key]["complete"] = True
+    wall["validation"] = {
+        "schema_version": "validation-slice.v1",
+        "overall": "fail",
+        "adoption_status": "ok",
+        "round": 1,
+    }
+    wall_path = tmp_path / "foreman-run.json"
+    save_wall(wall, wall_path)
+    dl = tmp_path / "dl"
+    dl.mkdir()
+    verdict, _candidate, picked, source = pick(
+        wall_path, dl, issue_number=5, run_id="11", chain_results={}
+    )
+    assert picked == 1
+    assert source == "wall+artifact"
+    assert verdict["overall"] == "fail"
+
+
+def test_validate_foreman_mode_require_prod(tmp_path: Path):
+    script = ROOT / "scripts" / "team" / "validate_foreman_mode.py"
+    plan = tmp_path / "plan.json"
+    plan.write_text(
+        json.dumps({"foreman_mode": "test", "processes": [{"id": "a"}, {"id": "b"}]}),
+        encoding="utf-8",
+    )
+    r = subprocess.run(
+        [sys.executable, str(script), "--plan", str(plan), "--mode", "test"],
+        capture_output=True,
+        text=True,
+        env={**dict(os.environ), "FOREMAN_REQUIRE_PROD": "1"},
+    )
+    assert r.returncode == 1, r.stderr + r.stdout
+
+
+def test_post_comment_hard_patches_wall(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from post_comment_hard import patch_wall_comment  # noqa: E402
+
+    wall = init_wall(run_id="12", issue_number=3)
+    wall_path = tmp_path / "foreman-run.json"
+    save_wall(wall, wall_path)
+    patch_wall_comment(str(wall_path), "plan_dispatch", posted=True)
+    patched = json.loads(wall_path.read_text(encoding="utf-8"))
+    assert patched["closeout"]["comments"]["plan_dispatch"]["posted"] is True

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CI lint: ban legacy replan gates and half-upload patterns."""
+"""CI lint: ban legacy replan gates, half-upload patterns, and API wall escape routes."""
 from __future__ import annotations
 
 import argparse
@@ -12,8 +12,29 @@ FORBIDDEN = [
     (re.compile(r"failed_processes\s*!=\s*['\"]\\?\\[\\]['\"]"), "string compare failed_processes != '[]'"),
     (re.compile(r"needs\.validate\.result\s*==\s*['\"]success['\"]"), "replan bound to validate.result success only"),
     (re.compile(r"fail_text\s*=\s*\{"), "static fail_text fallback in assemble"),
-    (re.compile(r'备料未启动'), "forbidden static phrase 备料未启动 in workflow"),
+    (re.compile(r"备料未启动"), "forbidden static phrase 备料未启动 in workflow"),
+    (re.compile(r"状态代偿记录"), "forbidden 状态代偿记录 (I7)"),
+    (re.compile(r"状态代偿说明"), "forbidden 状态代偿说明 (I7)"),
+    (re.compile(r"adopt_verdict\.py[^\n]*\|\|\s*true"), "adopt_verdict must not use || true (I5)"),
+    (re.compile(r"compute_validate_conclusion\.py[^\n]*\|\|\s*true"), "derive must not use || true (I5)"),
+    (re.compile(r"init_wall"), "init_wall forbidden in team.yml except via env-check (I3)"),
 ]
+
+PREP_GATE = re.compile(
+    r"name: prep \(merge and pack evidence\)[\s\S]{0,800}?workers-wall-merge\.outputs\.prep_should_run",
+)
+PREP2_GATE = re.compile(
+    r"name: prep round 2[\s\S]{0,800}?workers2-wall-merge\.outputs\.prep_should_run",
+)
+
+
+def foreman_run_download_lax(text: str) -> list[str]:
+    errs: list[str] = []
+    for m in re.finditer(r"Download ForemanRun wall", text):
+        chunk = text[m.start() : m.start() + 220]
+        if "continue-on-error: true" in chunk:
+            errs.append("foreman-run download must not use continue-on-error (I3)")
+    return errs
 
 
 def main() -> int:
@@ -25,8 +46,13 @@ def main() -> int:
     for rx, msg in FORBIDDEN:
         if rx.search(text):
             errors.append(msg)
-    for m in re.finditer(r"- name: Upload verdict artifact", text):
-        chunk = text[m.start() : m.start() + 400]
+    if not PREP_GATE.search(text):
+        errors.append("prep job must gate on workers-wall-merge.outputs.prep_should_run (I1)")
+    if not PREP2_GATE.search(text):
+        errors.append("prep2 job must gate on workers2-wall-merge.outputs.prep_should_run (I1)")
+    errors.extend(foreman_run_download_lax(text))
+    for m in re.finditer(r"- name: Upload verdict(?: round 2)? artifact", text):
+        chunk = text[m.start() : m.start() + 180]
         if re.search(r"if:\s*always\(\)", chunk):
             errors.append("validate upload uses if: always() without wall gate")
     if errors:
