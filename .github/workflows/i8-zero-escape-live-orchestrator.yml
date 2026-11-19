@@ -97,6 +97,7 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
+          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
@@ -178,6 +179,7 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
+          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
@@ -251,6 +253,7 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
+          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
@@ -327,6 +330,7 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
+          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
           S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
