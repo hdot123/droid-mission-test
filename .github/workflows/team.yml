@@ -191,11 +191,24 @@ jobs:
           - Write valid JSON only into team-plan.json. Do not wrap it in Markdown.
           - Transcribe the work order's acceptance criteria item by item. Every acceptance example, value, or requirement stated anywhere in the work order must land in the task or checks of the one process card it belongs to. Never let the body's worked examples substitute for the acceptance section, and never drop an acceptance item silently.
           - If the work order contradicts itself (for example a body example and an acceptance value disagree), do NOT silently pick one side. The affected card's task text must carry an explicit conflict note in exactly this shape: "CONFLICT: <item> — body says <X>, acceptance says <Y>; provisional value: <X or Y> (reason: <one line>)". Both values must appear in the card; the worker and the validator must be able to see the conflict from the card alone.
+          - After each process card is fully decided, update team/lead-plan-checkpoint.json (valid JSON: summary + processes array) before starting the next card so partial progress survives a timeout.
           - Be efficient: at most 8 tool calls, then write team-plan.json.
           """
           open("lead-prompt.txt", "w").write(prompt)
           PY
-          timeout --signal=TERM --kill-after=30s 600s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat lead-prompt.txt)" | tee lead-stream.jsonl
+          cp wall-in/foreman-run.json foreman-run.json
+          FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_droid_session.py \
+            --wall foreman-run.json --role lead \
+            --prompt-file lead-prompt.txt \
+            --stream-out lead-stream.jsonl \
+            --exit-out lead-droid-exit.txt \
+            --heartbeat
+
+      - name: Recover lead plan checkpoint (batch-3)
+        if: steps.dup.outputs.duplicate != 'true'
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/lead_plan_checkpoint.py \
+            --stream lead-stream.jsonl --promote
 
       - name: Validate plan, file [计划] issue and sub-issues
         if: steps.dup.outputs.duplicate != 'true'
@@ -1367,14 +1380,27 @@ jobs:
           """
           open("validator-prompt.txt", "w").write(prompt)
           PY
-          set +e
-          DROID_TIMEOUT_SEC=600
+          cp ../wall-in/foreman-run.json ../foreman-run.json
+          OVERRIDE_ARGS=""
           if [[ "$ISSUE_TITLE" == "[I8] API墙活验 A 采认失败" ]] || [[ "$ISSUE_TITLE" == "[I8] API墙活验 D 半套artifact" ]]; then
-            DROID_TIMEOUT_SEC="${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
+            OVERRIDE_ARGS="--droid-wall-override-sec ${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
           fi
-          echo "validator droid GNU timeout: ${DROID_TIMEOUT_SEC}s (I8-A/D live titles only; B/C and others use 600)"
-          timeout --signal=TERM --kill-after=30s "${DROID_TIMEOUT_SEC}s" ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
-          echo $? > droid-exit.txt
+          PYTHONPATH=scripts/team python3 - <<'PY' >> "$GITHUB_ENV"
+          import json
+          from budget_resolve import validator_session_budget
+          w = json.load(open("../foreman-run.json"))
+          droid, adopt = validator_session_budget(w)
+          print(f"VALIDATOR_DROID_WALL_SEC={droid}")
+          print(f"ADOPT_RESERVE_SEC={adopt}")
+          PY
+          echo "validator session budget (wall): droid=${VALIDATOR_DROID_WALL_SEC}s adopt_reserve=${ADOPT_RESERVE_SEC}s (I8-A/D may override droid wall only)"
+          FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_droid_session.py \
+            --wall ../foreman-run.json --role validator \
+            --prompt-file validator-prompt.txt \
+            --stream-out validator-stream.jsonl \
+            --exit-out droid-exit.txt \
+            $OVERRIDE_ARGS
+          cp ../foreman-run.json ../wall-in/foreman-run.json
 
       - name: Merge verdict, enforce gates, verify evidence untouched
         id: verdict
@@ -1505,12 +1531,17 @@ jobs:
       - name: Adopt verdict into ForemanRun wall (P0-1)
         id: adopt
         if: always()
+        timeout-minutes: 2
         run: |
-          if [ ! -f wall-in/foreman-run.json ]; then
-            echo "foreman-run missing before adopt"
-            exit 1
+          if [ ! -f foreman-run.json ]; then
+            if [ ! -f wall-in/foreman-run.json ]; then
+              echo "foreman-run missing before adopt"
+              exit 1
+            fi
+            cp wall-in/foreman-run.json foreman-run.json
           fi
-          cp wall-in/foreman-run.json foreman-run.json
+          ADOPT_RESERVE_SEC=$(PYTHONPATH=scripts/team python3 -c "import json; from budget_resolve import adopt_reserve_sec; print(adopt_reserve_sec(json.load(open('foreman-run.json'))))")
+          echo "adopt step within wall adopt_reserve budget: ${ADOPT_RESERVE_SEC}s"
           DROID_EXIT=-1
           [ -f work/droid-exit.txt ] && DROID_EXIT=$(cat work/droid-exit.txt)
           MERGE_FLAG=""
@@ -1588,6 +1619,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Download ForemanRun wall (batch-3 budgets)
+        uses: actions/download-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: wall-in
 
       - name: Download plan, verdict, and evidence
         uses: actions/download-artifact@v4
@@ -1719,7 +1756,12 @@ jobs:
           if [ -f attribution-empty.txt ]; then
             echo "attribution mode with no attributable process; skipping the foreman session (the filing step will stop the order for a human)"
           else
-            timeout --signal=TERM --kill-after=30s 480s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat replan-prompt.txt)" | tee replan-stream.jsonl
+            cp wall-in/foreman-run.json foreman-run.json
+            FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_droid_session.py \
+              --wall foreman-run.json --role replan \
+              --prompt-file replan-prompt.txt \
+              --stream-out replan-stream.jsonl \
+              --exit-out replan-droid-exit.txt
           fi
 
       - name: Validate plan v2 and file the revision
@@ -2952,14 +2994,27 @@ jobs:
           """
           open("validator-prompt.txt", "w").write(prompt)
           PY
-          set +e
-          DROID_TIMEOUT_SEC=600
+          cp ../wall-in/foreman-run.json ../foreman-run.json
+          OVERRIDE_ARGS=""
           if [[ "$ISSUE_TITLE" == "[I8] API墙活验 A 采认失败" ]] || [[ "$ISSUE_TITLE" == "[I8] API墙活验 D 半套artifact" ]]; then
-            DROID_TIMEOUT_SEC="${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
+            OVERRIDE_ARGS="--droid-wall-override-sec ${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
           fi
-          echo "validator droid GNU timeout: ${DROID_TIMEOUT_SEC}s (I8-A/D live titles only; B/C and others use 600)"
-          timeout --signal=TERM --kill-after=30s "${DROID_TIMEOUT_SEC}s" ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
-          echo $? > droid-exit.txt
+          PYTHONPATH=scripts/team python3 - <<'PY' >> "$GITHUB_ENV"
+          import json
+          from budget_resolve import validator_session_budget
+          w = json.load(open("../foreman-run.json"))
+          droid, adopt = validator_session_budget(w)
+          print(f"VALIDATOR_DROID_WALL_SEC={droid}")
+          print(f"ADOPT_RESERVE_SEC={adopt}")
+          PY
+          echo "validator session budget (wall): droid=${VALIDATOR_DROID_WALL_SEC}s adopt_reserve=${ADOPT_RESERVE_SEC}s (I8-A/D may override droid wall only)"
+          FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_droid_session.py \
+            --wall ../foreman-run.json --role validator \
+            --prompt-file validator-prompt.txt \
+            --stream-out validator-stream.jsonl \
+            --exit-out droid-exit.txt \
+            $OVERRIDE_ARGS
+          cp ../foreman-run.json ../wall-in/foreman-run.json
 
       - name: Merge verdict, enforce gates, verify evidence untouched
         id: verdict
@@ -3082,12 +3137,17 @@ jobs:
       - name: Adopt verdict into ForemanRun wall round 2 (P0-1)
         id: adopt2
         if: always()
+        timeout-minutes: 2
         run: |
-          if [ ! -f wall-in/foreman-run.json ]; then
-            echo "foreman-run missing before adopt2"
-            exit 1
+          if [ ! -f foreman-run.json ]; then
+            if [ ! -f wall-in/foreman-run.json ]; then
+              echo "foreman-run missing before adopt2"
+              exit 1
+            fi
+            cp wall-in/foreman-run.json foreman-run.json
           fi
-          cp wall-in/foreman-run.json foreman-run.json
+          ADOPT_RESERVE_SEC=$(PYTHONPATH=scripts/team python3 -c "import json; from budget_resolve import adopt_reserve_sec; print(adopt_reserve_sec(json.load(open('foreman-run.json'))))")
+          echo "adopt step within wall adopt_reserve budget: ${ADOPT_RESERVE_SEC}s"
           DROID_EXIT=-1
           [ -f work/droid-exit.txt ] && DROID_EXIT=$(cat work/droid-exit.txt)
           MERGE_FLAG=""
