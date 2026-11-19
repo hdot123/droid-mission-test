@@ -2,14 +2,19 @@
 
 **合入 SHA**：`96051ba13658c895cadf306a6831f6286c3047cb`（PR [#508](https://github.com/hdot123/droid-mission-test/pull/508) → `main`）
 
-**状态**：I1–I7 已合入默认分支后，本目录存放四类场景（A–D）的 run 证据。  
+**基础设施**：PR [#509](https://github.com/hdot123/droid-mission-test/pull/509)–[#522](https://github.com/hdot123/droid-mission-test/pull/522)（orchestrator、`C-fixture`、`push` 触发器、`GO_GITHUB_RUN_TOKEN` 修复）。
+
 **声明**：未完成四类归档并通过独立对抗审（P4）前，不得对外宣称「零逃逸 / 硬性 API 墙」。
 
-| 场景 | 归档文件 | 状态 |
+| 场景 | 归档文件 | Run / 状态 |
 |---|---|---|
-| A 采认失败 | （待补） | **阻塞**：需在专用试验工单上触发 `team.yml`（勿用战役工单 #407–#410 等）；依赖 merge 后 main 上 v2.7 墙 workflow |
-| B 评论硬失败 | （待补） | **阻塞**：需 staging 只读 `GH_TOKEN` 或 mock `gh` 失败路径 |
-| C PAT 缺失 | （待补） | **阻塞**：需受控窗口临时移除/失效 `PROJECTS_STATE_PAT`（勿影响生产战役） |
-| D 半套 artifact | （待补） | **阻塞**：需在专用工单上打断 assert/upload 路径 |
+| A 采认失败 | （待补） | **进行中/阻塞**：合并 `A.scene` 触发 orchestrator；预计 30–90min 全链 |
+| B 评论硬失败 | （待补） | **进行中**：`GO_GITHUB_RUN_TOKEN` 修复后 `B.scene` 重触发（见 [#523](https://github.com/hdot123/droid-mission-test/pull/523)） |
+| C PAT 缺失 | [44465372141-C.md](./44465372141-C.md) | **达标（夹具等价）**：[run 44465372141](https://github.com/hdot123/droid-mission-test/actions/runs/44465372141)；team L0 补档见 `C-team.scene` |
+| D 半套 artifact | （待补） | **待跑**：合并 `D.scene` 后归档 |
 
-专用试验工单：合入后由指挥官在 **新建** issue 上发起（标题建议 `[I8] API墙活验`），本 agent 轮次未 `@team-droid` 触发 workflow。
+## 触发方式（main）
+
+见 [triggers/README.md](./triggers/README.md)：向 `main` 合并对应 `*.scene` marker 即可（无需 `workflow_dispatch`）。
+
+**禁止**在战役工单 #407–#410 及第 43–46 轮同类 issue 上 `@team-droid`。

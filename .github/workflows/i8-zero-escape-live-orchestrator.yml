@@ -83,7 +83,9 @@ jobs:
           - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/b-marker.txt`
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 B 评论硬失败" --body "$BODY" | sed -n 's|.*/issues/||p')
+          URL=$(gh issue create --title "[I8] API墙活验 B 评论硬失败" --body "$BODY")
+          NUM="${URL##*/}"
+          test -n "$NUM"
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Lock issue (force comment failure)
@@ -95,13 +97,15 @@ jobs:
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
+          test -n "$NUM"
           gh issue comment "$NUM" --body "@team-droid I8-B 活验：评论硬失败"
-          for i in $(seq 1 30); do
-            RUN=$(gh run list --workflow=team.yml --json databaseId,event,displayTitle,status \
-              --jq "[.[] | select(.status==\"in_progress\" or .status==\"queued\") | select(.displayTitle | test(\"\\\\[I8\\\\].*B\"))][0].databaseId" 2>/dev/null || true)
+          sleep 20
+          for i in $(seq 1 40); do
+            RUN=$(gh run list --workflow=team.yml --limit 10 --json databaseId,displayTitle,status \
+              --jq "[.[] | select(.status==\"in_progress\" or .status==\"queued\" or .status==\"waiting\") | select(.displayTitle | test(\"\\\\[I8\\\\]\"))][0].databaseId" 2>/dev/null || true)
             if [ -n "$RUN" ] && [ "$RUN" != "null" ]; then
               echo "run_id=$RUN" >> "$GITHUB_OUTPUT"
               echo "Team run: $RUN"
@@ -164,16 +168,20 @@ jobs:
           （无）
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 C PAT缺失（team L0）" --body "$BODY" | sed -n 's|.*/issues/||p')
+          URL=$(gh issue create --title "[I8] API墙活验 C PAT缺失（team L0）" --body "$BODY")
+          NUM="${URL##*/}"
+          test -n "$NUM"
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
+          test -n "$NUM"
           gh issue comment "$NUM" --body "@team-droid I8-C team L0 活验"
+          sleep 20
           for i in $(seq 1 30); do
             RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
               --jq "[.[] | select(.status==\"in_progress\" or .status==\"queued\" or .status==\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*C\"))][0].databaseId")
@@ -231,16 +239,20 @@ jobs:
           - foreman 仅 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/a-marker.txt`
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 A 采认失败" --body "$BODY" | sed -n 's|.*/issues/||p')
+          URL=$(gh issue create --title "[I8] API墙活验 A 采认失败" --body "$BODY")
+          NUM="${URL##*/}"
+          test -n "$NUM"
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
+          test -n "$NUM"
           gh issue comment "$NUM" --body "@team-droid I8-A 活验：采认失败路径"
+          sleep 20
           for i in $(seq 1 30); do
             RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
               --jq "[.[] | select(.status!=\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*A\"))][0].databaseId")
@@ -252,11 +264,14 @@ jobs:
           done
           exit 1
 
-      - name: Wait for run completion
+      - name: Cancel at validate (induce adoption failed)
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
-        run: gh run watch "$RUN_ID" --exit-status || true
+        run: |
+          python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
+          gh run cancel "$RUN_ID" || true
+          sleep 30
 
       - name: Collect partial evidence
         env:
@@ -298,16 +313,20 @@ jobs:
           - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/d-marker.txt`
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 D 半套artifact" --body "$BODY" | sed -n 's|.*/issues/||p')
+          URL=$(gh issue create --title "[I8] API墙活验 D 半套artifact" --body "$BODY")
+          NUM="${URL##*/}"
+          test -n "$NUM"
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
-      - name: Trigger and cancel at validate (same as A)
+      - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
+          test -n "$NUM"
           gh issue comment "$NUM" --body "@team-droid I8-D 活验：半套 artifact"
+          sleep 20
           for i in $(seq 1 30); do
             RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
               --jq "[.[] | select(.status!=\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*D\"))][0].databaseId")
