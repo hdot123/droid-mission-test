@@ -1,0 +1,19 @@
+{
+  "id": "partitions-module",
+  "title": "实现 partitions.py 整数分拆数 p(n) 及其测试",
+  "state": "done",
+  "files": [
+    "partitions.py",
+    "tests/test_partitions.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_partitions.py -q",
+      "result": "22 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "102 passed in 3.48s"
+    }
+  ]
+}
