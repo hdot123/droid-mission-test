@@ -1,0 +1,19 @@
+{
+  "id": "hill-cipher",
+  "title": "Implement Hill 2x2 cipher (mod 26)",
+  "state": "done",
+  "files": [
+    "hill.py",
+    "tests/test_hill.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_hill.py -q",
+      "result": "28 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "39 passed"
+    }
+  ]
+}
