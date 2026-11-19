@@ -31,7 +31,7 @@ permissions:
   actions: read
 
 env:
-  # GITHUB_TOKEN comments do not trigger issue_comment workflows (recursion guard).
+  # GITHUB_TOKEN comments do not trigger issue_comment workflows.
   GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
 
 concurrency:
@@ -73,6 +73,8 @@ jobs:
 
       - name: Create I8-B issue
         id: issue
+        env:
+          # uses workflow env GH_TOKEN
         run: |
           BODY=$(cat <<'EOF'
           ## 目标
@@ -89,11 +91,15 @@ jobs:
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Lock issue (force comment failure)
+        env:
+          # uses workflow env GH_TOKEN
           NUM: ${{ steps.issue.outputs.number }}
         run: gh api --method PUT "repos/${GITHUB_REPOSITORY}/issues/${NUM}/lock"
 
       - name: Trigger team workflow
         id: trigger
+        env:
+          # uses workflow env GH_TOKEN
           NUM: ${{ steps.issue.outputs.number }}
         run: |
           gh issue comment "$NUM" --body "@team-droid I8-B 活验：评论硬失败"
@@ -111,11 +117,15 @@ jobs:
           exit 1
 
       - name: Wait for team run
+        env:
+          # uses workflow env GH_TOKEN
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: gh run watch "$RUN_ID" --exit-status || true
 
       - name: Summarize and capture wall
         id: summary
+        env:
+          # uses workflow env GH_TOKEN
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
           ISSUE_NUM: ${{ steps.issue.outputs.number }}
         run: |
@@ -132,6 +142,8 @@ jobs:
 
       - name: Unlock issue (cleanup)
         if: always()
+        env:
+          # uses workflow env GH_TOKEN
           NUM: ${{ steps.issue.outputs.number }}
         run: gh api --method DELETE "repos/${GITHUB_REPOSITORY}/issues/${NUM}/lock" || true
 
@@ -145,6 +157,8 @@ jobs:
 
       - name: Create I8-C team issue (incomplete work order)
         id: issue
+        env:
+          # uses workflow env GH_TOKEN
         run: |
           BODY=$(cat <<'EOF'
           ## 目标
@@ -159,6 +173,8 @@ jobs:
 
       - name: Trigger team workflow
         id: trigger
+        env:
+          # uses workflow env GH_TOKEN
           NUM: ${{ steps.issue.outputs.number }}
         run: |
           gh issue comment "$NUM" --body "@team-droid I8-C team L0 活验"
@@ -174,10 +190,14 @@ jobs:
           exit 1
 
       - name: Wait for team run
+        env:
+          # uses workflow env GH_TOKEN
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: gh run watch "$RUN_ID" --exit-status || true
 
       - name: Summarize
+        env:
+          # uses workflow env GH_TOKEN
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
           ISSUE_NUM: ${{ steps.issue.outputs.number }}
         run: |
@@ -201,6 +221,8 @@ jobs:
 
       - name: Create I8-A issue
         id: issue
+        env:
+          # uses workflow env GH_TOKEN
         run: |
           BODY=$(cat <<'EOF'
           ## 目标
@@ -218,6 +240,8 @@ jobs:
 
       - name: Trigger team workflow
         id: trigger
+        env:
+          # uses workflow env GH_TOKEN
           NUM: ${{ steps.issue.outputs.number }}
         run: |
           gh issue comment "$NUM" --body "@team-droid I8-A 活验：采认失败路径"
@@ -233,10 +257,14 @@ jobs:
           exit 1
 
       - name: Wait for run completion
+        env:
+          # uses workflow env GH_TOKEN
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: gh run watch "$RUN_ID" --exit-status || true
 
       - name: Collect partial evidence
+        env:
+          # uses workflow env GH_TOKEN
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
           ISSUE_NUM: ${{ steps.issue.outputs.number }}
         run: |
@@ -260,6 +288,8 @@ jobs:
 
       - name: Create I8-D issue
         id: issue
+        env:
+          # uses workflow env GH_TOKEN
         run: |
           BODY=$(cat <<'EOF'
           ## 目标
@@ -277,6 +307,8 @@ jobs:
 
       - name: Trigger and cancel at validate (same as A)
         id: trigger
+        env:
+          # uses workflow env GH_TOKEN
           NUM: ${{ steps.issue.outputs.number }}
         run: |
           gh issue comment "$NUM" --body "@team-droid I8-D 活验：半套 artifact"
@@ -292,6 +324,8 @@ jobs:
           exit 1
 
       - name: Cancel at validate
+        env:
+          # uses workflow env GH_TOKEN
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: |
           python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
@@ -299,6 +333,8 @@ jobs:
           sleep 15
 
       - name: Summarize
+        env:
+          # uses workflow env GH_TOKEN
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
           ISSUE_NUM: ${{ steps.issue.outputs.number }}
         run: |
