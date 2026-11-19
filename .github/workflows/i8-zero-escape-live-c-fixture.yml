@@ -43,7 +43,7 @@ jobs:
           S_PROJECTS_STATE_PAT: ""
           FOREMAN_MODE: ${{ vars.FOREMAN_MODE || 'test' }}
         run: |
-          ISSUE="${{ inputs.issue_number }}"
+          ISSUE="${{ github.event_name == 'workflow_dispatch' && inputs.issue_number || '99901' }}"
           python3 scripts/team/env_check_wall.py \
             --results-tsv env-check-results.tsv \
             --issue "$ISSUE" \
