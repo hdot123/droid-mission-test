@@ -1,0 +1,21 @@
+{
+  "id": "convexhull-monotone-chain",
+  "title": "Implement convexhull.py (2D convex hull, monotone chain)",
+  "state": "done",
+  "files": [
+    "convexhull.py",
+    "tests/test_convexhull.py",
+    "team/handoffs/convexhull-monotone-chain.md",
+    "team/status/convexhull-monotone-chain.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_convexhull.py -q",
+      "result": "pass: 17 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 28 passed in 0.02s"
+    }
+  ]
+}
