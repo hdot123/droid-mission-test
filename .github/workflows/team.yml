@@ -1292,6 +1292,8 @@ jobs:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
           GITHUB_TOKEN: ""
           GH_TOKEN: ""
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          VALIDATOR_DROID_TIMEOUT_SECONDS: ${{ vars.VALIDATOR_DROID_TIMEOUT_SECONDS || '600' }}
         working-directory: work
         run: |
           set -o pipefail
@@ -1332,7 +1334,12 @@ jobs:
           open("validator-prompt.txt", "w").write(prompt)
           PY
           set +e
-          timeout --signal=TERM --kill-after=30s 600s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
+          DROID_TIMEOUT_SEC=600
+          if [[ "$ISSUE_TITLE" == \[I8\]* ]]; then
+            DROID_TIMEOUT_SEC="${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
+          fi
+          echo "validator droid GNU timeout: ${DROID_TIMEOUT_SEC}s (non-[I8] issues always 600)"
+          timeout --signal=TERM --kill-after=30s "${DROID_TIMEOUT_SEC}s" ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
           echo $? > droid-exit.txt
 
       - name: Merge verdict, enforce gates, verify evidence untouched
@@ -2801,6 +2808,8 @@ jobs:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
           GITHUB_TOKEN: ""
           GH_TOKEN: ""
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          VALIDATOR_DROID_TIMEOUT_SECONDS: ${{ vars.VALIDATOR_DROID_TIMEOUT_SECONDS || '600' }}
         working-directory: work
         run: |
           set -o pipefail
@@ -2841,7 +2850,12 @@ jobs:
           open("validator-prompt.txt", "w").write(prompt)
           PY
           set +e
-          timeout --signal=TERM --kill-after=30s 600s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
+          DROID_TIMEOUT_SEC=600
+          if [[ "$ISSUE_TITLE" == \[I8\]* ]]; then
+            DROID_TIMEOUT_SEC="${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
+          fi
+          echo "validator droid GNU timeout: ${DROID_TIMEOUT_SEC}s (non-[I8] issues always 600)"
+          timeout --signal=TERM --kill-after=30s "${DROID_TIMEOUT_SEC}s" ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat validator-prompt.txt)" | tee validator-stream.jsonl
           echo $? > droid-exit.txt
 
       - name: Merge verdict, enforce gates, verify evidence untouched
