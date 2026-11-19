@@ -1,0 +1,19 @@
+{
+  "id": "unionfind-module",
+  "title": "Implement unionfind.py (并查集)",
+  "state": "done",
+  "files": [
+    "unionfind.py",
+    "tests/test_unionfind.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_unionfind.py -q",
+      "result": "15 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "51 passed in 2.32s"
+    }
+  ]
+}
