@@ -264,7 +264,7 @@ jobs:
           sleep 20
           for i in $(seq 1 30); do
             RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
-              --jq "[.[] | select(.status!=\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*A\"))][0].databaseId")
+              --jq "[.[] | select(.displayTitle | test(\"\\\\[I8\\\\].*A\"))][0].databaseId")
             if [ -n "$RUN" ] && [ "$RUN" != "null" ]; then
               echo "run_id=$RUN" >> "$GITHUB_OUTPUT"
               exit 0
@@ -351,7 +351,7 @@ jobs:
           sleep 20
           for i in $(seq 1 30); do
             RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
-              --jq "[.[] | select(.status!=\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*D\"))][0].databaseId")
+              --jq "[.[] | select(.displayTitle | test(\"\\\\[I8\\\\].*D\"))][0].databaseId")
             if [ -n "$RUN" ] && [ "$RUN" != "null" ]; then
               echo "run_id=$RUN" >> "$GITHUB_OUTPUT"
               exit 0
