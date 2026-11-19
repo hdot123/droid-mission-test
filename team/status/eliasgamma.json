@@ -1,0 +1,19 @@
+{
+  "id": "eliasgamma",
+  "title": "Elias gamma 编码（比特串）",
+  "state": "done",
+  "files": [
+    "eliasgamma.py",
+    "tests/test_eliasgamma.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_eliasgamma.py -q",
+      "result": "16 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "52 passed"
+    }
+  ]
+}
