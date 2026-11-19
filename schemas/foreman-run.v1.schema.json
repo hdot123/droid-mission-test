@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hdot123.github.io/droid-mission-test/schemas/foreman-run.v1.schema.json",
+  "title": "ForemanRun",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "issue_number",
+    "foreman_mode",
+    "env",
+    "budgets",
+    "chain",
+    "artifacts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "foreman-run.v1" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "issue_number": { "type": "integer", "minimum": 0 },
+    "plan_issue_number": { "type": ["integer", "null"] },
+    "foreman_mode": { "type": "string", "enum": ["test", "prod"] },
+    "env": { "$ref": "#/$defs/env_slice" },
+    "budgets": { "$ref": "#/$defs/budget_slice" },
+    "chain": { "$ref": "#/$defs/chain_slice" },
+    "plan": { "$ref": "#/$defs/plan_slice" },
+    "workers": { "$ref": "#/$defs/workers_slice" },
+    "prep": { "$ref": "#/$defs/prep_slice" },
+    "validation": { "$ref": "#/$defs/validation_slice" },
+    "replan_gate": { "$ref": "#/$defs/replan_gate_slice" },
+    "round2": { "type": "object" },
+    "closeout": { "$ref": "#/$defs/closeout_slice" },
+    "human_stop": { "type": "boolean" },
+    "artifacts": { "$ref": "#/$defs/artifacts_slice" }
+  },
+  "$defs": {
+    "env_slice": {
+      "type": "object",
+      "required": ["schema_version", "ok", "hard_fail_count", "hard_fails", "soft_warns", "project_readable", "actions_can_create_pr", "secrets_required"],
+      "properties": {
+        "schema_version": { "const": "env-slice.v1" },
+        "ok": { "type": "boolean" },
+        "hard_fail_count": { "type": "integer", "minimum": 0 },
+        "hard_fails": { "type": "array", "items": { "type": "string" } },
+        "soft_warns": { "type": "array", "items": { "type": "string" } },
+        "project_readable": { "type": "boolean" },
+        "actions_can_create_pr": { "type": "boolean" },
+        "secrets_required": {
+          "type": "object",
+          "required": ["FACTORY_API_KEY", "WORKER_CI_KEY", "PROJECTS_STATE_PAT"],
+          "properties": {
+            "FACTORY_API_KEY": { "type": "boolean" },
+            "WORKER_CI_KEY": { "type": "boolean" },
+            "PROJECTS_STATE_PAT": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "budget_slice": {
+      "type": "object",
+      "required": ["schema_version", "roles"],
+      "properties": {
+        "schema_version": { "const": "budget-slice.v1" },
+        "roles": { "type": "object" },
+        "session_outcome": {
+          "type": "object",
+          "properties": {
+            "role": { "type": "string" },
+            "completion_status": {
+              "type": "string",
+              "enum": ["ok", "timeout", "droid_failed", "missing_output"]
+            },
+            "exit_code": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "chain_job": {
+      "type": "object",
+      "required": ["result", "started", "produced_required_artifact", "chain_facts"],
+      "properties": {
+        "result": {
+          "type": "string",
+          "enum": ["success", "failure", "cancelled", "skipped", "unknown"]
+        },
+        "started": { "type": "boolean" },
+        "produced_required_artifact": { "type": "boolean" },
+        "downstream_blocker": { "type": ["string", "null"] },
+        "chain_facts": {
+          "type": "object",
+          "required": ["summary_code", "detail"],
+          "properties": {
+            "summary_code": {
+              "type": "string",
+              "enum": [
+                "ok",
+                "not_started",
+                "failed",
+                "cancelled",
+                "missing_artifact",
+                "adoption_failed",
+                "blocked_downstream"
+              ]
+            },
+            "detail": { "type": "string" },
+            "forbidden_phrases": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "chain_slice": {
+      "type": "object",
+      "properties": {
+        "lead": { "$ref": "#/$defs/chain_job" },
+        "worker": { "$ref": "#/$defs/chain_job" },
+        "prep": { "$ref": "#/$defs/chain_job" },
+        "validate": { "$ref": "#/$defs/chain_job" },
+        "replan": { "$ref": "#/$defs/chain_job" },
+        "worker2": { "$ref": "#/$defs/chain_job" },
+        "prep2": { "$ref": "#/$defs/chain_job" },
+        "validate2": { "$ref": "#/$defs/chain_job" },
+        "assemble": { "$ref": "#/$defs/chain_job" }
+      }
+    },
+    "workers_slice": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "any_cancelled",
+        "any_failed",
+        "completed_pids",
+        "cancelled_pids",
+        "cancel_reason_by_pid"
+      ],
+      "properties": {
+        "schema_version": { "const": "worker-matrix.v1" },
+        "any_cancelled": { "type": "boolean" },
+        "any_failed": { "type": "boolean" },
+        "completed_pids": { "type": "array", "items": { "type": "string" } },
+        "cancelled_pids": { "type": "array", "items": { "type": "string" } },
+        "cancel_reason_by_pid": { "type": "object" }
+      }
+    },
+    "validation_slice": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "const": "validation-slice.v1" },
+        "round": { "type": "integer", "minimum": 1 },
+        "draft_path": { "type": "string" },
+        "verdict_path": { "type": "string" },
+        "adoption_status": { "type": "string", "enum": ["ok", "failed"] },
+        "adoption_error": {
+          "type": ["string", "null"]
+        },
+        "overall": { "type": "string", "enum": ["pass", "fail"] },
+        "failed_process_ids": { "type": "array", "items": { "type": "string" } },
+        "unattributed_failure": { "type": "boolean" },
+        "pytest_exit": { "type": ["integer", "null"] },
+        "job_conclusion_derived": {
+          "type": "string",
+          "enum": ["success", "failure"]
+        }
+      }
+    },
+    "replan_gate_slice": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "const": "replan-gate.v1" },
+        "should_replan": { "type": "boolean" },
+        "reasons": { "type": "array", "items": { "type": "string" } },
+        "inputs_satisfied": {
+          "type": "object",
+          "properties": {
+            "adoption_status_ok": { "type": "boolean" },
+            "verdict_artifact_complete": { "type": "boolean" },
+            "not_cancelled": { "type": "boolean" }
+          }
+        },
+        "forbidden_legacy": {
+          "type": "object",
+          "properties": {
+            "validate_job_success_only": { "type": "boolean" },
+            "string_compare_failed_processes": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "closeout_slice": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "const": "closeout-slice.v1" },
+        "project_state_written": { "type": "boolean" },
+        "project_state_enum": { "type": "string" },
+        "comments": { "type": "object" },
+        "pr": { "type": "object" },
+        "run_must_fail": { "type": "boolean" }
+      }
+    },
+    "artifacts_slice": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["complete", "missing"],
+        "properties": {
+          "complete": { "type": "boolean" },
+          "missing": { "type": "array", "items": { "type": "string" } },
+          "required_members": { "type": "array", "items": { "type": "string" } },
+          "forbidden_partial": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "plan_slice": { "type": "object" }
+  }
+}
