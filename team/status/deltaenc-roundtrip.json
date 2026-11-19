@@ -1,0 +1,21 @@
+{
+  "id": "deltaenc-roundtrip",
+  "title": "整数序列差分编码 (deltaenc.py)",
+  "state": "done",
+  "files": [
+    "deltaenc.py",
+    "tests/test_deltaenc.py",
+    "team/handoffs/deltaenc-roundtrip.md",
+    "team/status/deltaenc-roundtrip.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_deltaenc.py -q",
+      "result": "21 passed, exit 0"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "32 passed, exit 0"
+    }
+  ]
+}
