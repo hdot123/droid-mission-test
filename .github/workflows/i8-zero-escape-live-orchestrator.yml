@@ -253,11 +253,14 @@ jobs:
           done
           exit 1
 
-      - name: Wait for run completion
+      - name: Cancel at validate (induce adoption failed)
         env:
           GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
-        run: gh run watch "$RUN_ID" --exit-status || true
+        run: |
+          python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
+          gh run cancel "$RUN_ID" || true
+          sleep 30
 
       - name: Collect partial evidence
         env:
