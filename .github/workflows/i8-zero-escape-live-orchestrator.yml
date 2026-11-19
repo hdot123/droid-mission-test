@@ -42,22 +42,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 20
       - id: map
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "scene=${{ inputs.scene }}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          BEFORE="${{ github.event.before }}"
+          SHA="${{ github.sha }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE="${SHA}^"
+          fi
           SCENE=""
           for f in docs/evidence/zero-escape-live/triggers/*.scene; do
-            if git diff --name-only HEAD^ HEAD -- "$f" 2>/dev/null | grep -q .; then
+            if git diff --name-only "$BEFORE" "$SHA" -- "$f" 2>/dev/null | grep -q .; then
               SCENE=$(basename "$f" .scene)
               break
             fi
           done
           echo "scene=$SCENE" >> "$GITHUB_OUTPUT"
-          echo "Push-triggered I8 scene: ${SCENE:-(none)}"
+          echo "Push-triggered I8 scene: ${SCENE:-(none)} (diff $BEFORE..$SHA)"
+          if [ -z "$SCENE" ]; then
+            echo "::error::Push 未命中任何 triggers/*.scene 变更（请一次只改一个 .scene，或用 workflow_dispatch）"
+            exit 1
+          fi
 
   scene-b:
     if: needs.resolve-scene.outputs.scene == 'B'
@@ -273,24 +282,11 @@ jobs:
           done
           exit 1
 
-      - name: Cancel at validate (induce adoption failed)
+      - name: Wait for team run (no cancel — adopt/wall must finish)
         env:
           GH_TOKEN: ${{ github.token }}
-          S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
-          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
-          S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
-        run: |
-          python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
-          for _ in $(seq 1 90); do
-            ADOPT=$(gh run view "$RUN_ID" --json jobs --jq '[.jobs[]|select((.name|test("validator")) and (.name|test("round 2")|not))][0].steps[]?|select(.name|test("Adopt verdict"))|.status' 2>/dev/null || true)
-            if [ "$ADOPT" = "in_progress" ]; then sleep 60; break; fi
-            if [ "$ADOPT" = "completed" ]; then break; fi
-            sleep 10
-          done
-          source scripts/team/i8_select_gh_trigger_token.sh
-          gh run cancel "$RUN_ID" || true
-          sleep 45
+        run: gh run watch "$RUN_ID" --exit-status || true
 
       - name: Collect partial evidence
         env:
@@ -360,24 +356,11 @@ jobs:
           done
           exit 1
 
-      - name: Cancel at validate
+      - name: Wait for team run (validator/upload path, no cancel)
         env:
           GH_TOKEN: ${{ github.token }}
-          S_PROJECTS_STATE_PAT: ${{ secrets.PROJECTS_STATE_PAT }}
-          S_I8_TEAM_TRIGGER_PAT: ${{ secrets.I8_TEAM_TRIGGER_PAT }}
-          S_GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
-        run: |
-          python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
-          for _ in $(seq 1 90); do
-            ADOPT=$(gh run view "$RUN_ID" --json jobs --jq '[.jobs[]|select((.name|test("validator")) and (.name|test("round 2")|not))][0].steps[]?|select(.name|test("Adopt verdict"))|.status' 2>/dev/null || true)
-            if [ "$ADOPT" = "in_progress" ]; then sleep 60; break; fi
-            if [ "$ADOPT" = "completed" ]; then break; fi
-            sleep 10
-          done
-          source scripts/team/i8_select_gh_trigger_token.sh
-          gh run cancel "$RUN_ID" || true
-          sleep 45
+        run: gh run watch "$RUN_ID" --exit-status || true
 
       - name: Summarize
         env:
