@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from foreman_run_lib import deep_merge, load_wall, save_wall
+from foreman_run_lib import deep_merge, load_wall, parse_project_item_list, save_wall
 
 STATUS_BY_OVERALL = {"pass": "已验收", "fail": "阻塞"}
 STATE_FIELD_NAMES = ("Status", "状态", "state")
@@ -38,7 +38,7 @@ def find_item_and_project(owner: str, project_number: int, issue_number: int, to
     if r.returncode != 0:
         raise RuntimeError((r.stderr or r.stdout or "item-list failed").strip())
     data = json.loads(r.stdout or "{}")
-    items = data.get("items") or data if isinstance(data, list) else []
+    items = parse_project_item_list(data)
     item_id = None
     for it in items:
         content = it.get("content") or {}
@@ -113,13 +113,13 @@ def main() -> int:
         print(f"project state write failed: {err}", file=sys.stderr)
     wall_path = Path(args.wall)
     if wall_path.exists():
-        patch: dict = {
-            "closeout": {
-                "schema_version": "closeout-slice.v1",
-                "project_state_written": ok,
-                "project_state_enum": status if ok else None,
-            }
+        closeout: dict = {
+            "schema_version": "closeout-slice.v1",
+            "project_state_written": ok,
         }
+        if ok:
+            closeout["project_state_enum"] = status
+        patch: dict = {"closeout": closeout}
         if err:
             patch["closeout"]["project_state_error"] = err
         if not ok:

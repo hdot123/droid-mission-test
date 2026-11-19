@@ -18,6 +18,11 @@ def main() -> int:
     args = p.parse_args()
     if args.result == "cancelled" and not args.cancel_reason:
         args.cancel_reason = "job_wall_25m"
+    job_status = (os.environ.get("JOB_STATUS") or "").strip().lower()
+    if job_status == "failure":
+        args.result = "failure"
+    elif job_status == "cancelled":
+        args.result = "cancelled"
     # Infer failure if checks marker exists
     if Path(f"team/status/{args.pid}.checks-failed.marker").exists():
         args.result = "failure"
