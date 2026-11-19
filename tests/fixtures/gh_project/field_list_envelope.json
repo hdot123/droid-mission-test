@@ -1,0 +1,20 @@
+{
+  "fields": [
+    {
+      "id": "PVTF_lACO",
+      "name": "Status",
+      "type": "ProjectV2SingleSelectField",
+      "options": [
+        {
+          "id": "OPTION_pass",
+          "name": "已验收"
+        },
+        {
+          "id": "OPTION_fail",
+          "name": "阻塞"
+        }
+      ]
+    }
+  ],
+  "totalCount": 1
+}

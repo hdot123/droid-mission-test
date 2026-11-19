@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 
-from foreman_run_lib import deep_merge, load_wall, parse_project_item_list, save_wall
+from foreman_run_lib import deep_merge, load_wall, save_wall
+from gh_project_parse import (
+    fetch_project_fields,
+    fetch_project_id,
+    fetch_project_items,
+)
 
 STATUS_BY_OVERALL = {"pass": "已验收", "fail": "阻塞"}
 STATE_FIELD_NAMES = ("Status", "状态", "state")
@@ -21,24 +25,7 @@ def _gh(args: list[str], token: str) -> subprocess.CompletedProcess:
 
 
 def find_item_and_project(owner: str, project_number: int, issue_number: int, token: str) -> tuple[str, str]:
-    r = _gh(
-        [
-            "project",
-            "item-list",
-            str(project_number),
-            "--owner",
-            owner,
-            "--format",
-            "json",
-            "--limit",
-            "200",
-        ],
-        token,
-    )
-    if r.returncode != 0:
-        raise RuntimeError((r.stderr or r.stdout or "item-list failed").strip())
-    data = json.loads(r.stdout or "{}")
-    items = parse_project_item_list(data)
+    items = fetch_project_items(_gh, owner=owner, project_number=project_number, token=token)
     item_id = None
     for it in items:
         content = it.get("content") or {}
@@ -47,12 +34,7 @@ def find_item_and_project(owner: str, project_number: int, issue_number: int, to
             break
     if not item_id:
         raise RuntimeError(f"issue #{issue_number} not linked to project #{project_number}")
-    pr = _gh(["project", "view", str(project_number), "--owner", owner, "--format", "json"], token)
-    if pr.returncode != 0:
-        raise RuntimeError((pr.stderr or pr.stdout or "project view failed").strip())
-    project_id = json.loads(pr.stdout).get("id")
-    if not project_id:
-        raise RuntimeError("project id missing from view")
+    project_id = fetch_project_id(_gh, owner=owner, project_number=project_number, token=token)
     return item_id, project_id
 
 
@@ -84,10 +66,7 @@ def main() -> int:
     err = None
     try:
         item_id, project_id = find_item_and_project(owner, args.project, args.issue, pat)
-        fr = _gh(["project", "field-list", str(args.project), "--owner", owner, "--format", "json"], pat)
-        if fr.returncode != 0:
-            raise RuntimeError((fr.stderr or fr.stdout).strip())
-        fields = json.loads(fr.stdout or "[]")
+        fields = fetch_project_fields(_gh, owner=owner, project_number=args.project, token=pat)
         field_id, option_id = pick_status_option(fields, status)
         er = _gh(
             [

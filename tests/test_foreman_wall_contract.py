@@ -39,6 +39,12 @@ def test_forbidden_replan_string_lint():
     assert r.returncode == 0, r.stderr + r.stdout
 
 
+def test_gh_project_parse_lint_in_contract_gate():
+    lint = ROOT / "scripts" / "team" / "lint_gh_project_parse.py"
+    r = subprocess.run([sys.executable, str(lint)], capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr + r.stdout
+
+
 def test_half_artifact_not_complete():
     wall = init_wall(run_id="99", issue_number=1)
     key = "team-verdict-issue-1-run-99"
