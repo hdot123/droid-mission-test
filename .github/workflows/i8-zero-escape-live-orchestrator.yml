@@ -70,7 +70,7 @@ jobs:
       - name: Create I8-B issue
         id: issue
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           BODY=$(cat <<'EOF'
           ## 目标
@@ -83,21 +83,24 @@ jobs:
           - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/b-marker.txt`
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 B 评论硬失败" --body "$BODY" | sed -n 's|.*/issues/||p')
+          URL=$(gh issue create --title "[I8] API墙活验 B 评论硬失败" --body "$BODY")
+          NUM="${URL##*/}"
+          test -n "$NUM"
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Lock issue (force comment failure)
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           NUM: ${{ steps.issue.outputs.number }}
         run: gh api --method PUT "repos/${GITHUB_REPOSITORY}/issues/${NUM}/lock"
 
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
+          test -n "$NUM"
           gh issue comment "$NUM" --body "@team-droid I8-B 活验：评论硬失败"
           sleep 20
           for i in $(seq 1 40); do
@@ -115,14 +118,14 @@ jobs:
 
       - name: Wait for team run
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: gh run watch "$RUN_ID" --exit-status || true
 
       - name: Summarize and capture wall
         id: summary
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
           ISSUE_NUM: ${{ steps.issue.outputs.number }}
         run: |
@@ -140,7 +143,7 @@ jobs:
       - name: Unlock issue (cleanup)
         if: always()
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           NUM: ${{ steps.issue.outputs.number }}
         run: gh api --method DELETE "repos/${GITHUB_REPOSITORY}/issues/${NUM}/lock" || true
 
@@ -155,7 +158,7 @@ jobs:
       - name: Create I8-C team issue (incomplete work order)
         id: issue
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           BODY=$(cat <<'EOF'
           ## 目标
@@ -165,16 +168,20 @@ jobs:
           （无）
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 C PAT缺失（team L0）" --body "$BODY" | sed -n 's|.*/issues/||p')
+          URL=$(gh issue create --title "[I8] API墙活验 C PAT缺失（team L0）" --body "$BODY")
+          NUM="${URL##*/}"
+          test -n "$NUM"
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
+          test -n "$NUM"
           gh issue comment "$NUM" --body "@team-droid I8-C team L0 活验"
+          sleep 20
           for i in $(seq 1 30); do
             RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
               --jq "[.[] | select(.status==\"in_progress\" or .status==\"queued\" or .status==\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*C\"))][0].databaseId")
@@ -188,13 +195,13 @@ jobs:
 
       - name: Wait for team run
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: gh run watch "$RUN_ID" --exit-status || true
 
       - name: Summarize
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
           ISSUE_NUM: ${{ steps.issue.outputs.number }}
         run: |
@@ -219,7 +226,7 @@ jobs:
       - name: Create I8-A issue
         id: issue
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           BODY=$(cat <<'EOF'
           ## 目标
@@ -232,16 +239,20 @@ jobs:
           - foreman 仅 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/a-marker.txt`
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 A 采认失败" --body "$BODY" | sed -n 's|.*/issues/||p')
+          URL=$(gh issue create --title "[I8] API墙活验 A 采认失败" --body "$BODY")
+          NUM="${URL##*/}"
+          test -n "$NUM"
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
       - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
+          test -n "$NUM"
           gh issue comment "$NUM" --body "@team-droid I8-A 活验：采认失败路径"
+          sleep 20
           for i in $(seq 1 30); do
             RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
               --jq "[.[] | select(.status!=\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*A\"))][0].databaseId")
@@ -255,7 +266,7 @@ jobs:
 
       - name: Cancel at validate (induce adoption failed)
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: |
           python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
@@ -264,7 +275,7 @@ jobs:
 
       - name: Collect partial evidence
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
           ISSUE_NUM: ${{ steps.issue.outputs.number }}
         run: |
@@ -289,7 +300,7 @@ jobs:
       - name: Create I8-D issue
         id: issue
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           BODY=$(cat <<'EOF'
           ## 目标
@@ -302,16 +313,20 @@ jobs:
           - 1 张工序卡；checks：`test -f docs/evidence/i8-scratch/d-marker.txt`
           EOF
           )
-          NUM=$(gh issue create --title "[I8] API墙活验 D 半套artifact" --body "$BODY" | sed -n 's|.*/issues/||p')
+          URL=$(gh issue create --title "[I8] API墙活验 D 半套artifact" --body "$BODY")
+          NUM="${URL##*/}"
+          test -n "$NUM"
           echo "number=$NUM" >> "$GITHUB_OUTPUT"
 
-      - name: Trigger and cancel at validate (same as A)
+      - name: Trigger team workflow
         id: trigger
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ secrets.PROJECTS_STATE_PAT }}
           NUM: ${{ steps.issue.outputs.number }}
         run: |
+          test -n "$NUM"
           gh issue comment "$NUM" --body "@team-droid I8-D 活验：半套 artifact"
+          sleep 20
           for i in $(seq 1 30); do
             RUN=$(gh run list --workflow=team.yml --json databaseId,displayTitle,status \
               --jq "[.[] | select(.status!=\"completed\") | select(.displayTitle | test(\"\\\\[I8\\\\].*D\"))][0].databaseId")
@@ -325,7 +340,7 @@ jobs:
 
       - name: Cancel at validate
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
         run: |
           python3 scripts/team/i8_wait_for_job.py --run-id "$RUN_ID" --name-substr "validator" --timeout 2400
@@ -334,7 +349,7 @@ jobs:
 
       - name: Summarize
         env:
-          GH_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ steps.trigger.outputs.run_id }}
           ISSUE_NUM: ${{ steps.issue.outputs.number }}
         run: |
