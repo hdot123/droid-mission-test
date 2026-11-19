@@ -1,0 +1,19 @@
+{
+  "id": "rotate2d-module",
+  "title": "实现 rotate2d.py 二维点旋转及其测试",
+  "state": "done",
+  "files": [
+    "rotate2d.py",
+    "tests/test_rotate2d.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_rotate2d.py -q",
+      "result": "17 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "97 passed in 3.39s"
+    }
+  ]
+}
