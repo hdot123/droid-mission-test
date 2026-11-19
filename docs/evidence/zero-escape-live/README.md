@@ -1,30 +1,28 @@
 # I8 活验归档（P3）
 
-**合入 SHA**：`96051ba13658c895cadf306a6831f6286c3047cb`（PR [#508](https://github.com/hdot123/droid-mission-test/pull/508) → `main`）
+**合入 SHA（墙）**：`96051ba`（PR [#508](https://github.com/hdot123/droid-mission-test/pull/508)）
 
-**基础设施**：orchestrator（[#509](https://github.com/hdot123/droid-mission-test/pull/509)）、`C-fixture`、push 触发器、建单 `github.token` + 触发 PAT 分层（[#530](https://github.com/hdot123/droid-mission-test/pull/530)、[#533](https://github.com/hdot123/droid-mission-test/pull/533)）。
+**声明**：**A/D 未达标**；**不得**宣称「零逃逸 / 硬性 API 墙」（P4 对抗审未做）。
 
-**声明**：四类活验 **未全部达标**；**不得**对外宣称「零逃逸 / 硬性 API 墙」（P4 对抗审未做）。
-
-| 场景 | 归档 | Team / 夹具 run | 达标 |
+| 场景 | 达标 | Team / 夹具 run | 归档 |
 |---|---|---|---|
-| **A** 采认失败 | [A-D-C-team-blocked.md](./A-D-C-team-blocked.md) | 未跑 | **否**（缺 GitHub PAT 触发） |
-| **B** 评论硬失败 | [44467648427-B-blocked.md](./44467648427-B-blocked.md) | Orchestrator [44467648427](https://github.com/hdot123/droid-mission-test/actions/runs/44467648427)；**无** team run | **否** |
-| **C** PAT 缺失 | [44465372141-C.md](./44465372141-C.md) | 夹具 [44465372141](https://github.com/hdot123/droid-mission-test/actions/runs/44465372141) | **是**（夹具等价；未删生产 `PROJECTS_STATE_PAT`） |
-| **C-team** L0 | [A-D-C-team-blocked.md](./A-D-C-team-blocked.md) | 未跑 | **否** |
-| **D** 半套 artifact | [A-D-C-team-blocked.md](./A-D-C-team-blocked.md) | 未跑 | **否** |
+| **A** 采认失败 | **否** | [44469188184](https://github.com/hdot123/droid-mission-test/actions/runs/44469188184) | [44469188184-A.md](./44469188184-A.md) |
+| **B** 评论硬失败 | **是** | [44468619417](https://github.com/hdot123/droid-mission-test/actions/runs/44468619417) | [44468619417-B.md](./44468619417-B.md) |
+| **C** PAT 缺失 | **是**（夹具） | [44465372141](https://github.com/hdot123/droid-mission-test/actions/runs/44465372141) | [44465372141-C.md](./44465372141-C.md) |
+| **C-team** L0 | **是** | [44468989446](https://github.com/hdot123/droid-mission-test/actions/runs/44468989446) | [44468989446-C-team.md](./44468989446-C-team.md) |
+| **D** 半套 artifact | **否** | [44470162674](https://github.com/hdot123/droid-mission-test/actions/runs/44470162674) | [44470162674-D.md](./44470162674-D.md) |
 
-## 当前阻塞（B/A/D/C-team）
+## 历史阻塞（已解除 / 仍影响 A·D）
 
-向 `team.yml` 发 `@team-droid` 需要 **GitHub PAT**（非 `GITHUB_TOKEN`、非 Factory `GO_GITHUB_RUN_TOKEN`）。仓库内 orchestrator 可见：
+- ✅ **PAT 触发**：`PROJECTS_STATE_PAT` 已配置 → orchestrator 可发 `@team-droid`（[#538](https://github.com/hdot123/droid-mission-test/pull/538) 起）。
+- ⚠️ **A/D 全链**：v2.7 lead **Post plan dispatch** 调用 `gh` 时 job 未设 `GH_TOKEN` → 活验在 lead 即断（见 A/D 归档）。**非** PAT 问题；在用户「勿改墙」约束下待产品侧修。
 
-- `PROJECTS_STATE_PAT`：**空**
-- `GO_GITHUB_RUN_TOKEN`：**401** on `gh api user`
+## 触发（main）
 
-**运维**：添加 Actions secret **`I8_TEAM_TRIGGER_PAT`**（推荐）或确保 `PROJECTS_STATE_PAT` 对 orchestrator 可见 → 再按顺序合并 `B.scene` → `C-team.scene` → `A.scene` → `D.scene`。
+[triggers/README.md](./triggers/README.md)
 
-## 触发方式（main）
+**禁止**在战役工单 #407–#410 上 `@team-droid`。
 
-见 [triggers/README.md](./triggers/README.md)。
+## 过期占位文档
 
-**禁止**在战役工单 #407–#410 及第 43–46 轮同类 issue 上 `@team-droid`。
+- [44467648427-B-blocked.md](./44467648427-B-blocked.md)、[A-D-C-team-blocked.md](./A-D-C-team-blocked.md) — PAT 阻塞期的记录，已被上表替代。
