@@ -1,0 +1,16 @@
+{
+  "id": "i8-live-b-marker",
+  "title": "Create I8 scenario B marker file",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/b-marker.txt",
+    "team/handoffs/i8-live-b-marker.md",
+    "team/status/i8-live-b-marker.json"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/b-marker.txt",
+      "result": "pass"
+    }
+  ]
+}
