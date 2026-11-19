@@ -1,0 +1,19 @@
+{
+  "id": "hashtable",
+  "title": "开放寻址哈希表（线性探查＋墓碑＋扩容）",
+  "state": "done",
+  "files": [
+    "hashtable.py",
+    "tests/test_hashtable.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_hashtable.py -q",
+      "result": "passed: 11 tests (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 47 tests (exit 0)"
+    }
+  ]
+}
