@@ -1,0 +1,19 @@
+{
+  "id": "implement-crt",
+  "title": "Implement Chinese Remainder Theorem module crt.py",
+  "state": "done",
+  "files": [
+    "crt.py",
+    "tests/test_crt.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_crt.py -q",
+      "result": "16 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "27 passed"
+    }
+  ]
+}
