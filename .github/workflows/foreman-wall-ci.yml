@@ -19,10 +19,12 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - name: Schema + contract pytest
-        run: pytest tests/test_foreman_wall_contract.py tests/test_foreman_wall_failure_paths.py tests/test_foreman_wall_death_matrix.py tests/test_gh_project_parse_contract.py -q
+        run: pytest tests/test_foreman_wall_contract.py tests/test_foreman_wall_failure_paths.py tests/test_foreman_wall_death_matrix.py tests/test_gh_project_parse_contract.py tests/test_budget_slice_batch3.py -q
       - name: Workflow foreman lint
         run: python3 scripts/team/lint_workflow_foreman.py
       - name: Workflow wall exit lint (batch-2)
         run: python3 scripts/team/lint_workflow_wall_exits.py
       - name: gh project parse lint
         run: python3 scripts/team/lint_gh_project_parse.py
+      - name: Workflow budget lint (batch-3)
+        run: python3 scripts/team/lint_workflow_budgets.py

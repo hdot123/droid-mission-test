@@ -45,6 +45,12 @@ def test_gh_project_parse_lint_in_contract_gate():
     assert r.returncode == 0, r.stderr + r.stdout
 
 
+def test_workflow_budget_lint_in_contract_gate():
+    lint = ROOT / "scripts" / "team" / "lint_workflow_budgets.py"
+    r = subprocess.run([sys.executable, str(lint)], capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr + r.stdout
+
+
 def test_half_artifact_not_complete():
     wall = init_wall(run_id="99", issue_number=1)
     key = "team-verdict-issue-1-run-99"
