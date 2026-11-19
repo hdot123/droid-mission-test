@@ -12,7 +12,7 @@
 | **B** 评论硬失败 | **是** | [44468619417](https://github.com/hdot123/droid-mission-test/actions/runs/44468619417) | [44468619417-B.md](./44468619417-B.md) |
 | **C** PAT 缺失 | **是**（夹具） | [44465372141](https://github.com/hdot123/droid-mission-test/actions/runs/44465372141) | [44465372141-C.md](./44465372141-C.md) |
 | **C-team** L0 | **是** | [44468989446](https://github.com/hdot123/droid-mission-test/actions/runs/44468989446) | [44468989446-C-team.md](./44468989446-C-team.md) |
-| **D** 半套 artifact | **否** | [44522115630](https://github.com/hdot123/droid-mission-test/actions/runs/44522115630)（happy path，`complete=true`）；[44474237836](https://github.com/hdot123/droid-mission-test/actions/runs/44474237836)（env 即败） | [44522115630-D.md](./44522115630-D.md) · [44474237836-D.md](./44474237836-D.md) |
+| **D** 半套 artifact | **否** | [44523220870](https://github.com/hdot123/droid-mission-test/actions/runs/44523220870)（6 工序仍 `complete=true`）；[44522115630](https://github.com/hdot123/droid-mission-test/actions/runs/44522115630) | [44523220870-D.md](./44523220870-D.md) · [44522115630-D.md](./44522115630-D.md) |
 
 ## 本次 A/D 重跑基础设施（非墙）
 
