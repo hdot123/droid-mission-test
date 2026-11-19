@@ -1,0 +1,21 @@
+{
+  "id": "aliquot",
+  "title": "Aliquot sum and perfect/abundant/deficient classification",
+  "state": "done",
+  "files": [
+    "aliquot.py",
+    "tests/test_aliquot.py",
+    "team/handoffs/aliquot.md",
+    "team/status/aliquot.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_aliquot.py -q",
+      "result": "7 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "18 passed"
+    }
+  ]
+}
