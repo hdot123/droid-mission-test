@@ -2,13 +2,13 @@
 
 **墙合入**：`96051ba`（#508） · **lead GH_TOKEN**：`997240f`（[#553](https://github.com/hdot123/droid-mission-test/pull/553)）
 
-**声明**：**A 未达标**；**D 已达标**（[44525110357-D.md](./44525110357-D.md)）。**不得宣称零逃逸**（P4 未做；四类未齐）。
+**声明**：活验 **A/B/C/C-team/D 均有达标归档**；**P4 未做 → 不得宣称零逃逸**。
 
 **Billing（2026-11-19）**：曾阻塞 hosted runner（见 [44476313896-orchestrator-D-blocked.md](./44476313896-orchestrator-D-blocked.md)）；恢复后 orchestrator [44522049816](https://github.com/hdot123/droid-mission-test/actions/runs/44522049816) 已正常。编排 **watch 无 cancel**（#574/#578）。
 
 | 场景 | 达标 | Team / 夹具 run | 归档 |
 |---|---|---|---|
-| **A** 采认失败 | **否** | [44473343701](https://github.com/hdot123/droid-mission-test/actions/runs/44473343701)（cancel 路径） | [44473343701-A.md](./44473343701-A.md) · [A-plan-no-cancel.md](./A-plan-no-cancel.md) |
+| **A** 采认失败 | **是** | [44526511233](https://github.com/hdot123/droid-mission-test/actions/runs/44526511233) | [44526511233-A.md](./44526511233-A.md) · 历史 [44473343701-A.md](./44473343701-A.md) |
 | **B** 评论硬失败 | **是** | [44468619417](https://github.com/hdot123/droid-mission-test/actions/runs/44468619417) | [44468619417-B.md](./44468619417-B.md) |
 | **C** PAT 缺失 | **是**（夹具） | [44465372141](https://github.com/hdot123/droid-mission-test/actions/runs/44465372141) | [44465372141-C.md](./44465372141-C.md) |
 | **C-team** L0 | **是** | [44468989446](https://github.com/hdot123/droid-mission-test/actions/runs/44468989446) | [44468989446-C-team.md](./44468989446-C-team.md) |
