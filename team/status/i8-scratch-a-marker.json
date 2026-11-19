@@ -1,0 +1,14 @@
+{
+  "id": "i8-scratch-a-marker",
+  "title": "Add I8 scenario A marker file",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/a-marker.txt"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/a-marker.txt",
+      "result": "pass"
+    }
+  ]
+}
