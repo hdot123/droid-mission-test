@@ -20,6 +20,10 @@ on:
         description: "Max wait for team.yml run"
         required: false
         default: "45"
+  push:
+    branches: [main]
+    paths:
+      - docs/evidence/zero-escape-live/triggers/**
 
 permissions:
   contents: read
@@ -31,8 +35,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve-scene:
+    runs-on: ubuntu-latest
+    outputs:
+      scene: ${{ steps.map.outputs.scene }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: map
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "scene=${{ inputs.scene }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          SCENE=""
+          for f in docs/evidence/zero-escape-live/triggers/*.scene; do
+            if git diff --name-only HEAD^ HEAD -- "$f" 2>/dev/null | grep -q .; then
+              SCENE=$(basename "$f" .scene)
+              break
+            fi
+          done
+          echo "scene=$SCENE" >> "$GITHUB_OUTPUT"
+          echo "Push-triggered I8 scene: ${SCENE:-(none)}"
+
   scene-b:
-    if: inputs.scene == 'B'
+    if: needs.resolve-scene.outputs.scene == 'B'
+    needs: [resolve-scene]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -115,7 +144,8 @@ jobs:
         run: gh api --method DELETE "repos/${GITHUB_REPOSITORY}/issues/${NUM}/lock" || true
 
   scene-c-team:
-    if: inputs.scene == 'C-team'
+    if: needs.resolve-scene.outputs.scene == 'C-team'
+    needs: [resolve-scene]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -178,7 +208,8 @@ jobs:
           path: out/
 
   scene-a:
-    if: inputs.scene == 'A'
+    if: needs.resolve-scene.outputs.scene == 'A'
+    needs: [resolve-scene]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -244,7 +275,8 @@ jobs:
           path: out/
 
   scene-d:
-    if: inputs.scene == 'D'
+    if: needs.resolve-scene.outputs.scene == 'D'
+    needs: [resolve-scene]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:

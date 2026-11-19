@@ -10,6 +10,10 @@ on:
         description: "Synthetic issue number for foreman-run wall (0 ok)"
         required: false
         default: "99901"
+  push:
+    branches: [main]
+    paths:
+      - docs/evidence/zero-escape-live/triggers/C-fixture.scene
 
 permissions:
   contents: read
