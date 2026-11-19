@@ -1,0 +1,21 @@
+{
+  "id": "yearday-convert",
+  "title": "Implement year-day ordinal conversion",
+  "state": "done",
+  "files": [
+    "yearday.py",
+    "tests/test_yearday.py",
+    "team/handoffs/yearday-convert.md",
+    "team/status/yearday-convert.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_yearday.py -q",
+      "result": "41 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "52 passed"
+    }
+  ]
+}
