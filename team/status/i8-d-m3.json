@@ -1,0 +1,16 @@
+{
+  "id": "i8-d-m3",
+  "title": "Create d-m3 marker file",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/d-m3.txt",
+    "team/handoffs/i8-d-m3.md",
+    "team/status/i8-d-m3.json"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/d-m3.txt",
+      "result": "pass"
+    }
+  ]
+}
