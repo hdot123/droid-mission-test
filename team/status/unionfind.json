@@ -1,0 +1,21 @@
+{
+  "id": "unionfind",
+  "title": "Implement unionfind.py (disjoint set with path compression + union by rank)",
+  "state": "done",
+  "files": [
+    "unionfind.py",
+    "tests/test_unionfind.py",
+    "team/handoffs/unionfind.md",
+    "team/status/unionfind.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_unionfind.py -q",
+      "result": "16 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "119 passed"
+    }
+  ]
+}
