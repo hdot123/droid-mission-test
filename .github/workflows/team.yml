@@ -3492,10 +3492,14 @@ jobs:
           open("final-comment.md", "w").write("\n".join(lines))
           print("\n".join(lines))
           PY
+          if [ ! -f foreman-run.json ] && [ -f wall-root/foreman-run.json ]; then
+            cp wall-root/foreman-run.json foreman-run.json
+          fi
           PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
             --issue "$ISSUE_NUMBER" \
             --body-file final-comment.md \
-            --hard-required
+            --hard-required \
+            --wall-patch '{"key":"final_status_card","wall":"foreman-run.json"}'
 
       - name: Prepare foreman-run for assemble wall sync (W5)
         if: always()
