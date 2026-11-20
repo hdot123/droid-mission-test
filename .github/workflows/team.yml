@@ -821,7 +821,7 @@ jobs:
           cp wall-in/foreman-run.json foreman-run.json
           PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py --wall foreman-run.json --delta-dir deltas
 
-      - name: Record worker job exit on ForemanRun wall
+      - name: Prepare foreman-run for worker wall sync
         if: always()
         run: |
           if [ ! -f foreman-run.json ]; then
@@ -831,9 +831,18 @@ jobs:
             fi
             cp wall-in/foreman-run.json foreman-run.json
           fi
-          if [ -d deltas ] && [ "${{ steps.merge_worker_deltas.outcome }}" = "success" ]; then
-            PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py --wall foreman-run.json --delta-dir deltas
+
+      - name: Re-merge worker deltas if merge step succeeded
+        if: always() && steps.merge_worker_deltas.outcome == 'success'
+        run: |
+          if [ -d deltas ]; then
+            PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py \
+              --wall foreman-run.json --delta-dir deltas
           fi
+
+      - name: Sync worker chain seat from wall (W-11 / N-1)
+        if: always()
+        run: |
           PRODUCED="$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); print('true' if (w.get('workers') or {}).get('completed_pids') else 'false')")"
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
             --job worker \
@@ -2392,7 +2401,7 @@ jobs:
           cp wall-in/foreman-run.json foreman-run.json
           PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py \
             --wall foreman-run.json --delta-dir deltas --round 2
-      - name: Record worker2 job exit on ForemanRun wall
+      - name: Prepare foreman-run for worker2 wall sync
         if: always()
         run: |
           if [ ! -f foreman-run.json ]; then
@@ -2402,10 +2411,18 @@ jobs:
             fi
             cp wall-in/foreman-run.json foreman-run.json
           fi
-          if [ -d deltas ] && [ "${{ steps.merge_worker2_deltas.outcome }}" = "success" ]; then
+
+      - name: Re-merge worker2 deltas if merge step succeeded
+        if: always() && steps.merge_worker2_deltas.outcome == 'success'
+        run: |
+          if [ -d deltas ]; then
             PYTHONPATH=scripts/team python3 scripts/team/merge_worker_deltas.py \
               --wall foreman-run.json --delta-dir deltas --round 2
           fi
+
+      - name: Sync worker2 chain seat from wall (W-11 / N-2)
+        if: always()
+        run: |
           PRODUCED="$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); print('true' if (w.get('workers') or {}).get('completed_pids') else 'false')")"
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
             --job worker2 --result "${{ needs.worker2.result }}" --produced "$PRODUCED"

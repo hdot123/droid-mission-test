@@ -173,6 +173,14 @@ def derive_chain_sync_not_same_step(text: str) -> list[str]:
             errs.append(
                 f"W-11: derive and wall_sync must be separate steps (bash -e truncation): {step_name}"
             )
+        has_merge_redo = "merge_worker_deltas.py" in run_body
+        has_worker_sync = "wall_sync_job.py" in run_body and (
+            "--job worker" in run_body or "--job worker2" in run_body
+        )
+        if has_merge_redo and has_worker_sync:
+            errs.append(
+                f"W-11: merge re-run and wall_sync must be separate steps (bash -e truncation): {step_name}"
+            )
         if (
             "assemble_chain_facts.py" in run_body
             and "--assemble-exit" in run_body
