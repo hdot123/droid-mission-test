@@ -1780,6 +1780,14 @@ jobs:
               --exit-out replan-droid-exit.txt
           fi
 
+      - name: Upload replan droid stream (W-13)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: droid-stream-replan-run-${{ github.run_id }}
+          path: replan-stream.jsonl
+          if-no-files-found: warn
+
       - name: Validate plan v2 and file the revision
         id: replan
         env:
