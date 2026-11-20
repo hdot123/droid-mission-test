@@ -22,9 +22,11 @@ def main() -> int:
     p.add_argument("--result", required=True)
     p.add_argument("--produced", choices=["true", "false"], default="false")
     p.add_argument("--patch", default="{}", help="extra JSON patch")
+    p.add_argument("--detail", default=None, help="override chain_facts.detail")
     args = p.parse_args()
     job_result = normalize_chain_job_result(args.result)
     summary_code = chain_summary_code_for_result(job_result)
+    detail = args.detail or f"{args.job} job result={job_result}"
     wall = load_wall(args.wall)
     wall = patch_chain_job(
         wall,
@@ -33,7 +35,7 @@ def main() -> int:
         produced_required_artifact=args.produced == "true",
         chain_facts={
             "summary_code": summary_code,
-            "detail": f"{args.job} job result={job_result}",
+            "detail": detail,
             "forbidden_phrases": [],
         },
     )
