@@ -1589,6 +1589,10 @@ jobs:
         run: |
           PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py \
             --wall foreman-run.json --github-output "$GITHUB_OUTPUT"
+
+      - name: Sync validate chain seat from wall (W4 / W-11)
+        if: always()
+        run: |
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
             --job validate --result "$(python3 -c "import json;print(json.load(open('foreman-run.json'))['validation'].get('job_conclusion_derived','failure'))")" \
             --produced "$(python3 -c "import json;a=json.load(open('foreman-run.json'))['artifacts'];k=[x for x in a if x.startswith('team-verdict')][0];print('true' if a[k]['complete'] else 'false')")"
@@ -3206,6 +3210,10 @@ jobs:
         run: |
           PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py \
             --wall foreman-run.json --round 2 --github-output "$GITHUB_OUTPUT"
+
+      - name: Sync validate2 chain seat from wall (W4 / W-11)
+        if: always()
+        run: |
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
             --job validate2 \
             --result "$(python3 -c "import json;print(json.load(open('foreman-run.json'))['validation'].get('job_conclusion_derived','failure'))")" \
@@ -3455,16 +3463,23 @@ jobs:
             --body-file final-comment.md \
             --hard-required
 
-      - name: Record assemble exit on ForemanRun wall (W5, no backfill)
+      - name: Prepare foreman-run for assemble wall sync (W5)
         if: always()
-        env:
-          JOB_STATUS: ${{ job.status }}
         run: |
           if [ ! -f foreman-run.json ]; then
             if [ ! -f wall-root/foreman-run.json ]; then
               echo "foreman-run missing for assemble wall sync"
               exit 1
             fi
+            cp wall-root/foreman-run.json foreman-run.json
+          fi
+
+      - name: Record assemble exit on ForemanRun wall (W5, no backfill)
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ ! -f foreman-run.json ] && [ -f wall-root/foreman-run.json ]; then
             cp wall-root/foreman-run.json foreman-run.json
           fi
           RESULT="success"

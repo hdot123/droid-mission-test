@@ -153,6 +153,37 @@ def upload_always_ok(job_text: str, owner: str) -> tuple[bool, str]:
     return False, f"{owner} missing Upload foreman-run step"
 
 
+def derive_chain_sync_not_same_step(text: str) -> list[str]:
+    """W-11: bash -e must not skip wall_sync after derive exit 1 in the same run block."""
+    errs: list[str] = []
+    for part in re.split(r"\n      - name:", text):
+        if not part.strip():
+            continue
+        chunk = "- name:" + part if not part.startswith("- name:") else part
+        name_m = re.search(r"name:\s*(.+)", chunk)
+        step_name = name_m.group(1).strip() if name_m else "(unknown)"
+        run_m = re.search(r"\n\s+run:\s*\|\s*\n([\s\S]*?)(?=\n\s{6}\w|\n\s+env:|\n\s+if:|\Z)", chunk)
+        if not run_m:
+            continue
+        run_body = run_m.group(1)
+        has_derive = "compute_validate_conclusion.py" in run_body
+        has_sync = "wall_sync_job.py" in run_body and "--job validate" in run_body
+        has_sync2 = "wall_sync_job.py" in run_body and "--job validate2" in run_body
+        if has_derive and (has_sync or has_sync2):
+            errs.append(
+                f"W-11: derive and wall_sync must be separate steps (bash -e truncation): {step_name}"
+            )
+        if (
+            "assemble_chain_facts.py" in run_body
+            and "--assemble-exit" in run_body
+            and re.search(r"\n\s+exit\s+1\b", run_body)
+        ):
+            errs.append(
+                f"W-11: assemble-exit sync must not share run: with exit 1 guard: {step_name}"
+            )
+    return errs
+
+
 def lead_not_success_only(job_text: str) -> list[str]:
     errs: list[str] = []
     for chunk in step_chunks(job_text):
@@ -201,6 +232,7 @@ def main() -> int:
 
     errors.extend(merge_jobs_admit_upstream_cancelled(text, spans))
     errors.extend(wall_accounting_steps_no_cancelled(text))
+    errors.extend(derive_chain_sync_not_same_step(text))
 
     if errors:
         print("wall exit lint failures:", *errors, sep="\n", file=sys.stderr)
