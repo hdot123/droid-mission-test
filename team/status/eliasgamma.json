@@ -1,0 +1,21 @@
+{
+  "id": "eliasgamma",
+  "title": "Elias gamma encoding and decoding of bit strings",
+  "state": "done",
+  "files": [
+    "eliasgamma.py",
+    "tests/test_eliasgamma.py",
+    "team/handoffs/eliasgamma.md",
+    "team/status/eliasgamma.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_eliasgamma.py -q",
+      "result": "passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed"
+    }
+  ]
+}
