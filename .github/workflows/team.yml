@@ -204,6 +204,14 @@ jobs:
             --exit-out lead-droid-exit.txt \
             --heartbeat
 
+      - name: Upload lead droid stream (W-13)
+        if: always() && steps.dup.outputs.duplicate != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: droid-stream-lead-run-${{ github.run_id }}
+          path: lead-stream.jsonl
+          if-no-files-found: warn
+
       - name: Recover lead plan checkpoint (batch-3)
         if: steps.dup.outputs.duplicate != 'true'
         run: |
@@ -556,6 +564,14 @@ jobs:
           open("worker-prompt.txt", "w").write(prompt)
           PY
           timeout --signal=TERM --kill-after=30s 900s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
+
+      - name: Upload worker droid stream (W-13)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: droid-stream-worker-${{ matrix.process.id }}-run-${{ github.run_id }}
+          path: worker-stream.jsonl
+          if-no-files-found: warn
 
       - name: Verify process checks and handoff
         env:
@@ -1344,6 +1360,9 @@ jobs:
         working-directory: work
         run: |
           set -o pipefail
+          REPO_ROOT="${GITHUB_WORKSPACE}"
+          export PYTHONPATH="${REPO_ROOT}/scripts/team"
+          TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'
           import json
           judgeable = json.load(open("judgeable.json"))
@@ -1385,7 +1404,7 @@ jobs:
           if [[ "$ISSUE_TITLE" == "[I8] API墙活验 A 采认失败" ]] || [[ "$ISSUE_TITLE" == "[I8] API墙活验 D 半套artifact" ]]; then
             OVERRIDE_ARGS="--droid-wall-override-sec ${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
           fi
-          PYTHONPATH=scripts/team python3 - <<'PY' >> "$GITHUB_ENV"
+          python3 - <<'PY' >> "$GITHUB_ENV"
           import json
           from budget_resolve import validator_session_budget
           w = json.load(open("../foreman-run.json"))
@@ -1394,13 +1413,21 @@ jobs:
           print(f"ADOPT_RESERVE_SEC={adopt}")
           PY
           echo "validator session budget (wall): droid=${VALIDATOR_DROID_WALL_SEC}s adopt_reserve=${ADOPT_RESERVE_SEC}s (I8-A/D may override droid wall only)"
-          FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_droid_session.py \
+          FOREMAN_RUN_PATCH=1 python3 "${TEAM_PY}/run_droid_session.py" \
             --wall ../foreman-run.json --role validator \
             --prompt-file validator-prompt.txt \
             --stream-out validator-stream.jsonl \
             --exit-out droid-exit.txt \
             $OVERRIDE_ARGS
           cp ../foreman-run.json ../wall-in/foreman-run.json
+
+      - name: Upload validator droid stream (W-13)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: droid-stream-validator-run-${{ github.run_id }}
+          path: work/validator-stream.jsonl
+          if-no-files-found: warn
 
       - name: Merge verdict, enforce gates, verify evidence untouched
         id: verdict
@@ -2102,6 +2129,14 @@ jobs:
           open("worker-prompt.txt", "w").write(prompt)
           PY
           timeout --signal=TERM --kill-after=30s 900s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
+
+      - name: Upload worker droid stream (W-13)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: droid-stream-worker-${{ matrix.process.id }}-run-${{ github.run_id }}
+          path: worker-stream.jsonl
+          if-no-files-found: warn
 
       - name: Verify process checks and handoff
         env:
@@ -2947,6 +2982,9 @@ jobs:
         working-directory: work
         run: |
           set -o pipefail
+          REPO_ROOT="${GITHUB_WORKSPACE}"
+          export PYTHONPATH="${REPO_ROOT}/scripts/team"
+          TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'
           import json
           judgeable = json.load(open("judgeable.json"))
@@ -2988,7 +3026,7 @@ jobs:
           if [[ "$ISSUE_TITLE" == "[I8] API墙活验 A 采认失败" ]] || [[ "$ISSUE_TITLE" == "[I8] API墙活验 D 半套artifact" ]]; then
             OVERRIDE_ARGS="--droid-wall-override-sec ${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
           fi
-          PYTHONPATH=scripts/team python3 - <<'PY' >> "$GITHUB_ENV"
+          python3 - <<'PY' >> "$GITHUB_ENV"
           import json
           from budget_resolve import validator_session_budget
           w = json.load(open("../foreman-run.json"))
@@ -2997,13 +3035,21 @@ jobs:
           print(f"ADOPT_RESERVE_SEC={adopt}")
           PY
           echo "validator session budget (wall): droid=${VALIDATOR_DROID_WALL_SEC}s adopt_reserve=${ADOPT_RESERVE_SEC}s (I8-A/D may override droid wall only)"
-          FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_droid_session.py \
+          FOREMAN_RUN_PATCH=1 python3 "${TEAM_PY}/run_droid_session.py" \
             --wall ../foreman-run.json --role validator \
             --prompt-file validator-prompt.txt \
             --stream-out validator-stream.jsonl \
             --exit-out droid-exit.txt \
             $OVERRIDE_ARGS
           cp ../foreman-run.json ../wall-in/foreman-run.json
+
+      - name: Upload validator droid stream round 2 (W-13)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: droid-stream-validator2-run-${{ github.run_id }}
+          path: work/validator-stream.jsonl
+          if-no-files-found: warn
 
       - name: Merge verdict, enforce gates, verify evidence untouched
         id: verdict

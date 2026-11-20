@@ -10,6 +10,7 @@ import re
 import sys
 from pathlib import Path
 
+from budget_resolve import adopt_session_completion_status
 from foreman_run_lib import deep_merge, load_wall, save_wall
 
 ADOPTION_ERRORS = {
@@ -258,11 +259,7 @@ def adopt(
             "schema_version": "closeout-slice.v1",
             "run_must_fail": True,
         }
-    session_status = "ok"
-    if droid_exit == 124:
-        session_status = "timeout"
-    elif droid_exit not in (None, 0):
-        session_status = "droid_failed"
+    session_status = adopt_session_completion_status(droid_exit)
     role = "validator" if round_num == 1 else "validator2"
     patch["budgets"] = {
         "session_outcome": {

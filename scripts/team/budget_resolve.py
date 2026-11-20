@@ -83,3 +83,10 @@ def session_completion_status(exit_code: int | None) -> str:
     if exit_code not in (None, 0):
         return "droid_failed"
     return "ok"
+
+
+def adopt_session_completion_status(droid_exit: int | None) -> str:
+    """Adopt step: no recorded exit means the validator droid session never started."""
+    if droid_exit is None:
+        return "missing_output"
+    return session_completion_status(droid_exit)
