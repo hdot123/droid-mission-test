@@ -18,7 +18,6 @@ from budget_resolve import (  # noqa: E402
     validator_session_budget,
 )
 from foreman_run_lib import init_wall, save_wall  # noqa: E402
-from lead_plan_checkpoint import recover  # noqa: E402
 
 
 def test_init_wall_validator_480_plus_120():
@@ -63,19 +62,6 @@ def test_run_droid_session_requires_foreman_run_patch(tmp_path: Path, monkeypatc
     assert code == 2
 
 
-def test_lead_checkpoint_promote(tmp_path: Path, monkeypatch):
-    stream = tmp_path / "lead-stream.jsonl"
-    plan = {
-        "summary": "s",
-        "processes": [{"id": "a", "title": "t", "scope": "s", "files": ["f.py"], "task": "t", "checks": ["true"]}],
-    }
-    stream.write_text(json.dumps({"content": json.dumps(plan)}) + "\n", encoding="utf-8")
-    ckpt = tmp_path / "team"
-    ckpt.mkdir()
-    monkeypatch.chdir(tmp_path)
-    assert recover(stream_path=stream, promote=True) == 0
-    assert (tmp_path / "team-plan.json").is_file()
-    assert (tmp_path / "team/lead-plan-checkpoint.json").is_file()
 
 
 def test_lint_workflow_budgets_green():

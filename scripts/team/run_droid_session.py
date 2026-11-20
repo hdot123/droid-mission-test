@@ -80,15 +80,16 @@ def _patch_session_outcome(
 ) -> None:
     wall = load_wall(wall_path)
     status = session_completion_status(exit_code)
-    patch = {
-        "budgets": {
-            "session_outcome": {
-                "role": role,
-                "completion_status": status,
-                "exit_code": exit_code,
-            }
-        }
+    session_outcome: dict = {
+        "role": role,
+        "completion_status": status,
+        "exit_code": exit_code,
     }
+    if role == "lead":
+        from lead_plan_segments import scan_segments
+
+        session_outcome["plan_output_shape"] = scan_segments().shape
+    patch = {"budgets": {"session_outcome": session_outcome}}
     save_wall(deep_merge(wall, patch), wall_path)
 
 

@@ -160,7 +160,7 @@ jobs:
           issue = ev.get("issue") or {}
           title = issue.get("title", "")
           body = issue.get("body") or ""
-          prompt = f"""You are the FOREMAN （领班） of a development team under the foreman pattern. Your only job is to split the work order into process cards. You never write application code yourself. Do not edit any file except team-plan.json in the repository root.
+          prompt = f"""You are the FOREMAN （领班） of a development team under the foreman pattern. Your only job is to split the work order into process cards. You never write application code yourself. Do not edit any file except team-plan.json in the repository root and new JSON files under team/lead-plan-segments/ (one new file per segment — never overwrite an existing segment file).
 
           Work order title: {title}
 
@@ -191,8 +191,8 @@ jobs:
           - Write valid JSON only into team-plan.json. Do not wrap it in Markdown.
           - Transcribe the work order's acceptance criteria item by item. Every acceptance example, value, or requirement stated anywhere in the work order must land in the task or checks of the one process card it belongs to. Never let the body's worked examples substitute for the acceptance section, and never drop an acceptance item silently.
           - If the work order contradicts itself (for example a body example and an acceptance value disagree), do NOT silently pick one side. The affected card's task text must carry an explicit conflict note in exactly this shape: "CONFLICT: <item> — body says <X>, acceptance says <Y>; provisional value: <X or Y> (reason: <one line>)". Both values must appear in the card; the worker and the validator must be able to see the conflict from the card alone.
-          - After each process card is fully decided, update team/lead-plan-checkpoint.json (valid JSON: summary + processes array) before starting the next card so partial progress survives a timeout.
-          - Be efficient: at most 8 tool calls, then write team-plan.json.
+          - Segmented persistence (required): after you fix the plan summary, write team/lead-plan-segments/00-header.json as a standalone complete file: {{"schema_version":"lead-plan-segment.v1","kind":"header","summary":"..."}}. After each process card is fully decided, write a new standalone file team/lead-plan-segments/process-<id>.json (never update a segment file you already wrote): {{"schema_version":"lead-plan-segment.v1","kind":"process","process":{{...full card...}}}}. This is how partial progress survives a timeout.
+          - When all cards are decided, write the full team-plan.json (same shape as before). Be efficient: at most 8 tool calls before the final team-plan.json write.
           """
           open("lead-prompt.txt", "w").write(prompt)
           PY
@@ -212,11 +212,15 @@ jobs:
           path: lead-stream.jsonl
           if-no-files-found: warn
 
-      - name: Recover lead plan checkpoint (batch-3)
+      - name: Sync lead plan segments to ForemanRun wall (B2)
         if: steps.dup.outputs.duplicate != 'true'
         run: |
-          PYTHONPATH=scripts/team python3 scripts/team/lead_plan_checkpoint.py \
-            --stream lead-stream.jsonl --promote
+          if [ ! -f wall-in/foreman-run.json ]; then
+            echo "foreman-run missing before lead segment sync"
+            exit 1
+          fi
+          [ -f foreman-run.json ] || cp wall-in/foreman-run.json foreman-run.json
+          PYTHONPATH=scripts/team python3 scripts/team/lead_plan_segments.py sync-wall --wall foreman-run.json
 
       - name: Validate plan, file [计划] issue and sub-issues
         if: steps.dup.outputs.duplicate != 'true'
@@ -226,6 +230,12 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           RUN_ID: ${{ github.run_id }}
         run: |
+          if [ ! -f wall-in/foreman-run.json ]; then
+            echo "foreman-run missing before lead plan gate"
+            exit 1
+          fi
+          [ -f foreman-run.json ] || cp wall-in/foreman-run.json foreman-run.json
+          PYTHONPATH=scripts/team python3 scripts/team/lead_plan_segments.py assert-ready --wall foreman-run.json
           python3 - <<'PY'
           import json, os, re, subprocess, sys
 
@@ -447,6 +457,10 @@ jobs:
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
           PRODUCED="false"
           if [ -f team-plan.json ]; then PRODUCED="true"; fi
+          LEAD_DETAIL=""
+          if [ -f foreman-run.json ]; then
+            LEAD_DETAIL="$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); pl=w.get('plan') or {}; print(f\"lead_plan_output_shape={pl.get('output_shape','unknown')}\")")"
+          fi
           python3 - <<'PY' > /tmp/lead-patch.json
           import json, os
           p = os.environ.get("PLAN_ISSUE_NUMBER", "")
@@ -456,8 +470,11 @@ jobs:
           }
           print(json.dumps(patch))
           PY
+          SYNC_DETAIL="lead job result=$RESULT"
+          if [ -n "$LEAD_DETAIL" ]; then SYNC_DETAIL="$SYNC_DETAIL; $LEAD_DETAIL"; fi
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
             --job lead --result "$RESULT" --produced "$PRODUCED" \
+            --detail "$SYNC_DETAIL" \
             --patch "$(cat /tmp/lead-patch.json)"
 
       - name: Upload foreman-run wall artifact (lead exit)

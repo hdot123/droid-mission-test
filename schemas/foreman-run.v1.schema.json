@@ -70,7 +70,11 @@
               "type": "string",
               "enum": ["ok", "timeout", "droid_failed", "missing_output"]
             },
-            "exit_code": { "type": "integer" }
+            "exit_code": { "type": "integer" },
+            "plan_output_shape": {
+              "type": "string",
+              "enum": ["none", "partial", "complete"]
+            }
           }
         }
       }
@@ -209,6 +213,19 @@
         }
       }
     },
-    "plan_slice": { "type": "object" }
+    "plan_slice": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "const": "lead-plan-slice.v1" },
+        "output_shape": {
+          "type": "string",
+          "enum": ["none", "partial", "complete"]
+        },
+        "segment_files": { "type": "array", "items": { "type": "string" } },
+        "process_segment_count": { "type": "integer", "minimum": 0 },
+        "has_header_segment": { "type": "boolean" },
+        "segment_errors": { "type": "array", "items": { "type": "string" } }
+      }
+    }
   }
 }
