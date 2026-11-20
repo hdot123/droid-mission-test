@@ -1,0 +1,19 @@
+{
+  "id": "hashtable",
+  "title": "Open-addressing hash table with linear probing, tombstones, and growth",
+  "state": "done",
+  "files": [
+    "hashtable.py",
+    "tests/test_hashtable.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_hashtable.py -q",
+      "result": "11 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "114 passed in 3.20s"
+    }
+  ]
+}
