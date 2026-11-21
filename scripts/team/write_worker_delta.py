@@ -12,17 +12,25 @@ from pathlib import Path
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--pid", required=True)
-    p.add_argument("--result", required=True, choices=["success", "failure", "cancelled"])
+    p.add_argument(
+        "--result",
+        required=True,
+        choices=["success", "failure", "cancelled", "unknown"],
+    )
     p.add_argument("--out", default="worker-delta.json")
     p.add_argument("--cancel-reason", default="")
     args = p.parse_args()
     if args.result == "cancelled" and not args.cancel_reason:
         args.cancel_reason = "job_wall_25m"
     job_status = (os.environ.get("JOB_STATUS") or "").strip().lower()
-    if job_status == "failure":
+    if job_status == "success":
+        args.result = "success"
+    elif job_status == "failure":
         args.result = "failure"
     elif job_status == "cancelled":
         args.result = "cancelled"
+    elif args.result == "success":
+        args.result = "unknown"
     # Infer failure if checks marker exists
     if Path(f"team/status/{args.pid}.checks-failed.marker").exists():
         args.result = "failure"

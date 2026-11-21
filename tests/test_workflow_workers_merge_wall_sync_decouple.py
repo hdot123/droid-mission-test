@@ -35,7 +35,7 @@ def _job_text(name: str) -> str:
     ],
 )
 def test_workers_wall_merge_step_order(job: str, sync_step_name: str):
-    """Acceptance: prepare → re-merge → sync are separate steps with sync under always()."""
+    """Acceptance: prepare → re-merge → sync are separate steps; sync gated on merge success (III-1)."""
     job_text = _job_text(job)
     chunks = step_chunks(job_text)
     step_names = [re.search(r"name:\s*(.+)", c).group(1).strip() for c in chunks if re.search(r"name:\s*(.+)", c)]
@@ -48,7 +48,7 @@ def test_workers_wall_merge_step_order(job: str, sync_step_name: str):
     sync_chunk = chunks[idx_sync]
     assert "wall_sync_job.py" in sync_chunk
     assert "merge_worker_deltas.py" not in sync_chunk
-    assert "if: always()" in sync_chunk
+    assert "merge_worker" in sync_chunk and ".outcome == 'success'" in sync_chunk
 
 
 def test_lint_rejects_merge_redo_and_worker_sync_same_step():
