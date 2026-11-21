@@ -162,6 +162,11 @@ jobs:
           body = issue.get("body") or ""
           prompt = f"""You are the FOREMAN （领班） of a development team under the foreman pattern. Your only job is to split the work order into process cards. You never write application code yourself. Do not edit any file except team-plan.json in the repository root and new JSON files under team/lead-plan-segments/ (one new file per segment — never overwrite an existing segment file).
 
+          Segmented persistence (required — read before anything else; the session fails if you delay this):
+          - Your FIRST action must be to write team/lead-plan-segments/00-header.json as a standalone complete file (within your first 2 tool calls): {{"schema_version":"lead-plan-segment.v1","kind":"header","summary":"..."}}. The summary may be a short placeholder you revise later; the header file must exist before you analyze the work order at length.
+          - After EACH process card is fully decided, immediately write a new standalone file team/lead-plan-segments/process-<id>.json (never update a segment file you already wrote): {{"schema_version":"lead-plan-segment.v1","kind":"process","process":{{...full card...}}}}. Do not batch segment writes until the end — write each segment as soon as that card is decided. This is how partial progress survives a timeout.
+          - When all cards are decided, write the full team-plan.json (shape below). Be efficient: at most 8 tool calls before the final team-plan.json write.
+
           Work order title: {title}
 
           Work order body:
@@ -191,8 +196,6 @@ jobs:
           - Write valid JSON only into team-plan.json. Do not wrap it in Markdown.
           - Transcribe the work order's acceptance criteria item by item. Every acceptance example, value, or requirement stated anywhere in the work order must land in the task or checks of the one process card it belongs to. Never let the body's worked examples substitute for the acceptance section, and never drop an acceptance item silently.
           - If the work order contradicts itself (for example a body example and an acceptance value disagree), do NOT silently pick one side. The affected card's task text must carry an explicit conflict note in exactly this shape: "CONFLICT: <item> — body says <X>, acceptance says <Y>; provisional value: <X or Y> (reason: <one line>)". Both values must appear in the card; the worker and the validator must be able to see the conflict from the card alone.
-          - Segmented persistence (required): after you fix the plan summary, write team/lead-plan-segments/00-header.json as a standalone complete file: {{"schema_version":"lead-plan-segment.v1","kind":"header","summary":"..."}}. After each process card is fully decided, write a new standalone file team/lead-plan-segments/process-<id>.json (never update a segment file you already wrote): {{"schema_version":"lead-plan-segment.v1","kind":"process","process":{{...full card...}}}}. This is how partial progress survives a timeout.
-          - When all cards are decided, write the full team-plan.json (same shape as before). Be efficient: at most 8 tool calls before the final team-plan.json write.
           """
           open("lead-prompt.txt", "w").write(prompt)
           PY

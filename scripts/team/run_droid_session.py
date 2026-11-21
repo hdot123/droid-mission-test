@@ -10,6 +10,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from typing import Callable
 
 from budget_resolve import droid_wall_sec, session_completion_status
 from foreman_run_lib import deep_merge, load_wall, save_wall
@@ -17,6 +18,8 @@ from foreman_run_lib import deep_merge, load_wall, save_wall
 DROID_BIN = os.path.expanduser("~/.local/bin/droid")
 FOREMAN_RUN_PATCH_ENV = "FOREMAN_RUN_PATCH"
 KILL_AFTER_SEC = 30
+# Lead segment hard gate: elapsed session time with zero segment files on disk.
+LEAD_SEGMENT_GATE_EXIT = 125
 
 
 class _StreamHeartbeat:
@@ -72,11 +75,71 @@ class _StreamHeartbeat:
                 )
 
 
+class _LeadSegmentGate:
+    """Fail-closed: no lead-plan segment files on disk after elapsed threshold."""
+
+    def __init__(
+        self,
+        *,
+        gate_sec: int,
+        scan: Callable[[], object],
+        proc_getter: Callable[[], subprocess.Popen[str] | None],
+        on_trip: Callable[[], None],
+    ):
+        self.gate_sec = gate_sec
+        self.scan = scan
+        self.proc_getter = proc_getter
+        self.on_trip = on_trip
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._start = time.monotonic()
+        self.tripped = False
+
+    def start(self) -> None:
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=2)
+
+    def _run(self) -> None:
+        from lead_plan_segments import SegmentScan
+
+        while not self._stop.wait(5):
+            elapsed = time.monotonic() - self._start
+            if elapsed < self.gate_sec:
+                continue
+            result = self.scan()
+            if not isinstance(result, SegmentScan):
+                continue
+            if result.segment_files:
+                continue
+            proc = self.proc_getter()
+            if proc is None or proc.poll() is not None:
+                continue
+            self.tripped = True
+            print(
+                "lead segment gate: hard fail — "
+                f"{elapsed:.0f}s elapsed with 0 segment files on disk "
+                f"(threshold={self.gate_sec}s)",
+                file=sys.stderr,
+            )
+            self.on_trip()
+            try:
+                proc.terminate()
+            except OSError:
+                pass
+            break
+
+
 def _patch_session_outcome(
     wall_path: Path,
     *,
     role: str,
     exit_code: int,
+    plan_output_shape: str | None = None,
 ) -> None:
     wall = load_wall(wall_path)
     status = session_completion_status(exit_code)
@@ -88,7 +151,7 @@ def _patch_session_outcome(
     if role == "lead":
         from lead_plan_segments import scan_segments
 
-        session_outcome["plan_output_shape"] = scan_segments().shape
+        session_outcome["plan_output_shape"] = plan_output_shape or scan_segments().shape
     patch = {"budgets": {"session_outcome": session_outcome}}
     save_wall(deep_merge(wall, patch), wall_path)
 
@@ -124,6 +187,14 @@ def build_droid_timeout_cmd(
     return timeout_cmd, wall_sec
 
 
+def _lead_segment_gate_sec() -> int:
+    raw = os.environ.get("FOREMAN_LEAD_SEGMENT_GATE_SEC", "120")
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 120
+
+
 def run_session(
     *,
     wall_path: Path,
@@ -155,6 +226,11 @@ def run_session(
     )
     stream_out.parent.mkdir(parents=True, exist_ok=True)
     heartbeat: _StreamHeartbeat | None = None
+    segment_gate: _LeadSegmentGate | None = None
+    proc: subprocess.Popen[str] | None = None
+    segment_gate_forced_exit: int | None = None
+    use_popen = role == "lead" and enable_heartbeat
+
     if enable_heartbeat:
         heartbeat = _StreamHeartbeat(
             stream_out,
@@ -162,23 +238,74 @@ def run_session(
             idle_sec=int(os.environ.get("FOREMAN_HEARTBEAT_IDLE_SEC", "120")),
         )
         heartbeat.start()
+
+    if use_popen:
+        from lead_plan_segments import scan_segments
+
+        gate_sec = _lead_segment_gate_sec()
+        print(f"lead segment gate: armed (threshold={gate_sec}s elapsed, 0 files)", file=sys.stderr)
+
+        def _trip_gate() -> None:
+            nonlocal segment_gate_forced_exit
+            segment_gate_forced_exit = LEAD_SEGMENT_GATE_EXIT
+            if wall_path.is_file():
+                _patch_session_outcome(
+                    wall_path,
+                    role=role,
+                    exit_code=LEAD_SEGMENT_GATE_EXIT,
+                    plan_output_shape="none",
+                )
+
+        segment_gate = _LeadSegmentGate(
+            gate_sec=gate_sec,
+            scan=scan_segments,
+            proc_getter=lambda: proc,
+            on_trip=_trip_gate,
+        )
+        segment_gate.start()
+
+    completed: subprocess.CompletedProcess[str] | None = None
+    stderr_text = ""
     try:
         with stream_out.open("w", encoding="utf-8") as stream_f:
-            proc = subprocess.run(
-                timeout_cmd,
-                stdout=stream_f,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
+            if use_popen:
+                proc = subprocess.Popen(
+                    timeout_cmd,
+                    stdout=stream_f,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                _, stderr_text = proc.communicate()
+            else:
+                completed = subprocess.run(
+                    timeout_cmd,
+                    stdout=stream_f,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                stderr_text = completed.stderr or ""
     finally:
+        if segment_gate:
+            segment_gate.stop()
         if heartbeat:
             heartbeat.stop()
-    if proc.stderr:
-        print(proc.stderr, file=sys.stderr)
-    exit_code = proc.returncode
+
+    if use_popen:
+        assert proc is not None
+        exit_code = (
+            segment_gate_forced_exit
+            if segment_gate_forced_exit is not None
+            else (proc.returncode if proc.returncode is not None else 0)
+        )
+    else:
+        assert completed is not None
+        exit_code = completed.returncode
+    if stderr_text:
+        print(stderr_text, file=sys.stderr)
+
     exit_out.parent.mkdir(parents=True, exist_ok=True)
     exit_out.write_text(f"{exit_code}\n", encoding="utf-8")
-    if wall_path.is_file():
+    if wall_path.is_file() and segment_gate_forced_exit is None:
         _patch_session_outcome(
             wall_path,
             role=role,

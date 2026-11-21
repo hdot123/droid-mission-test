@@ -149,3 +149,124 @@ def test_lead_session_timeout_partial_shape_on_wall(tmp_path: Path, monkeypatch)
     synced = json.loads(wall_path.read_text(encoding="utf-8"))
     assert synced["budgets"]["session_outcome"]["completion_status"] == "timeout"
     assert synced["budgets"]["session_outcome"]["plan_output_shape"] == "partial"
+
+
+def test_lead_segment_gate_unit_hard_fail():
+    """Hard gate thread trips when threshold elapsed and disk has zero segment files."""
+    import time
+
+    import run_droid_session  # noqa: E402
+    from lead_plan_segments import SegmentScan  # noqa: E402
+
+    events: list[str] = []
+    terminated: list[int] = []
+
+    class _FakeProc:
+        returncode: int | None = None
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            terminated.append(1)
+
+    proc = _FakeProc()
+    gate = run_droid_session._LeadSegmentGate(
+        gate_sec=1,
+        scan=lambda: SegmentScan("none", (), None, (), ()),
+        proc_getter=lambda: proc,
+        on_trip=lambda: events.append("trip"),
+    )
+    gate.start()
+    time.sleep(6.5)
+    gate.stop()
+    assert events == ["trip"]
+    assert terminated == [1]
+    assert gate.tripped
+
+
+def test_lead_segment_gate_session_records_none_on_wall(tmp_path: Path, monkeypatch):
+    """Lead session with heartbeat: gate trip writes session_outcome none before exit."""
+    import run_droid_session  # noqa: E402
+    from lead_plan_segments import SegmentScan  # noqa: E402
+
+    wall = init_wall(run_id="b2gate", issue_number=100)
+    wall_path = tmp_path / "foreman-run.json"
+    save_wall(wall, wall_path)
+    prompt = tmp_path / "lead-prompt.txt"
+    prompt.write_text("plan", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("FOREMAN_RUN_PATCH", "1")
+    monkeypatch.setattr(run_droid_session, "_lead_segment_gate_sec", lambda: 1)
+    monkeypatch.setattr(
+        lps,
+        "scan_segments",
+        lambda **_: SegmentScan("none", (), None, (), ()),
+    )
+
+    class _FakePopen:
+        returncode: int | None = None
+
+        def __init__(self, cmd, **kwargs):
+            self._alive = True
+
+        def poll(self):
+            return None if self._alive else -15
+
+        def terminate(self):
+            self._alive = False
+            self.returncode = -15
+
+        def communicate(self):
+            import time
+
+            while self._alive:
+                time.sleep(0.05)
+            if self.returncode is None:
+                self.returncode = -15
+            return ("", "")
+
+    monkeypatch.setattr(
+        run_droid_session,
+        "build_droid_timeout_cmd",
+        lambda **_: (["sleep", "3600"], 3600),
+    )
+    monkeypatch.setattr(run_droid_session.subprocess, "Popen", _FakePopen)
+
+    code = run_droid_session.run_session(
+        wall_path=wall_path,
+        role="lead",
+        prompt_file=prompt,
+        stream_out=tmp_path / "lead-stream.jsonl",
+        exit_out=tmp_path / "lead-exit.txt",
+        wall_override_sec=600,
+        enable_heartbeat=True,
+    )
+    assert code == run_droid_session.LEAD_SEGMENT_GATE_EXIT
+    synced = json.loads(wall_path.read_text(encoding="utf-8"))
+    assert synced["budgets"]["session_outcome"]["plan_output_shape"] == "none"
+    assert synced["budgets"]["session_outcome"]["exit_code"] == run_droid_session.LEAD_SEGMENT_GATE_EXIT
+
+
+def test_lead_strong_kill_header_on_disk_partial_wall(tmp_path: Path, monkeypatch):
+    """Strong-kill drill: SIGKILL-style exit with 00-header already on disk records partial on wall."""
+    import run_droid_session  # noqa: E402
+
+    seg = tmp_path / "team/lead-plan-segments"
+    _write_header(seg, "killed mid-session")
+    wall = init_wall(run_id="b2sigkill", issue_number=101)
+    wall_path = tmp_path / "foreman-run.json"
+    save_wall(wall, wall_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(lps, "SEGMENTS_DIR", seg)
+    monkeypatch.setattr(lps, "PLAN_PATH", tmp_path / "team-plan.json")
+    assert (seg / "00-header.json").is_file()
+
+    # 137 = 128 + SIGKILL (timeout --signal=KILL or external kill).
+    run_droid_session._patch_session_outcome(wall_path, role="lead", exit_code=137)
+    synced = json.loads(wall_path.read_text(encoding="utf-8"))
+    assert synced["budgets"]["session_outcome"]["completion_status"] == "droid_failed"
+    assert synced["budgets"]["session_outcome"]["plan_output_shape"] == "partial"
+    header = json.loads((seg / "00-header.json").read_text(encoding="utf-8"))
+    assert header["kind"] == "header"
+    assert header["summary"] == "killed mid-session"
