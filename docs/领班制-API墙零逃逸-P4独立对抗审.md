@@ -51,7 +51,7 @@
 | **I1** | prep/prep2 读 `workers-wall-merge.outputs.prep_should_run` | `team.yml` prep `if` 含 `prep_should_run == 'true'`；`foreman_run_lib.prep_should_run` + 单测 | **闭合**（静态） |
 | **I2** | assemble 以墙为权威 pick | `pick_verdict_from_wall.py`；下载墙无 `continue-on-error`；半套时 `wall_authoritative=false` 走 degrade | **大部分闭合**；degrade 仍注入 `needs.*_RESULT`（见 §5） |
 | **I3** | 禁止中间 job `init_wall`；foreman 下载 fail-closed | `team.yml` 无 `init_wall`；lint 禁止；validate/assemble 缺墙 `exit 1` | **闭合**（墙本体）；worker **delta** 下载仍 `continue-on-error`（见 §5） |
-| **I4** | lead/replan 硬评论 + `closeout.comments` 回写 | `post_comment_hard.py --wall-patch`；lead/replan 步含 `GH_TOKEN`（#553）；lint 扫描 | **闭合**（lead/replan）；assemble 收口评论 **未** `--wall-patch` |
+| **I4** | lead/replan 硬评论 + `closeout.comments` 回写 | `post_comment_hard.py --wall-patch`；lead/replan/assemble 收口步含 `GH_TOKEN`（#553）；lint 扫描 assemble `final_status_card` patch（III-3a） | **闭合**（含 assemble 收口 `--wall-patch`，见 `docs/W-14-写板活验通过判据-修订.md` 关联项） |
 | **I5** | 去掉 adopt/derive `\|\| true` | grep `team.yml` 无匹配；lint 规则；upload 绑 `assert_verdict` | **闭合** |
 | **I6** | 生产 `foreman_mode=prod` 机器门 | `validate_foreman_mode.py` + `FOREMAN_REQUIRE_PROD` 单测 | **条件闭合**（须运维设变量；默认仍 `test`） |
 | **I7** | 去掉「评论代偿板面」双轨文案 | lint 禁「状态代偿记录/说明」；收口卡写 PAT 权威镜像句 | **静态闭合** |
@@ -98,7 +98,7 @@
 | **P1** | `pick_verdict_from_wall` **degrade** 分支写 `chain` 用 `needs.*_RESULT` | 墙不完整时 **第二权威** 仍可改业务叙述 | 生产路径禁止 degrade 依赖 needs；或缺墙字段直接 fail job |
 | **P2** | worker delta 下载 `continue-on-error`（`team.yml` L763/L2245 等） | 丢 delta 时 `completed_pids` 可能偏低 → prep 误 skip | 文档化「可接受丢失」或 merge 后校验 delta 计数 |
 | **P2** | `foreman_mode` 默认 `test`（`vars.FOREMAN_MODE \|\| 'test'`） | 生产 Mission 宽口径仍 **开放** 除非设 `FOREMAN_REQUIRE_PROD` | 生产仓 CI 默认要求 `prod`（I6 运维化） |
-| **P3** | assemble 收口 `post_comment_hard` 无 `--wall-patch` | `closeout.comments.final_card` 墙上不可追溯 | 与 I4 对齐 |
+| ~~**P3**~~ | ~~assemble 收口无 `--wall-patch`（III-3a）~~ | — | **已修法**（`final_status_card` wall-patch + lint） |
 | **P3** | I8 orchestrator `gh run watch \|\| true` 等 | **非墙**；但易混淆「观测基础设施」与「墙语义」 | 文档隔离；P4 不把 orchestrator 当墙证明 |
 
 **未宣称**：以上列表 **不保证穷尽**；本席未做全链模糊测试与生产 Mission 仓复制验证。

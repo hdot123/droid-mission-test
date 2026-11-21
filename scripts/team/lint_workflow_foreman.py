@@ -54,6 +54,21 @@ def foreman_run_download_lax(text: str) -> list[str]:
     return errs
 
 
+def assemble_closeout_comment_wall_patch(text: str) -> list[str]:
+    """Assemble final status card must patch closeout.comments (III-3a / I4)."""
+    errs: list[str] = []
+    anchor = text.find('body-file final-comment.md')
+    if anchor < 0:
+        errs.append("assemble closeout post_comment_hard step not found (III-3a)")
+        return errs
+    chunk = text[max(0, anchor - 400) : anchor + 400]
+    if "--wall-patch" not in chunk:
+        errs.append("assemble closeout post_comment_hard must include --wall-patch (III-3a)")
+    elif "final_status_card" not in chunk:
+        errs.append("assemble closeout --wall-patch key must be final_status_card")
+    return errs
+
+
 def post_comment_hard_has_gh_token(text: str) -> list[str]:
     """Every workflow step that invokes post_comment_hard.py must set GH_TOKEN (B4/I4)."""
     errs: list[str] = []
@@ -95,6 +110,7 @@ def main() -> int:
         errors.append("prep2 job must gate on workers2-wall-merge.outputs.prep_should_run (I1)")
     errors.extend(foreman_run_download_lax(text))
     errors.extend(worker_delta_download_lax(text))
+    errors.extend(assemble_closeout_comment_wall_patch(text))
     errors.extend(post_comment_hard_has_gh_token(text))
     repo_root = Path(args.workflow).resolve().parent.parent.parent
     env_check = repo_root / ".github" / "workflows" / "env-check.yml"
