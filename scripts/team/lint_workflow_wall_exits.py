@@ -192,6 +192,35 @@ def derive_chain_sync_not_same_step(text: str) -> list[str]:
     return errs
 
 
+def worker_merge_sync_gated(text: str, spans: dict[str, tuple[int, int]]) -> list[str]:
+    """III-1: worker chain wall_sync must not run when merge_worker_deltas failed."""
+    errs: list[str] = []
+    for job, merge_id, sync_name in (
+        (
+            "workers-wall-merge",
+            "merge_worker_deltas",
+            "Sync worker chain seat from wall (W-11 / N-1)",
+        ),
+        (
+            "workers2-wall-merge",
+            "merge_worker2_deltas",
+            "Sync worker chain seat from wall (W-11 / N-2)",
+        ),
+    ):
+        if job not in spans:
+            continue
+        start, end = spans[job]
+        job_text = text[start:end]
+        for chunk in step_chunks(job_text):
+            if sync_name not in chunk or "wall_sync_job.py" not in chunk:
+                continue
+            if f"steps.{merge_id}.outcome == 'success'" not in chunk:
+                errs.append(
+                    f"III-1: {sync_name} must gate on steps.{merge_id}.outcome == 'success'"
+                )
+    return errs
+
+
 def lead_not_success_only(job_text: str) -> list[str]:
     errs: list[str] = []
     for chunk in step_chunks(job_text):
@@ -241,6 +270,7 @@ def main() -> int:
     errors.extend(merge_jobs_admit_upstream_cancelled(text, spans))
     errors.extend(wall_accounting_steps_no_cancelled(text))
     errors.extend(derive_chain_sync_not_same_step(text))
+    errors.extend(worker_merge_sync_gated(text, spans))
 
     if errors:
         print("wall exit lint failures:", *errors, sep="\n", file=sys.stderr)

@@ -124,7 +124,7 @@ def init_wall(
         "foreman_mode": mode,
         "env": {
             "schema_version": "env-slice.v1",
-            "ok": True,
+            "ok": False,
             "hard_fail_count": 0,
             "hard_fails": [],
             "soft_warns": [],
@@ -187,7 +187,11 @@ def patch_chain_job(
         "chain": {
             job: {
                 "result": result,
-                "started": started if started is not None else result != "skipped",
+                "started": (
+                    started
+                    if started is not None
+                    else result not in ("skipped", "unknown")
+                ),
                 "produced_required_artifact": bool(produced_required_artifact),
                 "downstream_blocker": downstream_blocker,
             }

@@ -79,8 +79,12 @@ def build_facts(wall: dict, env_results: dict[str, str]) -> dict:
             code, detail, forbidden = "cancelled", f"{job} job 被取消/超时", []
         elif result == "skipped":
             code, detail, forbidden = "not_started", f"{job} 未启动", []
-        else:
+        elif result == "success":
             code, detail, forbidden = "ok", f"{job} 正常", []
+        elif result == "unknown":
+            code, detail, forbidden = "not_started", f"{job} 结果未判定", []
+        else:
+            code, detail, forbidden = "not_started", f"{job} 未判定 ({result})", []
         wall.setdefault("chain", {})[job] = {
             **node,
             "result": result,

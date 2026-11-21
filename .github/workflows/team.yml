@@ -455,11 +455,12 @@ jobs:
             exit 1
           fi
           [ -f foreman-run.json ] || cp wall-in/foreman-run.json foreman-run.json
-          RESULT="success"
+          RESULT="unknown"
+          if [ "$JOB_STATUS" = "success" ]; then RESULT="success"; fi
           if [ "$JOB_STATUS" = "failure" ]; then RESULT="failure"; fi
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
           PRODUCED="false"
-          if [ -f team-plan.json ]; then PRODUCED="true"; fi
+          if [ "$RESULT" = "success" ] && [ -f team-plan.json ]; then PRODUCED="true"; fi
           LEAD_DETAIL=""
           if [ -f foreman-run.json ]; then
             LEAD_DETAIL="$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); pl=w.get('plan') or {}; print(f\"lead_plan_output_shape={pl.get('output_shape','unknown')}\")")"
@@ -788,8 +789,10 @@ jobs:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
         run: |
-          RESULT="success"
+          RESULT="unknown"
+          if [ "$JOB_STATUS" = "success" ]; then RESULT="success"; fi
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
+          if [ "$JOB_STATUS" = "failure" ]; then RESULT="failure"; fi
           if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
           PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
             --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
@@ -860,8 +863,23 @@ jobs:
               --wall foreman-run.json --delta-dir deltas
           fi
 
+      - name: Record worker merge failure on chain wall (III-1)
+        if: always() && steps.merge_worker_deltas.outcome != 'success'
+        run: |
+          if [ ! -f foreman-run.json ]; then
+            if [ -f wall-in/foreman-run.json ]; then
+              cp wall-in/foreman-run.json foreman-run.json
+            else
+              echo "foreman-run missing; skip worker merge-failure wall record"
+              exit 0
+            fi
+          fi
+          PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
+            --job worker --result failure --produced false \
+            --detail "merge_worker_deltas failed; chain.worker not synced from needs.worker"
+
       - name: Sync worker chain seat from wall (W-11 / N-1)
-        if: always()
+        if: always() && steps.merge_worker_deltas.outcome == 'success'
         run: |
           PRODUCED="$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); print('true' if (w.get('workers') or {}).get('completed_pids') else 'false')")"
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
@@ -1251,9 +1269,14 @@ jobs:
             exit 1
           fi
           cp wall-in/foreman-run.json foreman-run.json
-          PREP_RESULT="${{ steps.prep.outcome == 'success' && 'success' || 'failure' }}"
+          PREP_RESULT="unknown"
+          if [ "${{ steps.prep.outcome }}" = "success" ]; then PREP_RESULT="success"; fi
+          if [ "${{ steps.prep.outcome }}" = "failure" ]; then PREP_RESULT="failure"; fi
+          if [ "${{ steps.prep.outcome }}" = "cancelled" ]; then PREP_RESULT="cancelled"; fi
+          PREP_PRODUCED="false"
+          if [ "$PREP_RESULT" = "success" ]; then PREP_PRODUCED="true"; fi
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
-            --job prep --result "$PREP_RESULT" --produced true
+            --job prep --result "$PREP_RESULT" --produced "$PREP_PRODUCED"
 
       - name: Upload foreman-run wall artifact
         if: always() && hashFiles('foreman-run.json') != ''
@@ -2056,11 +2079,12 @@ jobs:
             echo "foreman-run missing for replan wall sync"
             exit 1
           fi
-          RESULT="success"
+          RESULT="unknown"
+          if [ "$JOB_STATUS" = "success" ]; then RESULT="success"; fi
           if [ "$JOB_STATUS" = "failure" ]; then RESULT="failure"; fi
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
           PRODUCED="false"
-          if [ -f team-plan-v2.json ]; then PRODUCED="true"; fi
+          if [ "$RESULT" = "success" ] && [ -f team-plan-v2.json ]; then PRODUCED="true"; fi
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
             --job replan --result "$RESULT" --produced "$PRODUCED"
 
@@ -2374,8 +2398,10 @@ jobs:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
         run: |
-          RESULT="success"
+          RESULT="unknown"
+          if [ "$JOB_STATUS" = "success" ]; then RESULT="success"; fi
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
+          if [ "$JOB_STATUS" = "failure" ]; then RESULT="failure"; fi
           if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
           PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
             --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
@@ -2440,8 +2466,23 @@ jobs:
               --wall foreman-run.json --delta-dir deltas --round 2
           fi
 
+      - name: Record worker2 merge failure on chain wall (III-1)
+        if: always() && steps.merge_worker2_deltas.outcome != 'success'
+        run: |
+          if [ ! -f foreman-run.json ]; then
+            if [ -f wall-in/foreman-run.json ]; then
+              cp wall-in/foreman-run.json foreman-run.json
+            else
+              echo "foreman-run missing; skip worker2 merge-failure wall record"
+              exit 0
+            fi
+          fi
+          PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
+            --job worker2 --result failure --produced false \
+            --detail "merge_worker2_deltas failed; chain.worker2 not synced from needs.worker2"
+
       - name: Sync worker2 chain seat from wall (W-11 / N-2)
-        if: always()
+        if: always() && steps.merge_worker2_deltas.outcome == 'success'
         run: |
           PRODUCED="$(PYTHONPATH=scripts/team python3 -c "import json; w=json.load(open('foreman-run.json')); print('true' if (w.get('workers') or {}).get('completed_pids') else 'false')")"
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
@@ -2890,9 +2931,12 @@ jobs:
             exit 1
           fi
           cp wall-in/foreman-run.json foreman-run.json
-          PREP2_RESULT="${{ steps.prep2.outcome == 'success' && 'success' || 'failure' }}"
+          PREP2_RESULT="unknown"
+          if [ "${{ steps.prep2.outcome }}" = "success" ]; then PREP2_RESULT="success"; fi
+          if [ "${{ steps.prep2.outcome }}" = "failure" ]; then PREP2_RESULT="failure"; fi
+          if [ "${{ steps.prep2.outcome }}" = "cancelled" ]; then PREP2_RESULT="cancelled"; fi
           PRODUCED="false"
-          if [ -f evidence/manifest.json ]; then PRODUCED="true"; fi
+          if [ "$PREP2_RESULT" = "success" ] && [ -f evidence/manifest.json ]; then PRODUCED="true"; fi
           PYTHONPATH=scripts/team python3 scripts/team/wall_sync_job.py \
             --job prep2 --result "$PREP2_RESULT" --produced "$PRODUCED"
 
@@ -3523,11 +3567,12 @@ jobs:
           if [ ! -f foreman-run.json ] && [ -f wall-root/foreman-run.json ]; then
             cp wall-root/foreman-run.json foreman-run.json
           fi
-          RESULT="success"
+          RESULT="unknown"
+          if [ "$JOB_STATUS" = "success" ]; then RESULT="success"; fi
           if [ "$JOB_STATUS" = "failure" ]; then RESULT="failure"; fi
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
           PRODUCED="false"
-          if [ -f final-verdict.json ]; then PRODUCED="true"; fi
+          if [ "$RESULT" = "success" ] && [ -f final-verdict.json ]; then PRODUCED="true"; fi
           PYTHONPATH=scripts/team python3 scripts/team/assemble_chain_facts.py \
             --wall foreman-run.json --assemble-exit --result "$RESULT" --produced "$PRODUCED"
 
