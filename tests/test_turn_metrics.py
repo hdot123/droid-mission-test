@@ -197,6 +197,45 @@ def test_measure_dir_corpus_root(tmp_path: Path):
     ]
 
 
+def test_log_file_named_as_artifact(tmp_path: Path):
+    # Job logs staged under a round folder carry the artifact naming on the
+    # file itself; role and run id must come from the file name, not the dir.
+    round_dir = tmp_path / "48A"
+    round_dir.mkdir()
+    log = round_dir / "droid-stream-lead-run-44555700638.log"
+    line = lambda ts: f"2025-01-01T00:00:{ts:02d}.000Z " + json.dumps(_sample_events()[0])
+    log.write_text("\n".join(line(i) for i in range(4)), encoding="utf-8")
+    src = tm.measure_path(log)[0]
+    assert src["role"] == "lead"
+    assert src["run_id"] == "44555700638"
+
+
+def test_worker2_role_token(tmp_path: Path):
+    # Second-round worker seats are worker2/worker3: the role token in the
+    # artifact name is alphanumeric, not purely alphabetic.
+    round_dir = tmp_path / "45A"
+    round_dir.mkdir()
+    log = round_dir / "droid-stream-worker2-run-44428440695.log"
+    line = lambda ts: f"2025-01-01T00:00:{ts:02d}.000Z " + json.dumps(_sample_events()[0])
+    log.write_text("\n".join(line(i) for i in range(4)), encoding="utf-8")
+    src = tm.measure_path(log)[0]
+    assert src["role"] == "worker2"
+    assert src["run_id"] == "44428440695"
+
+
+def test_worker_role_with_module_name(tmp_path: Path):
+    # Worker artifact dirs embed the card module in the role token
+    # (droid-stream-worker-eliasgamma-run-N); run id stays the numeric tail.
+    round_dir = tmp_path / "50B"
+    round_dir.mkdir()
+    (round_dir / "droid-stream-worker-eliasgamma-run-44692482847").mkdir()
+    _jsonl(round_dir / "droid-stream-worker-eliasgamma-run-44692482847",
+           "worker-stream.jsonl", _sample_events())
+    src = tm.measure_dir(tmp_path)[0]
+    assert src["role"] == "worker-eliasgamma"
+    assert src["run_id"] == "44692482847"
+
+
 def test_cli_json_output(tmp_path: Path, capsys):
     path = _jsonl(tmp_path, "lead-stream.jsonl", _sample_events())
     assert tm.main([str(path), "--json"]) == 0

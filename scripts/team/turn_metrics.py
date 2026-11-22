@@ -30,7 +30,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-ART_DIR_RE = re.compile(r"^droid-stream-(?P<role>[a-z]+)-run-(?P<run>\w+)$")
+ART_DIR_RE = re.compile(r"^droid-stream-(?P<role>[a-z0-9][a-z0-9-]*?)-run-(?P<run>\w+)$")
+ART_FILE_RE = re.compile(r"^droid-stream-(?P<role>[a-z0-9][a-z0-9-]*?)-run-(?P<run>\w+)\.\w+$")
 
 _LOG_LINE = re.compile(r"^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)\.(\d+)Z (.*)$")
 _MIN_LOG_LINE = len("1970-01-01T00:00:00.000Z ")
@@ -173,12 +174,19 @@ def measure_path(path: Path) -> list[dict[str, Any]]:
     if path.is_dir():
         return measure_dir(path)
     events, tail = _read_events(path)
-    role = "lead" if "lead-stream" in path.name else "worker" if "worker" in path.name else "validator" if "validator" in path.name else "unknown"
-    run_id = path.parent.name
-    m = ART_DIR_RE.match(path.parent.name)
+    m = ART_FILE_RE.match(path.name)
     if m:
+        # Staged/stream logs often live outside a run-named directory; the
+        # artifact naming on the file itself still carries role and run id.
         role = m.group("role")
         run_id = m.group("run")
+    else:
+        role = "lead" if "lead-stream" in path.name else "worker" if "worker" in path.name else "validator" if "validator" in path.name else "unknown"
+        run_id = path.parent.name
+        m = ART_DIR_RE.match(path.parent.name)
+        if m:
+            role = m.group("role")
+            run_id = m.group("run")
     return [{"source": path.name, "path": str(path), "role": role, "run_id": run_id, **measure_events(events, tail)}]
 
 
