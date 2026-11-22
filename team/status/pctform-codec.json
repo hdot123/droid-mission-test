@@ -1,0 +1,21 @@
+{
+  "id": "pctform-codec",
+  "title": "Percent-form (application/x-www-form-urlencoded) encode/decode",
+  "state": "done",
+  "files": [
+    "pctform.py",
+    "tests/test_pctform.py",
+    "team/handoffs/pctform-codec.md",
+    "team/status/pctform-codec.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_pctform.py -q",
+      "result": "11 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "22 passed in 0.03s"
+    }
+  ]
+}
