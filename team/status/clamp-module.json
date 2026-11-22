@@ -1,0 +1,25 @@
+{
+  "id": "clamp-module",
+  "title": "Implement clamp.py with tests/test_clamp.py",
+  "state": "done",
+  "files": [
+    "clamp.py",
+    "tests/test_clamp.py",
+    "team/handoffs/clamp-module.md",
+    "team/status/clamp-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q",
+      "result": "pass (after installing pytest, which was missing; rerun: 4 passed in 0.01s)"
+    },
+    {
+      "command": "python -c \"from clamp import clamp; assert clamp(5, 1, 10) == 5; assert clamp(-3, 0, 100) == 0; assert clamp(99, 0, 10) == 10; assert clamp(7, 0, 10) == 7; print('clamp examples ok')\"",
+      "result": "pass (clamp examples ok)"
+    },
+    {
+      "command": "python -c \"import os; assert os.path.exists('clamp.py') and os.path.exists('tests/test_clamp.py'); print('files ok')\"",
+      "result": "pass (files ok)"
+    }
+  ]
+}

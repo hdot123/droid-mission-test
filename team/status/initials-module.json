@@ -1,0 +1,23 @@
+{
+  "id": "initials-module",
+  "title": "Implement initials.py with tests/test_initials.py",
+  "state": "done",
+  "files": [
+    "initials.py",
+    "tests/test_initials.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 4 passed in 0.01s (after installing pytest; initially failed with 'No module named pytest' in the environment)"
+    },
+    {
+      "command": "python -c \"from initials import initials; assert initials('Ada Lovelace') == 'A.L.'; assert initials('  grace   hopper ') == 'G.H.'; assert initials('Prince') == 'P.'; print('initials examples ok')\"",
+      "result": "pass: printed 'initials examples ok'"
+    },
+    {
+      "command": "python -c \"import os; assert os.path.exists('initials.py') and os.path.exists('tests/test_initials.py'); print('files ok')\"",
+      "result": "pass: printed 'files ok'"
+    }
+  ]
+}
