@@ -1,0 +1,17 @@
+{
+  "id": "csv-parse-module",
+  "title": "Implement csv_parse.py RFC 4180 subset parser",
+  "state": "done",
+  "files": [
+    "csv_parse.py",
+    "tests/test_csv_parse.py",
+    "team/handoffs/csv-parse-module.md",
+    "team/status/csv-parse-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_csv_parse.py",
+      "result": "passed (17 passed) — executed as python3 -m pytest -q tests/test_csv_parse.py after installing pytest via pip --user; /usr/bin/python initially had no pytest module"
+    }
+  ]
+}
