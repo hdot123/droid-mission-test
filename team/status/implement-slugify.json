@@ -1,0 +1,17 @@
+{
+  "id": "implement-slugify",
+  "title": "Implement slugify module",
+  "state": "done",
+  "files": [
+    "slugify.py",
+    "test_slugify.py",
+    "team/handoffs/implement-slugify.md",
+    "team/status/implement-slugify.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest test_slugify.py -q",
+      "result": "11 passed in 0.02s (exit code 0)"
+    }
+  ]
+}

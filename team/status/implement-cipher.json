@@ -1,0 +1,21 @@
+{
+  "id": "implement-cipher",
+  "title": "Implement Caesar cipher module",
+  "state": "done",
+  "files": [
+    "cipher.py",
+    "test_cipher.py",
+    "team/handoffs/implement-cipher.md",
+    "team/status/implement-cipher.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest test_cipher.py -q",
+      "result": "9 passed"
+    },
+    {
+      "command": "python -c \"import cipher; assert cipher.shift_text('Abc XyZ!', 2) == 'Cde ZaB!'; assert cipher.shift_text('Hello', -3) == 'Ebiil'; assert cipher.shift_text('Zebra', 26) == 'Zebra'\"",
+      "result": "passed (also verified with a shadowing root-level string.py present)"
+    }
+  ]
+}
