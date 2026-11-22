@@ -1,0 +1,21 @@
+{
+  "id": "adler32",
+  "title": "Implement Adler-32 checksum module with tests",
+  "state": "done",
+  "files": [
+    "adler32.py",
+    "tests/test_adler32.py",
+    "team/handoffs/adler32.md",
+    "team/status/adler32.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_adler32.py -q",
+      "result": "passed (9 passed)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (20 passed)"
+    }
+  ]
+}
