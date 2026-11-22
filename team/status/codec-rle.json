@@ -1,0 +1,19 @@
+{
+  "id": "codec-rle",
+  "title": "Implement codec_rle plugin and its tests",
+  "state": "done",
+  "files": [
+    "codec_rle.py",
+    "tests/test_codec_rle.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_codec_rle.py",
+      "result": "6 passed, exit 0"
+    },
+    {
+      "command": "git diff --exit-code -- codecbox.py tests/test_codecbox.py",
+      "result": "exit 0, stock files unchanged"
+    }
+  ]
+}
