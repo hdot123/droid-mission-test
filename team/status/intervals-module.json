@@ -1,0 +1,17 @@
+{
+  "id": "intervals-module",
+  "title": "Implement intervals.py closed-interval merge module",
+  "state": "done",
+  "files": [
+    "intervals.py",
+    "tests/test_intervals.py",
+    "team/handoffs/intervals-module.md",
+    "team/status/intervals-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_intervals.py",
+      "result": "passed: 13 passed in 0.02s"
+    }
+  ]
+}

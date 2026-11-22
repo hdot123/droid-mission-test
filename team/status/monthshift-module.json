@@ -1,0 +1,15 @@
+{
+  "id": "monthshift-module",
+  "title": "Implement monthshift.py month/date shifting module",
+  "state": "done",
+  "files": [
+    "monthshift.py",
+    "tests/test_monthshift.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_monthshift.py",
+      "result": "24 passed in 0.02s (exit code 0)"
+    }
+  ]
+}
