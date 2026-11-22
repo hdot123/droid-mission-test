@@ -1,0 +1,21 @@
+{
+  "id": "hamming-distance",
+  "title": "Implement Hamming distance for strings",
+  "state": "done",
+  "files": [
+    "hamming.py",
+    "tests/test_hamming.py",
+    "team/handoffs/hamming-distance.md",
+    "team/status/hamming-distance.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_hamming.py -q",
+      "result": "7 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "18 passed"
+    }
+  ]
+}

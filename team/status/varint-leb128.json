@@ -1,0 +1,19 @@
+{
+  "id": "varint-leb128",
+  "title": "Implement unsigned LEB128 varint encode/decode",
+  "state": "done",
+  "files": [
+    "varint.py",
+    "tests/test_varint.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_varint.py -q",
+      "result": "passed (13 tests)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (24 tests)"
+    }
+  ]
+}
