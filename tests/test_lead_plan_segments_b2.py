@@ -1,4 +1,4 @@
-"""B2: lead plan segmented persistence — partial vs none, equivalence, no stream salvage."""
+"""B2: lead plan segmented persistence — tri-state stitch, no stream salvage."""
 from __future__ import annotations
 
 import json
@@ -12,11 +12,11 @@ sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
 from foreman_run_lib import init_wall, save_wall  # noqa: E402
 from lead_plan_segments import (  # noqa: E402
-    assemble_plan_dict,
+    SEGMENT_ID_RE,
     cmd_assert_ready,
     cmd_sync_wall,
-    plans_core_equivalent,
     scan_segments,
+    stitch_plan_file,
 )
 import lead_plan_segments as lps  # noqa: E402
 
@@ -71,10 +71,9 @@ def test_scan_partial_with_header_only(tmp_path: Path, monkeypatch):
     assert scan.processes == ()
 
 
-def test_assert_ready_partial_records_wall_and_fails(tmp_path: Path, monkeypatch):
+def test_assert_ready_header_only_records_wall_and_fails(tmp_path: Path, monkeypatch):
     seg = tmp_path / "team/lead-plan-segments"
     _write_header(seg)
-    _write_process(seg, "alpha")
     wall = init_wall(run_id="b2p", issue_number=1)
     wall_path = tmp_path / "foreman-run.json"
     save_wall(wall, wall_path)
@@ -85,8 +84,10 @@ def test_assert_ready_partial_records_wall_and_fails(tmp_path: Path, monkeypatch
     assert cmd_assert_ready(wall_path) == 1
     synced = json.loads(wall_path.read_text(encoding="utf-8"))
     assert synced["plan"]["output_shape"] == "partial"
-    assert synced["plan"]["process_segment_count"] == 1
+    assert synced["plan"]["process_segment_count"] == 0
+    assert synced["plan"]["has_header_segment"] is True
     assert synced["chain"]["lead"]["result"] == "unknown"
+    assert not (tmp_path / "team-plan.json").exists()
 
 
 def test_assert_ready_none_fails(tmp_path: Path, monkeypatch):
@@ -94,7 +95,8 @@ def test_assert_ready_none_fails(tmp_path: Path, monkeypatch):
     assert cmd_assert_ready(None) == 1
 
 
-def test_normal_path_equivalent_to_segments(tmp_path: Path, monkeypatch):
+def test_assert_ready_stitches_plan_from_segments(tmp_path: Path, monkeypatch):
+    """Header + cards only: the machine writes team-plan.json and the gate passes."""
     seg = tmp_path / "team/lead-plan-segments"
     _write_header(seg, "ship it")
     _write_process(seg, "alpha")
@@ -103,16 +105,111 @@ def test_normal_path_equivalent_to_segments(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(lps, "SEGMENTS_DIR", seg)
     plan_path = tmp_path / "team-plan.json"
     monkeypatch.setattr(lps, "PLAN_PATH", plan_path)
-    assembled = assemble_plan_dict(scan_segments(segments_dir=seg))
-    assert assembled is not None
-    plan = dict(assembled)
-    plan["plan_version"] = 1
-    plan["iteration"] = 1
-    plan_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    assert not plan_path.exists()
+
+    assert cmd_assert_ready(None) == 0
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert plan["summary"] == "ship it"
+    assert [p["id"] for p in plan["processes"]] == ["alpha", "beta"]
     scan = scan_segments(segments_dir=seg)
     assert scan.shape == "complete"
-    assert plans_core_equivalent(json.loads(plan_path.read_text()), assembled)
-    assert cmd_assert_ready(None) == 0
+
+
+def test_stitch_tri_state_none_partial_complete(tmp_path: Path, monkeypatch):
+    """none (nothing stitchable), partial (unclean scan: a card fails its gate),
+    complete (header + every card on disk scans clean)."""
+    seg = tmp_path / "team/lead-plan-segments"
+    plan_path = tmp_path / "team-plan.json"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(lps, "SEGMENTS_DIR", seg)
+    monkeypatch.setattr(lps, "PLAN_PATH", plan_path)
+
+    # none
+    assert stitch_plan_file(plan_path) is None
+    assert not plan_path.exists()
+
+    # header + at least one card: a stitchable plan exists
+    _write_header(seg, "first card survived the timeout")
+    _write_process(seg, "only-one")
+    assert scan_segments(segments_dir=seg).shape == "complete"
+    assert stitch_plan_file(plan_path) == "complete"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert plan["summary"] == "first card survived the timeout"
+    assert [p["id"] for p in plan["processes"]] == ["only-one"]
+
+    # partial: one clean card + one residue card whose id no longer matches
+    # its filename — the clean card stitches, the residue never enters.
+    _write_process(seg, "second-one")
+    proc = json.loads((seg / "process-second-one.json").read_text(encoding="utf-8"))
+    proc["process"]["id"] = "renamed-id"
+    (seg / "process-second-one.json").write_text(
+        json.dumps(proc, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    assert scan_segments(segments_dir=seg).shape == "partial"
+    assert stitch_plan_file(plan_path) == "partial"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert [p["id"] for p in plan["processes"]] == ["only-one"]
+
+    # header alone stitches nothing; with both cards clean it is complete.
+    (seg / "process-second-one.json").unlink()
+    _write_process(seg, "second-one")
+    assert scan_segments(segments_dir=seg).shape == "complete"
+    assert stitch_plan_file(plan_path) == "complete"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert [p["id"] for p in plan["processes"]] == ["only-one", "second-one"]
+
+
+def test_stitch_overwrites_whole_file_never_merges(tmp_path: Path, monkeypatch):
+    seg = tmp_path / "team/lead-plan-segments"
+    _write_header(seg, "fresh summary")
+    _write_process(seg, "alpha")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(lps, "SEGMENTS_DIR", seg)
+    plan_path = tmp_path / "team-plan.json"
+    monkeypatch.setattr(lps, "PLAN_PATH", plan_path)
+    plan_path.write_text(
+        json.dumps(
+            {"summary": "stale", "processes": [{"id": "ghost"}], "plan_version": 1},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    assert stitch_plan_file(plan_path) == "complete"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert plan["summary"] == "fresh summary"
+    assert [p["id"] for p in plan["processes"]] == ["alpha"]
+
+
+def test_segment_id_derivation_rule_round51_pool():
+    """Every round-51 pool module name yields an id satisfying the filename rule."""
+    pool = [
+        "chaocipher",
+        "centroid",
+        "base62",
+        "dijkstra",
+        "nthprime",
+        "windscale",
+        "bell",
+        "tapcode",
+        "decimaltime",
+        "numwords",
+        "code39",
+        "solids",
+    ]
+    for name in pool:
+        assert SEGMENT_ID_RE.fullmatch(name), f"pool name {name} violates the id rule"
+        assert f"process-{name}.json" == f"process-{name}.json"
+
+
+@pytest.mark.parametrize("upper,underscored,expected", [
+    ("Chaocipher", "chao_cipher", "chaocipher"),
+])
+def test_segment_id_normalization_documented(upper: str, underscored: str, expected: str):
+    """The prompt's normalization rule (lower-case, hyphens) is the scan rule."""
+    for name in (upper, underscored):
+        assert SEGMENT_ID_RE.fullmatch(name) is None
+    assert SEGMENT_ID_RE.fullmatch(expected) is not None
 
 
 def test_sync_wall_session_outcome_shape(tmp_path: Path, monkeypatch):
@@ -142,9 +239,9 @@ def test_lead_session_timeout_partial_shape_on_wall(tmp_path: Path, monkeypatch)
     wall = init_wall(run_id="b2kill", issue_number=99)
     wall_path = tmp_path / "foreman-run.json"
     save_wall(wall, wall_path)
-    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(lps, "SEGMENTS_DIR", seg)
     monkeypatch.setattr(lps, "PLAN_PATH", tmp_path / "team-plan.json")
+    monkeypatch.chdir(tmp_path)
     run_droid_session._patch_session_outcome(wall_path, role="lead", exit_code=124)
     synced = json.loads(wall_path.read_text(encoding="utf-8"))
     assert synced["budgets"]["session_outcome"]["completion_status"] == "timeout"

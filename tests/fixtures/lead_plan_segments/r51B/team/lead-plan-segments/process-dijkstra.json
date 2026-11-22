@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "dijkstra-module",
+    "title": "实现 dijkstra.py 有向图最短路径及测试",
+    "scope": "Owns only dijkstra.py and tests/test_dijkstra.py (new files only). Does not touch nthprime, windscale, or any existing file; does not import other project modules.",
+    "files": [
+      "dijkstra.py",
+      "tests/test_dijkstra.py"
+    ],
+    "task": "Implement dijkstra.py (standard library only, no imports of other project modules) and tests/test_dijkstra.py as new files; do not modify any existing file. Spec (verbatim from work order): 图以 dict 表示：键为节点名（str），值为邻接 dict（邻居名 → 权重）。边按给定方向为有向边；只作为邻居出现、未作键的节点视为无出边。权重须为 int/float（bool 拒），非数值抛 TypeError；负权重抛 ValueError；graph 非 dict、邻接非 dict、节点名非 str 均抛 TypeError。API: `dijkstra(graph, source) -> tuple[dict, dict]`：返回 (dist, prev)。dist 含图中全部节点（作键或作邻居出现者）：可达者为最短距离（源为 0），不可达者为 `math.inf`。prev 只含可达的非源节点到其前驱节点的映射（源与不可达节点不在 prev 中）。source 不在图中抛 ValueError。`shortest_path(graph, source, target) -> list`：返回源到目标的最短路径节点列表（含两端）；不可达返回 `[]`；source == target 返回 `[source]`；source 或 target 不在图中抛 ValueError。 Acceptance examples (each must have a corresponding test case): 图 G1 = {\"A\": {\"B\": 1, \"C\": 4}, \"B\": {\"C\": 2, \"D\": 5}, \"C\": {\"D\": 1}, \"D\": {}, \"E\": {}}：`dijkstra(G1, \"A\")` 的 dist 为 A=0、B=1、C=3、D=4、E=math.inf，prev == {\"B\": \"A\", \"C\": \"B\", \"D\": \"C\"}；`shortest_path(G1, \"A\", \"D\") == [\"A\", \"B\", \"C\", \"D\"]`；`shortest_path(G1, \"A\", \"C\") == [\"A\", \"B\", \"C\"]`；`shortest_path(G1, \"A\", \"E\") == []`；`shortest_path(G1, \"A\", \"A\") == [\"A\"]`；`shortest_path(G1, \"D\", \"A\") == []`（有向，不可逆）；图 G2 = {\"S\": {\"T\": 2.5, \"U\": 1.5}, \"U\": {\"T\": 0.5}, \"T\": {}}：dist[\"T\"] == 2.0、dist[\"U\"] == 1.5、prev == {\"U\": \"S\", \"T\": \"U\"}、`shortest_path(G2, \"S\", \"T\") == [\"S\", \"U\", \"T\"]`；图 G3 = {\"A\": {\"B\": 7}}：dist[\"B\"] == 7、prev == {\"B\": \"A\"}；`dijkstra({\"A\": {\"B\": -1}}, \"A\")`、`dijkstra(G1, \"Z\")`、`shortest_path(G1, \"A\", \"Z\")` 抛 ValueError；`dijkstra([(\"A\", {})], \"A\")`、`dijkstra({\"A\": {\"B\": \"x\"}}, \"A\")`、`dijkstra({\"A\": {\"B\": True}}, \"A\")` 抛 TypeError。Cover every acceptance item with a test case.",
+    "checks": [
+      "python3 -m pytest tests/test_dijkstra.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

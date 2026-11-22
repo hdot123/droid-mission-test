@@ -151,7 +151,13 @@ def _patch_session_outcome(
     if role == "lead":
         from lead_plan_segments import scan_segments
 
-        session_outcome["plan_output_shape"] = plan_output_shape or scan_segments().shape
+        shape = plan_output_shape or scan_segments().shape
+        if plan_output_shape is None and status == "timeout" and shape == "complete":
+            # A timed-out session never reached its own end: the segments that
+            # landed are clean and still stitch downstream, but the run-level
+            # shape stays partial.
+            shape = "partial"
+        session_outcome["plan_output_shape"] = shape
     patch = {"budgets": {"session_outcome": session_outcome}}
     save_wall(deep_merge(wall, patch), wall_path)
 

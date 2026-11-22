@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "decimaltime-module",
+    "title": "Implement decimaltime.py (decimal time conversion) with tests",
+    "scope": "Owns only the new files decimaltime.py and tests/test_decimaltime.py. Does not touch any existing file, does not implement bell or tapcode, does not import from other modules.",
+    "files": [
+      "decimaltime.py",
+      "tests/test_decimaltime.py"
+    ],
+    "task": "Implement decimaltime.py for decimal-time conversion. Use only the Python standard library. Do not import bell or tapcode.\n\nDecimal time is fixed: one day = 10 decimal hours; one decimal hour = 100 decimal minutes; one decimal minute = 100 decimal seconds (a full day = 100000 decimal seconds, corresponding to 86400 normal seconds). All conversions truncate (floor), never round.\n\n`to_decimal(h, m, s) -> tuple[int, int, int]`: inputs must be numeric (int or float, bool rejected); non-numeric raises TypeError. Ranges: 0 ≤ h < 24, 0 ≤ m < 60, 0 ≤ s < 60; out of range raises ValueError. Convert the elapsed seconds of the day proportionally to decimal seconds, truncate, then split into (decimal hour, decimal minute, decimal second).\n\n`from_decimal(dh, dm, ds) -> tuple[int, int, int]`: inputs must be int (bool rejected); non-int raises TypeError. Ranges: 0 ≤ dh < 10, 0 ≤ dm < 100, 0 ≤ ds < 100; out of range raises ValueError. Inverse conversion, truncated, split into (h, m, s).\n\nAcceptance examples — every one of these must have a corresponding test case in tests/test_decimaltime.py (逐字 transcribed from the work order):\n- to_decimal(0, 0, 0) == (0, 0, 0)\n- to_decimal(12, 0, 0) == (5, 0, 0)\n- to_decimal(6, 0, 0) == (2, 50, 0)\n- to_decimal(18, 0, 0) == (7, 50, 0)\n- to_decimal(0, 0, 1) == (0, 0, 1) (truncation)\n- to_decimal(23, 59, 59) == (9, 99, 98)\n- to_decimal(1, 0, 0) == (0, 41, 66)\n- to_decimal(0, 36, 0) == (0, 25, 0)\n- from_decimal(0, 0, 0) == (0, 0, 0)\n- from_decimal(5, 0, 0) == (12, 0, 0)\n- from_decimal(2, 50, 0) == (6, 0, 0)\n- from_decimal(9, 99, 99) == (23, 59, 59)\n- from_decimal(0, 0, 1) == (0, 0, 0) (truncation)\n- from_decimal(1, 0, 0) == (2, 24, 0)\n- Round trips: from_decimal(*to_decimal(12, 0, 0)) == (12, 0, 0); to_decimal(*from_decimal(5, 0, 0)) == (5, 0, 0); to_decimal(*from_decimal(0, 25, 0)) == (0, 25, 0)\n- Each raises ValueError: to_decimal(24, 0, 0), to_decimal(0, 60, 0), to_decimal(0, 0, 60), to_decimal(-1, 0, 0), from_decimal(10, 0, 0), from_decimal(0, 100, 0), from_decimal(0, 0, -1)\n- Each raises TypeError: to_decimal(\"12\", 0, 0), to_decimal(True, 0, 0), from_decimal(1.5, 0, 0)\n\nConstraints: only create decimaltime.py and tests/test_decimaltime.py (both new files); do not modify any existing file; standard library only.\n\nChecks (run from repository root, verbatim from work order): python3 -m pytest tests/test_decimaltime.py -q and python3 -m pytest tests/ -q",
+    "checks": [
+      "python3 -m pytest tests/test_decimaltime.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

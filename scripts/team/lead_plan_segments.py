@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Lead plan segmented persistence (batch-B / B2): one file per segment, no stream salvage."""
+"""Lead plan segments are the single hand-written source of team-plan.json.
+
+The lead writes only segments (00-header.json + one file per process card).
+The machine stitches them into team-plan.json via ``stitch_plan_file`` /
+``stitch`` — the lead never writes the plan, so there is no second artifact
+to reconcile and no equivalence gate.
+"""
 from __future__ import annotations
 
 import argparse
@@ -18,6 +24,10 @@ HEADER_BASENAME = "00-header.json"
 PROCESS_PREFIX = "process-"
 SEGMENT_SCHEMA = "lead-plan-segment.v1"
 PLAN_SLICE_SCHEMA = "lead-plan-slice.v1"
+# Process-card id rule (matches the lead prompt): derive the id from the
+# module-name stem — lower-case it, turn underscores into hyphens; the result
+# must fit ^[a-z0-9][a-z0-9-]*$, which is also the id==filename constraint.
+SEGMENT_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 PlanOutputShape = Literal["none", "partial", "complete"]
 
@@ -35,7 +45,7 @@ def _is_process_filename(name: str) -> bool:
     if not name.startswith(PROCESS_PREFIX) or not name.endswith(".json"):
         return False
     pid = name[len(PROCESS_PREFIX) : -len(".json")]
-    return bool(re.fullmatch(r"^[a-z0-9][a-z0-9-]*$", pid))
+    return bool(SEGMENT_ID_RE.fullmatch(pid))
 
 
 def _read_segment(path: Path) -> tuple[dict[str, Any] | None, str | None]:
@@ -56,14 +66,10 @@ def _read_segment(path: Path) -> tuple[dict[str, Any] | None, str | None]:
 def scan_segments(*, segments_dir: Path = SEGMENTS_DIR) -> SegmentScan:
     errors: list[str] = []
     if not segments_dir.is_dir():
-        if PLAN_PATH.is_file():
-            return SegmentScan("complete", (), None, (), ())
         return SegmentScan("none", (), None, (), ())
 
     names = sorted(p.name for p in segments_dir.iterdir() if p.is_file() and p.suffix == ".json")
     if not names:
-        if PLAN_PATH.is_file():
-            return SegmentScan("complete", (), None, (), ())
         return SegmentScan("none", (), None, (), ())
 
     header: dict[str, Any] | None = None
@@ -96,15 +102,26 @@ def scan_segments(*, segments_dir: Path = SEGMENTS_DIR) -> SegmentScan:
             continue
         pid = name[len(PROCESS_PREFIX) : -len(".json")]
         if str(proc.get("id", "")) != pid:
-            errors.append(f"{name}: process.id must match filename ({pid})")
+            errors.append(
+                f"{name}: process.id must match filename ({pid}); "
+                "rename the segment file to process-<id>.json where <id> is the card id "
+                "derived from the module-name stem (lower-case, underscores -> hyphens)"
+            )
             continue
         processes.append(proc)
 
     processes_sorted = tuple(sorted(processes, key=lambda p: str(p.get("id", ""))))
-    if PLAN_PATH.is_file():
+    # complete = every card scanned clean under a header with a usable summary;
+    # partial = some segments on disk that did not yield a full card set.
+    header_summary_ok = (
+        header is not None
+        and isinstance(header.get("summary"), str)
+        and bool(str(header.get("summary")).strip())
+    )
+    if not errors and header_summary_ok and processes_sorted:
         shape: PlanOutputShape = "complete"
     else:
-        shape = "partial" if names else "none"
+        shape = "partial"
     return SegmentScan(
         shape=shape,
         segment_files=tuple(names),
@@ -115,7 +132,7 @@ def scan_segments(*, segments_dir: Path = SEGMENTS_DIR) -> SegmentScan:
 
 
 def assemble_plan_dict(scan: SegmentScan) -> dict[str, Any] | None:
-    """Read-only merge for equivalence checks — never used to create team-plan.json in CI."""
+    """Single-direction stitch: segments -> plan dict (the machine writes it)."""
     if scan.header is None or not scan.processes:
         return None
     summary = scan.header.get("summary")
@@ -124,27 +141,37 @@ def assemble_plan_dict(scan: SegmentScan) -> dict[str, Any] | None:
     return {"summary": summary, "processes": [dict(p) for p in scan.processes]}
 
 
-def plan_core_fields(plan: dict[str, Any]) -> dict[str, Any]:
-    processes = []
-    for proc in plan.get("processes") or []:
-        if not isinstance(proc, dict):
-            continue
-        processes.append(
-            {
-                "id": proc.get("id"),
-                "title": proc.get("title"),
-                "scope": proc.get("scope"),
-                "files": list(proc.get("files") or []),
-                "task": proc.get("task"),
-                "checks": list(proc.get("checks") or []),
-            }
-        )
-    processes.sort(key=lambda p: str(p.get("id", "")))
-    return {"summary": plan.get("summary", ""), "processes": processes}
+def write_stitched_plan(plan_path: Path, scan: SegmentScan) -> bool:
+    """Overwrite plan_path with the segment assembly.
+
+    Returns True when a plan was written (header + at least one card), False
+    when the scan produced nothing stitchable. The path is replaced wholesale:
+    a pre-existing file (stale hand-written plan or a previous shape) is never
+    merged, it is overwritten from segments.
+    """
+    assembled = assemble_plan_dict(scan)
+    if assembled is None:
+        return False
+    plan_path.write_text(
+        json.dumps(assembled, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    return True
 
 
-def plans_core_equivalent(left: dict[str, Any], right: dict[str, Any]) -> bool:
-    return plan_core_fields(left) == plan_core_fields(right)
+def stitch_plan_file(plan_path: Path | None = None) -> PlanOutputShape | None:
+    """Stitch segments into team-plan.json; returns the resulting shape.
+
+    Called in the lead job before any step reads team-plan.json. shape is
+    complete (header + full segment set), partial (header + at least one
+    card), or None when nothing stitchable exists (no team-plan.json written).
+    """
+    scan = scan_segments()
+    if plan_path is None:
+        plan_path = PLAN_PATH
+    write_stitched_plan(plan_path, scan)
+    if scan.header is None or not scan.processes:
+        return None
+    return "complete" if scan.shape == "complete" else "partial"
 
 
 def plan_slice_payload(scan: SegmentScan) -> dict[str, Any]:
@@ -188,30 +215,26 @@ def cmd_assert_ready(wall_path: Path | None) -> int:
         for err in scan.errors:
             print(err, file=sys.stderr)
         return 1
-    if PLAN_PATH.is_file():
-        try:
-            plan = json.loads(PLAN_PATH.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            print("team-plan.json unreadable", file=sys.stderr)
-            return 1
-        assembled = assemble_plan_dict(scan)
-        if assembled is not None and not plans_core_equivalent(plan, assembled):
-            print(
-                "team-plan.json core fields differ from segment assembly (equivalence)",
-                file=sys.stderr,
-            )
-            return 1
-        print("lead plan ready:", f"shape={scan.shape}", f"processes={len(plan.get('processes') or [])}")
-        return 0
-    if scan.shape == "none":
-        print("lead plan missing: no team-plan.json and no segments on disk", file=sys.stderr)
+    stitchable = scan.header is not None and bool(scan.processes)
+    if not stitchable:
+        print("team-plan.json missing: nothing stitchable on disk", file=sys.stderr)
         return 1
-    print(
-        "lead plan partial:",
-        f"{len(scan.segment_files)} segment file(s); refusing to stitch into team-plan.json",
-        file=sys.stderr,
-    )
-    return 1
+    if not write_stitched_plan(PLAN_PATH, scan):
+        print("team-plan.json missing: nothing stitchable on disk", file=sys.stderr)
+        return 1
+    try:
+        plan = json.loads(PLAN_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        print("team-plan.json unreadable", file=sys.stderr)
+        return 1
+    if not isinstance(plan.get("summary"), str) or not str(plan.get("summary")).strip():
+        print("team-plan.json missing summary", file=sys.stderr)
+        return 1
+    if not isinstance(plan.get("processes"), list) or not plan.get("processes"):
+        print("team-plan.json missing processes", file=sys.stderr)
+        return 1
+    print("lead plan ready:", f"shape={scan.shape}", f"processes={len(plan.get('processes') or [])}")
+    return 0
 
 
 def main() -> int:
@@ -220,14 +243,20 @@ def main() -> int:
     sync = sub.add_parser("sync-wall", help="Record segment scan on ForemanRun wall after lead session")
     sync.add_argument("--wall", default="foreman-run.json")
     sync.add_argument("--role", default="lead")
-    gate = sub.add_parser("assert-ready", help="Fail unless team-plan.json exists; record partial|none on wall")
+    gate = sub.add_parser("assert-ready", help="Stitch segments into team-plan.json, then verify schema")
     gate.add_argument("--wall", default=None)
+    stitch = sub.add_parser("stitch", help="Stitch segments into team-plan.json (shape none|partial|complete)")
+    stitch.add_argument("--plan", default=None)
     args = p.parse_args()
     if args.cmd == "sync-wall":
         return cmd_sync_wall(Path(args.wall), args.role)
     if args.cmd == "assert-ready":
         wall = Path(args.wall) if args.wall else None
         return cmd_assert_ready(wall)
+    if args.cmd == "stitch":
+        shape = stitch_plan_file(Path(args.plan) if args.plan else None)
+        print("stitch:", f"shape={shape or 'none'}")
+        return 0
     return 2
 
 

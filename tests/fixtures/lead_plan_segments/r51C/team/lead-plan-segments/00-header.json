@@ -1,0 +1,5 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "header",
+  "summary": "Split [第五十一轮·C] bell/tapcode/decimaltime into 3 independent process cards (one per module), each with its test file; placeholder, revised later."
+}

@@ -1,0 +1,5 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "header",
+  "summary": "第五十一轮·D：三个独立模块 numwords / code39 / solids 及其测试，拆分为 3 个互不依赖的过程卡。"
+}

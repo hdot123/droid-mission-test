@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "numwords-integer-words",
+    "title": "实现 numwords.py 整数转英文词及其测试",
+    "scope": "Owns only numwords.py and tests/test_numwords.py. Does not own code39.py, solids.py, any existing repository file, or any team/ file.",
+    "files": [
+      "numwords.py",
+      "tests/test_numwords.py"
+    ],
+    "task": "Create two NEW files only: numwords.py and tests/test_numwords.py. Do not modify any existing file. Use only the Python standard library. Do not import code39 or solids or any non-stdlib module.\n\nImplement number_to_words(n: int) -> str in numwords.py:\n- Range pinned to 0 <= n <= 999,999,999. n must be int; bool is rejected (TypeError). Non-int input raises TypeError; out-of-range input raises ValueError.\n- Spelling rules pinned: American English, no \"and\", all lowercase, grouped by thousand/million; within a group the hundreds place is \"X hundred\"; tens and ones combine with a hyphen (e.g. forty-two); single space between words/groups, no leading or trailing spaces.\n\nAcceptance examples (each must have a corresponding test case in tests/test_numwords.py, exact string equality):\n- number_to_words(0) == \"zero\"\n- number_to_words(5) == \"five\"\n- number_to_words(13) == \"thirteen\"\n- number_to_words(20) == \"twenty\"\n- number_to_words(40) == \"forty\"\n- number_to_words(42) == \"forty-two\"\n- number_to_words(99) == \"ninety-nine\"\n- number_to_words(100) == \"one hundred\"\n- number_to_words(115) == \"one hundred fifteen\" (no \"and\")\n- number_to_words(999) == \"nine hundred ninety-nine\"\n- number_to_words(1000) == \"one thousand\"\n- number_to_words(1001) == \"one thousand one\"\n- number_to_words(1100) == \"one thousand one hundred\"\n- number_to_words(12345) == \"twelve thousand three hundred forty-five\"\n- number_to_words(100000) == \"one hundred thousand\"\n- number_to_words(1000000) == \"one million\"\n- number_to_words(2000000) == \"two million\"\n- number_to_words(100000000) == \"one hundred million\"\n- number_to_words(999999999) == \"nine hundred ninety-nine million nine hundred ninety-nine thousand nine hundred ninety-nine\"\n- number_to_words(-1) raises ValueError\n- number_to_words(1000000000) raises ValueError\n- number_to_words(2.5) raises TypeError\n- number_to_words(\"42\") raises TypeError\n- number_to_words(True) raises TypeError\n\nEvery acceptance item above must be covered by a test case. No conflicts between body and acceptance were found for this module.",
+    "checks": [
+      "python3 -m pytest tests/test_numwords.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}
