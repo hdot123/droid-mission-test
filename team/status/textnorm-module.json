@@ -1,0 +1,21 @@
+{
+  "id": "textnorm-module",
+  "title": "实现 textnorm.py 文本规范化模块",
+  "state": "done",
+  "files": [
+    "textnorm.py",
+    "tests/test_textnorm.py",
+    "team/handoffs/textnorm-module.md",
+    "team/status/textnorm-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_textnorm.py",
+      "result": "pass: 5 passed in 0.01s"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 5 passed in 0.01s"
+    }
+  ]
+}
