@@ -1,0 +1,21 @@
+{
+  "id": "djb2hash-module",
+  "title": "Implement djb2hash.py (djb2 字符串散列)",
+  "state": "done",
+  "files": [
+    "djb2hash.py",
+    "tests/test_djb2hash.py",
+    "team/handoffs/djb2hash-module.md",
+    "team/status/djb2hash-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_djb2hash.py -q",
+      "result": "pass: 12 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 48 passed in 2.30s (exit 0)"
+    }
+  ]
+}
