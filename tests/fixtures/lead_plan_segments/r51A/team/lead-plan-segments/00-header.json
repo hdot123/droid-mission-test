@@ -1,0 +1,5 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "header",
+  "summary": "Split the three-module work order (chaocipher, centroid, base62) into three independent process cards with full acceptance criteria transcribed."
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "base62",
+    "title": "Implement base62.py (Base62 encode/decode) with tests",
+    "scope": "Owns exactly base62.py and tests/test_base62.py. Does not touch chaocipher.py, centroid.py, any other test file, or any existing file. Standard library only; no imports from other deliverable modules.",
+    "files": [
+      "base62.py",
+      "tests/test_base62.py"
+    ],
+    "task": "Implement the Base62 codec exactly to the acceptance section below, then write its test file. Only create these two new files; do not modify any existing file. Use only the standard library and do not import the other deliverable modules.\n\nSPEC:\n- Alphabet pinned as `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz` (indices 0-61 map to those characters in order).\n- `base62_encode(n: int) -> str`: n must be int (bool rejected); non-int raises TypeError; n < 0 raises ValueError; `base62_encode(0) == \"0\"`.\n- `base62_decode(s: str) -> int`: non-str raises TypeError; empty string raises ValueError; characters outside the alphabet raise ValueError.\n\nACCEPTANCE (transcribed item by item; every item needs a test case):\n- `base62_encode(0) == \"0\"`\n- `base62_encode(1) == \"1\"`\n- `base62_encode(9) == \"9\"`\n- `base62_encode(10) == \"A\"`\n- `base62_encode(35) == \"Z\"`\n- `base62_encode(36) == \"a\"`\n- `base62_encode(61) == \"z\"`\n- `base62_encode(62) == \"10\"`\n- `base62_encode(63) == \"11\"`\n- `base62_encode(12345) == \"3D7\"`\n- `base62_encode(3843) == \"zz\"`\n- `base62_encode(238327) == \"zzz\"`\n- `base62_encode(987654321) == \"14q60P\"`\n- `base62_decode(\"0\") == 0`\n- `base62_decode(\"3D7\") == 12345`\n- `base62_decode(\"zzz\") == 238327`\n- `base62_decode(\"14q60P\") == 987654321`\n- Round-trip: `base62_decode(base62_encode(n)) == n` for n in 0, 1, 61, 62, 3844, 10**12, 2**63 - 1\n- `base62_encode(-1)` raises ValueError\n- `base62_encode(1.5)`, `base62_encode(True)`, `base62_encode(\"12\")` raise TypeError\n- `base62_decode(\"\")`, `base62_decode(\"!\")`, `base62_decode(\"a b\")` raise ValueError\n- `base62_decode(123)`, `base62_decode(None)` raise TypeError\n\nThere are no body-vs-acceptance contradictions for this module; no conflict note applies.\n\nAfter implementing, run the checks from the repository root and fix any failure before finishing.",
+    "checks": [
+      "python3 -m pytest tests/test_base62.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

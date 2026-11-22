@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "code39-checksum",
+    "title": "实现 code39.py Code 39 校验字符（mod 43）及其测试",
+    "scope": "Owns only code39.py and tests/test_code39.py. Does not own numwords.py, solids.py, any existing repository file, or any team/ file.",
+    "files": [
+      "code39.py",
+      "tests/test_code39.py"
+    ],
+    "task": "Create two NEW files only: code39.py and tests/test_code39.py. Do not modify any existing file. Use only the Python standard library. Do not import numwords or solids or any non-stdlib module.\n\nCharacter set and values pinned (43 characters, value = index): `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%` — digits 0-9 have values 0-9, uppercase letters A-Z have values 10-35, and `-`, `.`, space, `$`, `/`, `+`, `%` have values 36-42 in that order.\n\nImplement three functions in code39.py:\n1. code39_checksum(text: str) -> str: sum the character values, take mod 43, return the character at that value. Non-str raises TypeError; empty string raises ValueError; characters outside the set (lowercase letters, `!`, etc.) raise ValueError.\n2. code39_encode(text: str) -> str: returns `\"*\" + text + checksum + \"*\"`; checksum and exceptions identical to code39_checksum.\n3. code39_verify(symbol: str) -> bool: non-str raises TypeError; returns True if and only if symbol starts with `*`, ends with `*`, total length >= 4, all inner characters are in the set, and the last inner character equals the checksum of the remaining inner part; returns False in all other cases (never raises otherwise).\n\nAcceptance examples (each must have a corresponding test case in tests/test_code39.py):\n- code39_checksum(\"A\") == \"A\"\n- code39_checksum(\"CODE39\") == \"W\"\n- code39_checksum(\"HELLO\") == \"B\"\n- code39_checksum(\"123\") == \"6\"\n- code39_checksum(\"Z\") == \"Z\"\n- code39_checksum(\"%\") == \"%\"\n- code39_checksum(\" \") == \" \"\n- code39_encode(\"CODE39\") == \"*CODE39W*\"\n- code39_encode(\"A\") == \"*AA*\"\n- code39_encode(\"123\") == \"*1236*\"\n- code39_verify(\"*CODE39W*\") is True\n- code39_verify(\"*CODE39X*\") is False\n- code39_verify(\"CODE39W\") is False\n- code39_verify(\"*AA*\") is True\n- code39_verify(\"*A*\") is False\n- code39_verify(\"*1236*\") is True\n- code39_verify(\"\") is False\n- code39_verify(\"**\") is False\n- code39_verify(\"*code39W*\") is False\n- Round-trip: code39_verify(code39_encode(t)) is True for t in \"CODE39\", \"HELLO\", \"A\", \"123\", \"TEST-1\"\n- code39_checksum(\"\") raises ValueError\n- code39_checksum(\"abc\") raises ValueError\n- code39_checksum(\"HELLO!\") raises ValueError\n- code39_encode(\"\") raises ValueError\n- code39_checksum(123) raises TypeError\n- code39_verify(123) raises TypeError\n\nEvery acceptance item above must be covered by a test case. No conflicts between body and acceptance were found for this module.",
+    "checks": [
+      "python3 -m pytest tests/test_code39.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

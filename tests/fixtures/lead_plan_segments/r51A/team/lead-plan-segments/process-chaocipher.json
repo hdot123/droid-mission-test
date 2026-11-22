@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "chaocipher",
+    "title": "Implement chaocipher.py (dual-table digraph-evolution cipher) with tests",
+    "scope": "Owns exactly chaocipher.py and tests/test_chaocipher.py. Does not touch centroid.py, base62.py, any other test file, or any existing file. Standard library only; no imports from other deliverable modules.",
+    "files": [
+      "chaocipher.py",
+      "tests/test_chaocipher.py"
+    ],
+    "task": "Implement the Chaocipher module exactly to the acceptance section below, then write its test file. Only create these two new files; do not modify any existing file. Use only the standard library and do not import the other deliverable modules.\n\nSPEC:\n- Initial alphabets are pinned: left table (ciphertext side) `HXUCZVAMDSLKPEFJRIGTWOBNYQ`, right table (plaintext side) `PTLNBQDEOYSFAVZKGJRIHWXUMC`; both are permutations of A-Z.\n- `chaocipher_encrypt(text: str) -> str`: preprocess to uppercase, keep only A-Z. Encrypt letter by letter: find the plaintext letter's index in the right table; the ciphertext letter is the left table char at that same index. After each letter, permute both tables in this order (indices 0-based): (1) left table: first rotate so the just-produced ciphertext letter sits at index 0, then take the letter at index 1 and insert it at index 13; (2) right table: first rotate so the just-consumed plaintext letter sits at index 0, then rotate the whole table left by one, then take the letter at index 2 and insert it at index 13. Empty string returns empty string; non-str raises TypeError.\n- `chaocipher_decrypt(cipher: str) -> str`: inverse operation (same preprocessing; find the ciphertext letter's index in the left table, plaintext letter is the right table char at that index; permutation rules as above, driven by the recovered plaintext letter and the ciphertext letter). Empty string returns empty string; non-str raises TypeError.\n\nACCEPTANCE (transcribed item by item; every item needs a test case):\n- `chaocipher_encrypt(\"A\") == \"P\"`\n- `chaocipher_encrypt(\"AAAA\") == \"PKLS\"`\n- `chaocipher_encrypt(\"HELLOWORLD\") == \"WAHQVICHTD\"`\n- `chaocipher_decrypt(\"WAHQVICHTD\") == \"HELLOWORLD\"`\n- `chaocipher_encrypt(\"CHAOCIPHER\") == \"QTLVOFOEYS\"`\n- `chaocipher_decrypt(\"QTLVOFOEYS\") == \"CHAOCIPHER\"`\n- `chaocipher_encrypt(\"THEQUICKBROWNFOX\") == \"XTVXVJGSTKDBISJS\"`\n- `chaocipher_encrypt(\"\") == \"\"`\n- `chaocipher_encrypt(\"hello world\") == chaocipher_encrypt(\"HELLOWORLD\")` (preprocessing)\n- `chaocipher_encrypt(\"HELLO, WORLD!\") == \"WAHQVICHTD\"` (non-letters stripped)\n- Round-trip: `chaocipher_decrypt(chaocipher_encrypt(t)) == t` for t in \"HELLOWORLD\", \"THEQUICKBROWNFOXJUMPSOVERTHELAZYDOG\", \"A\", \"ZZZZ\"\n- `chaocipher_encrypt(123)`, `chaocipher_encrypt(None)`, `chaocipher_decrypt(b\"WAHQ\")` raise TypeError\n\nThere are no body-vs-acceptance contradictions for this module; no conflict note applies.\n\nAfter implementing, run the checks from the repository root and fix any failure before finishing.",
+    "checks": [
+      "python3 -m pytest tests/test_chaocipher.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

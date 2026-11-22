@@ -1,0 +1,5 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "header",
+  "summary": "第五十一轮·B：dijkstra/nthprime/windscale 三模块实现，按模块边界拆为 3 个独立进程卡。"
+}

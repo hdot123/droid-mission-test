@@ -1,5 +1,7 @@
-name: Droid Team v2.7.0 (foreman pattern test)
+name: Droid Team v2.8.0 (foreman pattern test)
 
+# Foreman pattern （领班制）, v2.8.0:
+#   v2.8.0 change note: segments-only assembly — team-plan.json is stitched by the system (lead_plan_segments.py stitch) from the lead's segments right before the Validate step reads it; the lead prompt no longer asks for a hand-written team-plan.json, and the plan-vs-segments equivalence check was deleted with the second artifact it reconciled (round-51 A/C/D died on summary drift and B on id/summary/task drift — all three triggers require the double write). Card ids are derived from module-name stems (lower-case, underscores -> hyphens, ^[a-z0-9][a-z0-9-]*$) so id==filename holds by construction; the id==filename scan error now says exactly that. Scan shape is disk-truth: none = nothing stitchable, partial = segments on disk with residue, complete = header + every card clean; the lead hard gate still kills only zero-segment sessions, and a timed-out lead session records partial at run level.
 # Foreman pattern （领班制）, v2.7.0:
 #   v2.7.0 change note: 整面 API 墙 ForemanRun / foreman-run.v1 — 唯一产物 foreman-run.json 跨 job 传递 (W1)；采认链 + upload 完整门 (P0-1/B2)；replan_gate.should_replan 唯一编排门 (Y1/W4)；env hard_fail_count + PROJECTS_STATE_PAT (W3)；workers.completed_pids prep 门 (P1-5)；chain_facts 收口 (W5)；closeout 硬评论 + human_stop (W2/W6)；foreman_mode test|prod 默认 test (L6)。
 # Foreman pattern （领班制）, v2.6.5:
@@ -160,31 +162,27 @@ jobs:
           issue = ev.get("issue") or {}
           title = issue.get("title", "")
           body = issue.get("body") or ""
-          prompt = f"""You are the FOREMAN （领班） of a development team under the foreman pattern. Your only job is to split the work order into process cards. You never write application code yourself. Do not edit any file except team-plan.json in the repository root and new JSON files under team/lead-plan-segments/ (one new file per segment — never overwrite an existing segment file).
+          prompt = f"""You are the FOREMAN （领班） of a development team under the foreman pattern. Your only job is to split the work order into process cards. You never write application code yourself. team-plan.json is assembled by the system from your segments; you never create, edit, or write it. Do not edit any file except new JSON files under team/lead-plan-segments/ (one new file per segment — never overwrite an existing segment file).
 
           Segmented persistence (required — read before anything else; the session fails if you delay this):
-          - Your FIRST action must be to write team/lead-plan-segments/00-header.json as a standalone complete file (within your first 2 tool calls): {{"schema_version":"lead-plan-segment.v1","kind":"header","summary":"..."}}. The summary may be a short placeholder you revise later; the header file must exist before you analyze the work order at length.
+          - Your FIRST action must be to write team/lead-plan-segments/00-header.json as a standalone complete file (within your first 2 tool calls): {{"schema_version":"lead-plan-segment.v1","kind":"header","summary":"<one short sentence describing this plan>"}}. Write the summary as final text immediately — the system assembles team-plan.json from these segments, and the header's summary becomes the plan summary. The header file must exist before you analyze the work order at length.
           - After EACH process card is fully decided, immediately write a new standalone file team/lead-plan-segments/process-<id>.json (never update a segment file you already wrote): {{"schema_version":"lead-plan-segment.v1","kind":"process","process":{{...full card...}}}}. Do not batch segment writes until the end — write each segment as soon as that card is decided. This is how partial progress survives a timeout.
-          - When all cards are decided, write the full team-plan.json (shape below). Be efficient: at most 8 tool calls before the final team-plan.json write.
+          - Derive <id> from the module name: take the stem, lower-case it, and turn underscores into hyphens; the result must match ^[a-z0-9][a-z0-9-]*$ and must equal the card's "id" field exactly. Example: module Tap_Code -> id tap-code, file team/lead-plan-segments/process-tap-code.json.
+          - team-plan.json is assembled by the system from these segments after your session ends. Never create it, never edit it, never write it.
 
           Work order title: {title}
 
           Work order body:
           {body}
 
-          Create team-plan.json with exactly this JSON shape:
+          Card shape (the "process" object inside each segment file):
           {{
-            "summary": "one short sentence",
-            "processes": [
-              {{
-                "id": "short-kebab-id",
-                "title": "process title",
-                "scope": "what this process owns and does not own",
-                "files": ["deliverable file this process creates or edits", "its test file"],
-                "task": "complete instructions for one worker",
-                "checks": ["one shell command that verifies this process"]
-              }}
-            ]
+            "id": "short-kebab-id",
+            "title": "process title",
+            "scope": "what this process owns and does not own",
+            "files": ["deliverable file this process creates or edits", "its test file"],
+            "task": "complete instructions for one worker",
+            "checks": ["one shell command that verifies this process"]
           }}
 
           Rules:
@@ -193,7 +191,7 @@ jobs:
           - Processes must not depend on each other and must not share files. Every worker's handoff and status files under team/ are system-managed: the system produces them automatically, and you must never list any team/ path in any process's "files".
           - Each process gets exactly one worker, one job, and a short lease.
           - The checks must be runnable from the repository root.
-          - Write valid JSON only into team-plan.json. Do not wrap it in Markdown.
+          - Every segment file must contain valid JSON only; do not wrap it in Markdown.
           - Transcribe the work order's acceptance criteria item by item. Every acceptance example, value, or requirement stated anywhere in the work order must land in the task or checks of the one process card it belongs to. Never let the body's worked examples substitute for the acceptance section, and never drop an acceptance item silently.
           - If the work order contradicts itself (for example a body example and an acceptance value disagree), do NOT silently pick one side. The affected card's task text must carry an explicit conflict note in exactly this shape: "CONFLICT: <item> — body says <X>, acceptance says <Y>; provisional value: <X or Y> (reason: <one line>)". Both values must appear in the card; the worker and the validator must be able to see the conflict from the card alone.
           """
@@ -224,6 +222,16 @@ jobs:
           fi
           [ -f foreman-run.json ] || cp wall-in/foreman-run.json foreman-run.json
           PYTHONPATH=scripts/team python3 scripts/team/lead_plan_segments.py sync-wall --wall foreman-run.json
+
+      - name: Stitch segments into team-plan.json (single source)
+        if: steps.dup.outputs.duplicate != 'true'
+        run: |
+          if [ ! -f wall-in/foreman-run.json ]; then
+            echo "foreman-run missing before segment stitch"
+            exit 1
+          fi
+          [ -f foreman-run.json ] || cp wall-in/foreman-run.json foreman-run.json
+          PYTHONPATH=scripts/team python3 scripts/team/lead_plan_segments.py stitch
 
       - name: Validate plan, file [计划] issue and sub-issues
         if: steps.dup.outputs.duplicate != 'true'
