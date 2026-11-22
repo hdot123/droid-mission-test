@@ -1,4 +1,0 @@
-process: tapcode
-check exit 4: python3 -m pytest tests/test_bell.py -q
-check exit 0: python3 -m pytest tests/ -q
-problem: check failed (exit 4): python3 -m pytest tests/test_bell.py -q
