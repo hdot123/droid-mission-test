@@ -1,0 +1,19 @@
+{
+  "id": "bizdays",
+  "title": "Implement bizdays.py (business-day counting and arithmetic)",
+  "state": "done",
+  "files": [
+    "bizdays.py",
+    "tests/test_bizdays.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bizdays.py -q",
+      "result": "26 passed in 0.04s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "129 passed in 3.86s"
+    }
+  ]
+}

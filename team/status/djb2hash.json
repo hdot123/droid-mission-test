@@ -1,0 +1,21 @@
+{
+  "id": "djb2hash",
+  "title": "Implement djb2hash.py (djb2 string hash with 32-bit wraparound)",
+  "state": "done",
+  "files": [
+    "djb2hash.py",
+    "tests/test_djb2hash.py",
+    "team/handoffs/djb2hash.md",
+    "team/status/djb2hash.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_djb2hash.py -q",
+      "result": "passed: 13 tests"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 116 tests"
+    }
+  ]
+}
