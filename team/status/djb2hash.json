@@ -1,0 +1,21 @@
+{
+  "id": "djb2hash",
+  "title": "实现 djb2 字符串散列 djb2hash.py 及其测试",
+  "state": "done",
+  "files": [
+    "djb2hash.py",
+    "tests/test_djb2hash.py",
+    "team/handoffs/djb2hash.md",
+    "team/status/djb2hash.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_djb2hash.py -q",
+      "result": "17 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "46 passed"
+    }
+  ]
+}
