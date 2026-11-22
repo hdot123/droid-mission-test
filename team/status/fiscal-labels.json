@@ -1,0 +1,21 @@
+{
+  "id": "fiscal-labels",
+  "title": "Implement fiscal year/quarter labels (fiscal.py)",
+  "state": "done",
+  "files": [
+    "fiscal.py",
+    "tests/test_fiscal.py",
+    "team/handoffs/fiscal-labels.md",
+    "team/status/fiscal-labels.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_fiscal.py -q",
+      "result": "passed: 20 tests"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 31 tests"
+    }
+  ]
+}
