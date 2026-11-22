@@ -1,0 +1,21 @@
+{
+  "id": "ipv4kit",
+  "title": "IPv4 dotted-quad parse/format (ipv4kit.py)",
+  "state": "done",
+  "files": [
+    "ipv4kit.py",
+    "tests/test_ipv4kit.py",
+    "team/handoffs/ipv4kit.md",
+    "team/status/ipv4kit.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_ipv4kit.py -q",
+      "result": "29 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "40 passed"
+    }
+  ]
+}
