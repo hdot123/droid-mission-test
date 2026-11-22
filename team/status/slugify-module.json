@@ -1,0 +1,21 @@
+{
+  "id": "slugify-module",
+  "title": "Implement ASCII URL slugifier (slugify.py)",
+  "state": "done",
+  "files": [
+    "slugify.py",
+    "tests/test_slugify.py",
+    "team/handoffs/slugify-module.md",
+    "team/status/slugify-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_slugify.py -q",
+      "result": "passed (6 passed in 0.01s)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (17 passed in 0.02s)"
+    }
+  ]
+}

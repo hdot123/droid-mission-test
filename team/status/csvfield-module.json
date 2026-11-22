@@ -1,0 +1,19 @@
+{
+  "id": "csvfield-module",
+  "title": "Implement RFC 4180 single-field codec (csvfield.py)",
+  "state": "done",
+  "files": [
+    "csvfield.py",
+    "tests/test_csvfield.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_csvfield.py -q",
+      "result": "passed: 10 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 21 passed"
+    }
+  ]
+}
