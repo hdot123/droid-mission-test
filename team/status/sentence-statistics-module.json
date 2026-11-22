@@ -1,0 +1,21 @@
+{
+  "id": "sentence-statistics-module",
+  "title": "Implement sentence statistics module",
+  "state": "done",
+  "files": [
+    "sentence_stats.py",
+    "tests/test_sentence_stats.py",
+    "team/handoffs/sentence-statistics-module.md",
+    "team/status/sentence-statistics-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_sentence_stats.py",
+      "result": "PASS: 25 passed in 0.02s"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "PASS: 25 passed in 0.01s"
+    }
+  ]
+}
