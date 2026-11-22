@@ -1,0 +1,31 @@
+{
+  "id": "roman-module-reform",
+  "title": "改造存量模块 roman：大小写不敏感 + validate_roman + 扩界 1..4999 并配套新测试",
+  "state": "done",
+  "files": [
+    "roman.py",
+    "tests/test_roman_ext.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_roman.py",
+      "result": "pass: 7 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python -m pytest -q tests/test_roman_ext.py",
+      "result": "pass: 9 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "git diff --exit-code -- tests/test_roman.py",
+      "result": "pass: exit 0, no diff (legacy test file unchanged)"
+    },
+    {
+      "command": "python -m pytest -q",
+      "result": "pass: 20 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python - <<'PY'\nfrom roman import from_roman, validate_roman\nbad = [\"IIII\", \"IC\", \"\", \"MMMMM\", \"vv\", \"abc\", \"MMMMCMXCIXX\", None, 123]\nfor s in bad:\n    assert validate_roman(s) is False, repr(s)\n    try:\n        from_roman(s)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"from_roman must raise ValueError for %r\" % (s,))\ngood = [\"xiv\", \"Xiv\", \"mmmcmxcix\", \"XIV\", \"MMMM\", \"mmmm\", \"MMMMCMXCIX\", \"MMMMD\", \"MMMCMXCIX\"]\nfor s in good:\n    assert validate_roman(s) is True, repr(s)\n    from_roman(s)\nprint(\"validate_roman / from_roman consistency OK\")\nPY",
+      "result": "pass: printed 'validate_roman / from_roman consistency OK' (exit 0)"
+    }
+  ]
+}
