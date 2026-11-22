@@ -1,0 +1,21 @@
+{
+  "id": "morse-codec",
+  "title": "morse.py 摩尔斯电码编解码",
+  "state": "done",
+  "files": [
+    "morse.py",
+    "tests/test_morse.py",
+    "team/handoffs/morse-codec.md",
+    "team/status/morse-codec.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_morse.py -q",
+      "result": "10 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "21 passed"
+    }
+  ]
+}
