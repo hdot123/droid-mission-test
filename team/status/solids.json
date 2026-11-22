@@ -1,0 +1,21 @@
+{
+  "id": "solids",
+  "title": "solids.py — 常见立体体积与表面积",
+  "state": "done",
+  "files": [
+    "solids.py",
+    "tests/test_solids.py",
+    "team/handoffs/solids.md",
+    "team/status/solids.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_solids.py -q",
+      "result": "31 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "168 passed, 1 skipped"
+    }
+  ]
+}
