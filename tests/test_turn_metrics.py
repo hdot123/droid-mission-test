@@ -1,0 +1,231 @@
+"""Tests for scripts/team/turn_metrics.py (turn-level budget metrics).
+
+Synthetic fixtures pin the reconstruction numbers (chars / latency / rate);
+the 50A calibration case replays the real archived lead stream and is
+env-gated (TURN_METRICS_50A_STREAM) because CI has no local evidence copy.
+
+Reconstruction caliber (shared with the adversarial-review reference): a
+turn is all assistant-side events sharing one message id; latency runs from
+the previous boundary (init / user message / tool_result / end of the
+previous turn) to the turn's first event; reasoning text and tool-call JSON
+both count toward turn characters.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts" / "team"))
+
+import turn_metrics as tm  # noqa: E402
+
+
+def _jsonl(tmp_path: Path, name: str, events: list[dict]) -> Path:
+    path = tmp_path / name
+    path.write_text(
+        "".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _sample_events() -> list[dict]:
+    """Two turns with known char counts and a tool_result boundary.
+
+    turn 1 (message id m1): latency 10.0s from the user-message boundary,
+    chars = 50 reasoning + 20 assistant text + 13 tool-call JSON
+    ('{"path": "x"}') = 83.
+    turn 2 (message id m2): latency 10.5s from the tool_result boundary
+    (1012.0 -> 1022.5), chars = 40.
+    """
+    return [
+        {"type": "system", "subtype": "init"},
+        {"type": "message", "role": "user", "id": "u1", "text": "work order", "timestamp": 1_000_000},
+        {"type": "reasoning", "id": "m1", "text": "r" * 50, "timestamp": 1_010_000},
+        {"type": "message", "role": "assistant", "id": "m1", "text": "a" * 20, "timestamp": 1_010_000},
+        {
+            "type": "tool_call",
+            "id": "c1",
+            "messageId": "m1",
+            "toolName": "Read",
+            "parameters": {"path": "x"},
+            "timestamp": 1_010_000,
+        },
+        {"type": "tool_result", "id": "c1", "messageId": "m2", "value": "ok", "timestamp": 1_012_000},
+        {"type": "reasoning", "id": "m2", "text": "s" * 30, "timestamp": 1_022_500},
+        {"type": "message", "role": "assistant", "id": "m2", "text": "t" * 10, "timestamp": 1_022_500},
+    ]
+
+
+def test_synthetic_stream_known_metrics(tmp_path: Path):
+    path = _jsonl(tmp_path, "lead-stream.jsonl", _sample_events())
+    src = tm.measure_path(path)[0]
+    assert src["n_turns"] == 2
+    assert src["first_response_s"] == pytest.approx(10.0)
+    assert src["first_turn_chars"] == 83
+    assert src["total_chars"] == 123
+    assert [t["latency_s"] for t in src["turns"]] == [10.0, 10.5]
+    assert [t["chars"] for t in src["turns"]] == [83, 40]
+    assert [t["chars_per_s"] for t in src["turns"]] == [8.3, 3.81]
+    assert src["turns"][0]["tools"] == ["Read"]
+    assert src["censored_tail_s"] is None
+
+
+def test_duplicate_events_counted_once(tmp_path: Path):
+    # Streamed chunks can land twice (same message id, same payload length):
+    # the dedup key must keep chars stable.
+    events = _sample_events()
+    events.insert(3, {"type": "reasoning", "id": "m1", "text": "r" * 50, "timestamp": 1_010_000})
+    path = _jsonl(tmp_path, "lead-stream.jsonl", events)
+    src = tm.measure_path(path)[0]
+    assert src["first_turn_chars"] == 83
+    assert src["n_turns"] == 2
+
+
+def test_tool_call_chars_are_json_parameters(tmp_path: Path):
+    params = {"路径": "卡片"}
+    events = [
+        {"type": "message", "role": "user", "id": "u1", "text": "wo", "timestamp": 5_000_000},
+        {
+            "type": "tool_call",
+            "id": "c1",
+            "messageId": "m1",
+            "toolName": "Create",
+            "parameters": params,
+            "timestamp": 5_005_000,
+        },
+    ]
+    path = _jsonl(tmp_path, "lead-stream.jsonl", events)
+    src = tm.measure_path(path)[0]
+    assert src["first_turn_chars"] == len(json.dumps(params, ensure_ascii=False))
+    assert src["first_response_s"] == pytest.approx(5.0)
+
+
+def test_boundaries_reset_latency_clock(tmp_path: Path):
+    # user message and tool_result both set the boundary; a turn's latency
+    # runs from the latest anchor (boundary or previous turn's last event).
+    events = [
+        {"type": "system", "subtype": "init"},
+        {"type": "message", "role": "user", "id": "u1", "text": "wo", "timestamp": 1_000_000},
+        {"type": "reasoning", "id": "m1", "text": "x" * 10, "timestamp": 1_004_000},
+        {
+            "type": "tool_call",
+            "id": "c1",
+            "messageId": "m1",
+            "toolName": "Read",
+            "parameters": {},
+            "timestamp": 1_004_000,
+        },
+        {"type": "tool_result", "id": "c1", "value": "ok", "timestamp": 1_050_000},
+        {"type": "reasoning", "id": "m2", "text": "y" * 10, "timestamp": 1_060_000},
+    ]
+    path = _jsonl(tmp_path, "lead-stream.jsonl", events)
+    src = tm.measure_path(path)[0]
+    assert [t["latency_s"] for t in src["turns"]] == [4.0, 10.0]
+    assert [t["chars"] for t in src["turns"]] == [12, 10]
+
+
+def test_job_log_format_with_censored_tail(tmp_path: Path):
+    # Job logs echo stream events behind a timestamp prefix; the in-flight
+    # turn of a killed session never flushes and shows up as a tail.
+    lines = [
+        "2026-11-22T10:00:00.000Z preamble before any event is ignored",
+        "2026-11-22T10:00:00.000Z " + json.dumps({"type": "message", "role": "user", "id": "u1", "text": "wo", "timestamp": 1_000}),
+        "2026-11-22T10:00:10.000Z " + json.dumps({"type": "reasoning", "id": "m1", "text": "r" * 50, "timestamp": 1_010}),
+        "2026-11-22T10:00:10.000Z " + json.dumps({"type": "message", "role": "assistant", "id": "m1", "text": "a" * 20, "timestamp": 1_010}),
+        "2026-11-22T10:00:11.000Z heartbeat: still alive",
+        "2026-11-22T10:00:22.500Z " + json.dumps({"type": "reasoning", "id": "m2", "text": "s" * 30, "timestamp": 1_022}),
+        "2026-11-22T10:00:22.500Z " + json.dumps({"type": "message", "role": "assistant", "id": "m2", "text": "t" * 10, "timestamp": 1_022}),
+        "2026-11-22T10:00:30.000Z ##[error]Process completed with exit code 124.",
+    ]
+    path = tmp_path / "45X-lead-1.log"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    src = tm.measure_path(path)[0]
+    assert src["n_turns"] == 2
+    assert [t["latency_s"] for t in src["turns"]] == [10.0, 12.5]
+    assert [t["chars"] for t in src["turns"]] == [70, 40]
+    assert src["censored_tail_s"] == pytest.approx(7.5)
+    assert src["censored_tail_excerpt"] == "##[error]Process completed with exit code 124."
+
+
+def test_run_directory_discovery(tmp_path: Path):
+    lead_dir = tmp_path / "droid-stream-lead-run-111"
+    lead_dir.mkdir()
+    _jsonl(lead_dir, "lead-stream.jsonl", _sample_events())
+    val_dir = tmp_path / "droid-stream-validator-run-222"
+    val_dir.mkdir()
+    _jsonl(val_dir, "validator-stream.jsonl", _sample_events())
+    foreman_dir = tmp_path / "foreman-run-111"
+    foreman_dir.mkdir()
+    (foreman_dir / "foreman-run.json").write_text("{}", encoding="utf-8")
+
+    sources = tm.measure_dir(tmp_path)
+    assert [s["source"] for s in sources] == [
+        "droid-stream-lead-run-111",
+        "droid-stream-validator-run-222",
+    ]
+    assert sources[0]["role"] == "lead"
+    assert sources[0]["run_id"] == "111"
+    assert sources[1]["role"] == "validator"
+    assert sources[1]["run_id"] == "222"
+
+    assert tm.measure_dir(tmp_path / "foreman-run-111") == []
+
+
+def test_measure_dir_corpus_root(tmp_path: Path):
+    # A corpus root (one folder per round) measures every run dir under it.
+    round_a = tmp_path / "50A"
+    round_a.mkdir()
+    lead_dir = round_a / "droid-stream-lead-run-111"
+    lead_dir.mkdir()
+    _jsonl(lead_dir, "lead-stream.jsonl", _sample_events())
+    round_b = tmp_path / "50B"
+    round_b.mkdir()
+    val_dir = round_b / "droid-stream-validator-run-222"
+    val_dir.mkdir()
+    _jsonl(val_dir, "validator-stream.jsonl", _sample_events())
+
+    sources = tm.measure_dir(tmp_path)
+    assert [s["source"] for s in sources] == [
+        "droid-stream-lead-run-111",
+        "droid-stream-validator-run-222",
+    ]
+
+
+def test_cli_json_output(tmp_path: Path, capsys):
+    path = _jsonl(tmp_path, "lead-stream.jsonl", _sample_events())
+    assert tm.main([str(path), "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["errors"] == []
+    assert out["sources"][0]["first_turn_chars"] == 83
+
+
+def test_cli_table_output_and_missing_input(tmp_path: Path, capsys):
+    path = _jsonl(tmp_path, "lead-stream.jsonl", _sample_events())
+    assert tm.main([str(path)]) == 0
+    assert "first_response" in capsys.readouterr().out
+    assert tm.main([str(tmp_path / "nope.jsonl")]) == 2
+
+
+@pytest.mark.skipif(
+    not os.environ.get("TURN_METRICS_50A_STREAM"),
+    reason="set TURN_METRICS_50A_STREAM to the archived 50A lead stream to run calibration",
+)
+def test_50a_calibration():
+    stream = Path(os.environ["TURN_METRICS_50A_STREAM"])
+    if not stream.exists():
+        pytest.skip("TURN_METRICS_50A_STREAM points at a missing file")
+    src = tm.measure_path(stream)[0]
+    # Adversarial-review reference values for the 50A lead stream:
+    # first response 539.8s; first turn ~59,686 reasoning chars (60,265
+    # total once assistant text and tool-call JSON are included, +0.97%).
+    assert src["n_turns"] == 3
+    assert src["first_response_s"] == pytest.approx(539.8, abs=0.5)
+    assert src["first_turn_chars"] == pytest.approx(59_686, rel=0.05)
+    assert src["rate_chars_per_s"]["median"] == pytest.approx(111.7, abs=1.0)
+    assert src["role"] == "lead"
