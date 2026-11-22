@@ -1,0 +1,19 @@
+{
+  "id": "bell",
+  "title": "Bell 数组件 bell.py",
+  "state": "done",
+  "files": [
+    "bell.py",
+    "tests/test_bell.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bell.py -q",
+      "result": "17 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "154 passed, 1 skipped"
+    }
+  ]
+}
