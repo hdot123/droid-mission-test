@@ -1,0 +1,21 @@
+{
+  "id": "windscale",
+  "title": "实现 windscale.py 蒲福风级与 tests/test_windscale.py",
+  "state": "done",
+  "files": [
+    "windscale.py",
+    "tests/test_windscale.py",
+    "team/handoffs/windscale.md",
+    "team/status/windscale.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_windscale.py -q",
+      "result": "41 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "178 passed, 1 skipped in 14.80s (exit 0; the 1 skip is pre-existing)"
+    }
+  ]
+}
