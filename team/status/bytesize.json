@@ -1,0 +1,21 @@
+{
+  "id": "bytesize",
+  "title": "Implement bytesize.py byte-size formatter/parser and its tests",
+  "state": "done",
+  "files": [
+    "bytesize.py",
+    "tests/test_bytesize.py",
+    "team/handoffs/bytesize.md",
+    "team/status/bytesize.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bytesize.py -q",
+      "result": "passed: 10 tests, exit 0"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 21 tests, exit 0"
+    }
+  ]
+}

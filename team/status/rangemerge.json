@@ -1,0 +1,21 @@
+{
+  "id": "rangemerge",
+  "title": "Implement rangemerge.py integer interval merging and its tests",
+  "state": "done",
+  "files": [
+    "rangemerge.py",
+    "tests/test_rangemerge.py",
+    "team/handoffs/rangemerge.md",
+    "team/status/rangemerge.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_rangemerge.py -q",
+      "result": "11 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "22 passed in 0.03s (exit 0)"
+    }
+  ]
+}
