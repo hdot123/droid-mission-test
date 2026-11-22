@@ -1,0 +1,14 @@
+{
+  "id": "i8-d-marker",
+  "title": "Write I8 scenario D marker artifact",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/d-marker.txt"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/d-marker.txt",
+      "result": "pass"
+    }
+  ]
+}
