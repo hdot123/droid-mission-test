@@ -1,0 +1,21 @@
+{
+  "id": "base62",
+  "title": "实现 base62.py Base62 编解码与测试",
+  "state": "done",
+  "files": [
+    "base62.py",
+    "tests/test_base62.py",
+    "team/handoffs/base62.md",
+    "team/status/base62.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_base62.py -q",
+      "result": "21 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "158 passed, 1 skipped in 15.74s"
+    }
+  ]
+}
