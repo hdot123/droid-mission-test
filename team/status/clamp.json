@@ -1,0 +1,15 @@
+{
+  "id": "clamp",
+  "title": "Implement clamp module and tests (corrected acceptance check)",
+  "state": "done",
+  "files": [
+    "clamp.py",
+    "tests/test_clamp.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_clamp.py",
+      "result": "exit 0; output: .... [100%] / 4 passed in 0.01s"
+    }
+  ]
+}
