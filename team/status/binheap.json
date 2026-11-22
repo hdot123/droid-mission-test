@@ -1,0 +1,19 @@
+{
+  "id": "binheap",
+  "title": "Implement binary min-heap (BinHeap) with tests",
+  "state": "done",
+  "files": [
+    "binheap.py",
+    "tests/test_binheap.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_binheap.py -q",
+      "result": "passed (16 tests, exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (27 tests, exit 0)"
+    }
+  ]
+}
