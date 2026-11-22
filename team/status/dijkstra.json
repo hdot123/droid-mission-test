@@ -1,0 +1,21 @@
+{
+  "id": "dijkstra",
+  "title": "实现 dijkstra.py 有向图最短路径与 tests/test_dijkstra.py",
+  "state": "done",
+  "files": [
+    "dijkstra.py",
+    "tests/test_dijkstra.py",
+    "team/handoffs/dijkstra.md",
+    "team/status/dijkstra.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_dijkstra.py -q",
+      "result": "10 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "147 passed, 1 skipped"
+    }
+  ]
+}
