@@ -1,0 +1,21 @@
+{
+  "id": "baseconv-radix-convert",
+  "title": "Implement arbitrary-base conversion module",
+  "state": "done",
+  "files": [
+    "baseconv.py",
+    "tests/test_baseconv.py",
+    "team/handoffs/baseconv-radix-convert.md",
+    "team/status/baseconv-radix-convert.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_baseconv.py -q",
+      "result": "14 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "25 passed in 0.04s (exit 0)"
+    }
+  ]
+}

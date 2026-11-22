@@ -1,0 +1,19 @@
+{
+  "id": "tempconv-six-functions",
+  "title": "Implement temperature conversion module",
+  "state": "done",
+  "files": [
+    "tempconv.py",
+    "tests/test_tempconv.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_tempconv.py -q",
+      "result": "passed: 11 tests (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 22 tests (exit 0)"
+    }
+  ]
+}
