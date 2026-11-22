@@ -1,0 +1,21 @@
+{
+  "id": "julian-date-conversion",
+  "title": "儒略日换算（格里高利历）julian.py",
+  "state": "done",
+  "files": [
+    "julian.py",
+    "tests/test_julian.py",
+    "team/handoffs/julian-date-conversion.md",
+    "team/status/julian-date-conversion.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_julian.py -q",
+      "result": "4 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "15 passed"
+    }
+  ]
+}
