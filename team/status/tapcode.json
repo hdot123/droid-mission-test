@@ -8,16 +8,12 @@
   ],
   "checks": [
     {
-      "command": "python3 -m pytest tests/test_bell.py -q",
-      "result": "error: tests/test_bell.py not found (owned by parallel bell worker, not yet present; not created by this process)"
+      "command": "python3 -m pytest tests/test_tapcode.py -q",
+      "result": "exit 0 — 19 passed in 0.02s"
     },
     {
       "command": "python3 -m pytest tests/ -q",
-      "result": "passed: 150 passed, 1 skipped"
-    },
-    {
-      "command": "python3 -m pytest tests/test_tapcode.py -q",
-      "result": "passed: 13 passed"
+      "result": "exit 0 — 156 passed, 1 skipped in 14.93s"
     }
   ]
 }
