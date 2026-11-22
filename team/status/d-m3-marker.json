@@ -1,0 +1,16 @@
+{
+  "id": "d-m3-marker",
+  "title": "Create d-m3.txt half-set artifact marker",
+  "state": "done",
+  "files": [
+    "docs/evidence/i8-scratch/d-m3.txt",
+    "team/handoffs/d-m3-marker.md",
+    "team/status/d-m3-marker.json"
+  ],
+  "checks": [
+    {
+      "command": "test -f docs/evidence/i8-scratch/d-m3.txt",
+      "result": "pass (exit 0)"
+    }
+  ]
+}
