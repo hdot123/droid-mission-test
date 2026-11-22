@@ -1,0 +1,21 @@
+{
+  "id": "mobius-function",
+  "title": "Implement mobius.py Mobius function",
+  "state": "done",
+  "files": [
+    "mobius.py",
+    "tests/test_mobius.py",
+    "team/handoffs/mobius-function.md",
+    "team/status/mobius-function.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_mobius.py -q",
+      "result": "passed: 6 tests"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 35 tests"
+    }
+  ]
+}

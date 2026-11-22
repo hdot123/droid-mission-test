@@ -1,0 +1,21 @@
+{
+  "id": "gasmark-table",
+  "title": "Implement gasmark.py Gas Mark oven temperature lookup",
+  "state": "done",
+  "files": [
+    "gasmark.py",
+    "tests/test_gasmark.py",
+    "team/handoffs/gasmark-table.md",
+    "team/status/gasmark-table.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_gasmark.py -q",
+      "result": "12 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "41 passed in 2.25s"
+    }
+  ]
+}
