@@ -1,0 +1,17 @@
+{
+  "id": "binarysearch-module",
+  "title": "实现 binarysearch.py 及其测试",
+  "state": "done",
+  "files": [
+    "binarysearch.py",
+    "tests/test_binarysearch.py",
+    "team/handoffs/binarysearch-module.md",
+    "team/status/binarysearch-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_binarysearch.py",
+      "result": "passed: 3 passed in 0.01s"
+    }
+  ]
+}
