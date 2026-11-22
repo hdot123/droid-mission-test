@@ -1,0 +1,19 @@
+{
+  "id": "pressureconv",
+  "title": "Implement pressure unit conversion with Pa as intermediary",
+  "state": "done",
+  "files": [
+    "pressureconv.py",
+    "tests/test_pressureconv.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_pressureconv.py -q",
+      "result": "15 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "26 passed in 0.04s"
+    }
+  ]
+}
