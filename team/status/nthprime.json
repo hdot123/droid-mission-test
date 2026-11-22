@@ -1,0 +1,21 @@
+{
+  "id": "nthprime",
+  "title": "实现 nthprime.py 第 n 个素数与 tests/test_nthprime.py",
+  "state": "done",
+  "files": [
+    "nthprime.py",
+    "tests/test_nthprime.py",
+    "team/handoffs/nthprime.md",
+    "team/status/nthprime.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_nthprime.py -q",
+      "result": "4 passed in 0.01s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "141 passed, 1 skipped in 14.35s"
+    }
+  ]
+}
