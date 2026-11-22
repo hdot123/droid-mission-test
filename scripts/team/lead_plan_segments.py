@@ -4,7 +4,7 @@
 The lead writes only segments (00-header.json + one file per process card).
 The machine stitches them into team-plan.json via ``stitch_plan_file`` /
 ``stitch`` — the lead never writes the plan, so there is no second artifact
-to reconcile and no equivalence gate.
+to reconcile.
 """
 from __future__ import annotations
 

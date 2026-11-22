@@ -4,10 +4,10 @@ Fixtures under tests/fixtures/lead_plan_segments/r51{A,B,C,D} are the real
 segment writes (header + one file per process card) extracted from the four
 round-51 lead streams via extract_lead_segments.py. On the old double-write
 path all four orders died at the assembly joint: A/C/D on the plan-vs-segments
-equivalence gate, B additionally on id-vs-filename and card whitespace drift.
-This file is the failing-first replay suite for the machine-assembly path:
-team-plan.json is produced by stitching the segments alone, so the mines those
-orders actually hit have no remaining trigger surface.
+core-field comparison, B additionally on id-vs-filename and card whitespace
+drift. This file is the failing-first replay suite for the machine-assembly
+path: team-plan.json is produced by stitching the segments alone, so the
+mines those orders actually hit have no remaining trigger surface.
 """
 from __future__ import annotations
 
