@@ -1,0 +1,19 @@
+{
+  "id": "caesar-module",
+  "title": "Implement caesar module with tests",
+  "state": "done",
+  "files": [
+    "caesar.py",
+    "tests/test_caesar.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_caesar.py",
+      "result": "FAIL (first run): 1 failed, 15 passed — failure was a wrong literal in my own test expectation (expected 'f-g_i h', correct is 'f-g_h i'); module output was correct. Fixed the test expectation only."
+    },
+    {
+      "command": "python -m pytest -q tests/test_caesar.py",
+      "result": "PASS: 16 passed in 0.02s"
+    }
+  ]
+}
