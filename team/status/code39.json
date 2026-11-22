@@ -1,0 +1,19 @@
+{
+  "id": "code39",
+  "title": "code39.py — Code 39 校验字符（mod 43）",
+  "state": "done",
+  "files": [
+    "code39.py",
+    "tests/test_code39.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_code39.py -q",
+      "result": "pass: 23 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 160 passed, 1 skipped in 15.91s"
+    }
+  ]
+}
