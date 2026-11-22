@@ -1,0 +1,19 @@
+{
+  "id": "isbn13-module",
+  "title": "Implement isbn13.py ISBN-13 checksum component",
+  "state": "done",
+  "files": [
+    "isbn13.py",
+    "tests/test_isbn13.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_isbn13.py -q",
+      "result": "14 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "25 passed in 0.04s"
+    }
+  ]
+}
