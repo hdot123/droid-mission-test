@@ -1,0 +1,15 @@
+{
+  "id": "implement-duration",
+  "title": "Implement duration module with tests",
+  "state": "done",
+  "files": [
+    "duration.py",
+    "tests/test_duration.py"
+  ],
+  "checks": [
+    {
+      "command": "python -m pytest -q tests/test_duration.py",
+      "result": "passed: 24 passed in 0.03s (exit 0)"
+    }
+  ]
+}
