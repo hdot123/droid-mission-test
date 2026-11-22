@@ -1,0 +1,21 @@
+{
+  "id": "totient-module",
+  "title": "Implement totient.py and its tests",
+  "state": "done",
+  "files": [
+    "totient.py",
+    "tests/test_totient.py",
+    "team/handoffs/totient-module.md",
+    "team/status/totient-module.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_totient.py -q",
+      "result": "8 passed in 0.01s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "19 passed in 0.03s"
+    }
+  ]
+}
