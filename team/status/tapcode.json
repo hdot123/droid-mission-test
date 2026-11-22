@@ -1,0 +1,23 @@
+{
+  "id": "tapcode",
+  "title": "Tap code 敲击码组件 tapcode.py",
+  "state": "done",
+  "files": [
+    "tapcode.py",
+    "tests/test_tapcode.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bell.py -q",
+      "result": "error: tests/test_bell.py not found (owned by parallel bell worker, not yet present; not created by this process)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 150 passed, 1 skipped"
+    },
+    {
+      "command": "python3 -m pytest tests/test_tapcode.py -q",
+      "result": "passed: 13 passed"
+    }
+  ]
+}
