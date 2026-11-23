@@ -21,13 +21,13 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
+import lead_plan_segments as lps  # noqa: E402
 from foreman_run_lib import init_wall, save_wall  # noqa: E402
 from lead_plan_segments import (  # noqa: E402
     cmd_assert_ready,
     scan_segments,
     stitch_plan_file,
 )
-import lead_plan_segments as lps  # noqa: E402
 
 FIXTURES = ROOT / "tests" / "fixtures" / "lead_plan_segments"
 # Round-51 order B, exactly as produced live: process ids carry a -module
@@ -203,7 +203,7 @@ def test_r51_none_shape_no_plan_no_death_note(tmp_path: Path, monkeypatch: pytes
 def test_r51_leading_preexisting_plan_not_merged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """A pre-existing team-plan.json is overwritten from segments, never merged."""
     work = _unpack("r51C", tmp_path)
-    wall_path = _prepare_workdir(work, monkeypatch)
+    _prepare_workdir(work, monkeypatch)
     (work / "team-plan.json").write_text(
         json.dumps(
             {"summary": "stale hand-written plan", "processes": [], "plan_version": 1},

@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FIX = ROOT / "tests" / "fixtures" / "gh_project"
 sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
+import project_state_write  # noqa: E402
 from gh_project_parse import (  # noqa: E402
     fetch_project_fields,
     fetch_project_id,
@@ -23,7 +24,6 @@ from gh_project_parse import (  # noqa: E402
     unwrap_field_list_envelope,
     unwrap_item_list_envelope,
 )
-import project_state_write  # noqa: E402
 
 
 def _load(name: str):

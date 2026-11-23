@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
-import sys
 
 from foreman_run_lib import deep_merge, load_wall, save_wall
 

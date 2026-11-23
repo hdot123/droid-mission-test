@@ -20,7 +20,8 @@ def main() -> int:
     if args.inline:
         patch = json.loads(args.patch)
     else:
-        patch = json.loads(open(args.patch, encoding="utf-8").read())
+        with open(args.patch, encoding="utf-8") as fh:
+            patch = json.loads(fh.read())
 
     try:
         wall = load_wall(args.wall)

@@ -35,8 +35,9 @@ import json
 import re
 import statistics
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 ART_DIR_RE = re.compile(r"^droid-stream-(?P<role>[a-z0-9][a-z0-9-]*?)-run-(?P<run>\w+)$")
 ART_FILE_RE = re.compile(r"^droid-stream-(?P<role>[a-z0-9][a-z0-9-]*?)-run-(?P<run>\w+)\.\w+$")
@@ -54,11 +55,11 @@ _SESSION_ECHO = re.compile(r"\bforeman droid session:")
 def _log_line_ts(m: re.Match[str]) -> float:
     base = datetime.datetime.strptime(
         m.group(1), "%Y-%m-%dT%H:%M:%S"
-    ).replace(tzinfo=datetime.timezone.utc).timestamp()
+    ).replace(tzinfo=datetime.UTC).timestamp()
     return base + float("0." + m.group(2))
 
 
-def _read_events(path: Path) -> tuple[list[tuple[float, dict[str, Any]]], tuple[float, str] | None]:
+def _read_events(path: Path) -> tuple[list[tuple[float, dict[str, Any]]], tuple[float | None, str] | None]:
     """Parse one stream artifact into (timestamped events, censored tail).
 
     .jsonl artifacts carry the timestamp inside each event; .log job logs
@@ -66,7 +67,7 @@ def _read_events(path: Path) -> tuple[list[tuple[float, dict[str, Any]]], tuple[
     it is the only clock available there.
     """
     events: list[tuple[float, dict[str, Any]]] = []
-    tail: tuple[float, str] | None = None
+    tail: tuple[float | None, str] | None = None
     last_ts: float | None = None
     is_jsonl = path.suffix == ".jsonl"
     for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -172,12 +173,10 @@ def _log_session_span(log_path: Path) -> tuple[float, float, str] | None:
             continue
         ts = _log_line_ts(m)
         text = m.group(3)
-        if _SESSION_ECHO.search(text):
-            if end is None:
-                end = (ts, text[:90])
-        elif _BUDGET_ECHO.search(text):
-            if start is None:
-                start = ts
+        if _SESSION_ECHO.search(text) and end is None:
+            end = (ts, text[:90])
+        elif _BUDGET_ECHO.search(text) and start is None:
+            start = ts
     if start is not None and end is not None and start < end[0]:
         return (start, end[0], end[1])
     return None
@@ -216,7 +215,7 @@ def _aligned_tail(
 
 def measure_events(
     events: list[tuple[float, dict[str, Any]]],
-    tail: tuple[float, str] | None,
+    tail: tuple[float | None, str] | None,
     job_logs: Sequence[Path] | None = None,
 ) -> dict[str, Any]:
     turns = _turns(events)
@@ -243,7 +242,7 @@ def measure_events(
             "max": max((t["latency_s"] for t in turns), default=None),
         },
     }
-    if tail and events:
+    if tail and events and tail[0] is not None:
         fields["censored_tail_s"] = round(tail[0] - events[-1][0], 2)
         fields["censored_tail_method"] = "log_echo"
         fields["censored_tail_excerpt"] = tail[1]
@@ -272,25 +271,40 @@ def measure_path(path: Path, job_logs: Sequence[Path] | None = None) -> list[dic
         role = m.group("role")
         run_id = m.group("run")
     else:
-        role = "lead" if "lead-stream" in path.name else "worker" if "worker" in path.name else "validator" if "validator" in path.name else "unknown"
+        role = (
+            "lead" if "lead-stream" in path.name
+            else "worker" if "worker" in path.name
+            else "validator" if "validator" in path.name
+            else "unknown"
+        )
         run_id = path.parent.name
         m = ART_DIR_RE.match(path.parent.name)
         if m:
             role = m.group("role")
             run_id = m.group("run")
-    return [{"source": path.name, "path": str(path), "role": role, "run_id": run_id, **measure_events(events, tail, job_logs)}]
+    return [
+        {
+            "source": path.name,
+            "path": str(path),
+            "role": role,
+            "run_id": run_id,
+            **measure_events(events, tail, job_logs),
+        }
+    ]
 
 
 def _measure_art_dir(run_dir: Path, job_logs: Sequence[Path] | None = None) -> list[dict[str, Any]]:
     m = ART_DIR_RE.match(run_dir.name)
+    role = m.group("role") if m else ""
+    run_id = m.group("run") if m else ""
     sources: list[dict[str, Any]] = []
     for stream in sorted(run_dir.glob("*.jsonl")):
         events, tail = _read_events(stream)
         sources.append({
             "source": run_dir.name,
             "path": str(stream),
-            "role": m.group("role"),
-            "run_id": m.group("run"),
+            "role": role,
+            "run_id": run_id,
             **measure_events(events, tail, job_logs),
         })
     return sources

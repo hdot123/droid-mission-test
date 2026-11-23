@@ -10,6 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
+import lead_plan_segments as lps  # noqa: E402
 from foreman_run_lib import init_wall, save_wall  # noqa: E402
 from lead_plan_segments import (  # noqa: E402
     SEGMENT_ID_RE,
@@ -18,7 +19,6 @@ from lead_plan_segments import (  # noqa: E402
     scan_segments,
     stitch_plan_file,
 )
-import lead_plan_segments as lps  # noqa: E402
 
 
 def _write_header(seg_dir: Path, summary: str = "summary") -> None:

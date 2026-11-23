@@ -29,7 +29,6 @@ from foreman_run_lib import deep_merge, init_wall, save_wall  # noqa: E402
 from lead_plan_segments import (  # noqa: E402
     cmd_stitch,
     scan_segments,
-    stitch_plan_file,
 )
 
 FIXTURES = ROOT / "tests" / "fixtures" / "lead_plan_segments"
@@ -156,9 +155,6 @@ def test_terminal_gate_requires_final_verdict_present():
     the gate from stale inputs. When the round-2 slice exists, the verdict
     artifact gate alone keeps should_replan honest (no raise needed).
     """
-    wall = json.loads(WALL_FIXTURE.read_text(encoding="utf-8"))
-    # Round-2 slice present but its verdict artifact missing: the
-    # verdict-complete input gates should_replan to False.
     missing = json.loads(WALL_FIXTURE.read_text(encoding="utf-8"))
     del missing["artifacts"]["team-verdict2-issue-763-run-45078521269"]
     gate = compute_replan_gate.compute(missing, round_num=2)["replan_gate"]

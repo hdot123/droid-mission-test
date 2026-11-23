@@ -1,0 +1,38 @@
+[project]
+name = "droid-mission-test"
+version = "0.1.0"
+description = "Foreman-pattern testbed: droid CLI mission pipelines with a wall contract"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["tests/fixtures", "legacy_stringkit.py"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # import order
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "SIM",  # simplify
+    "W",    # warnings
+]
+ignore = [
+    "E402",  # module-level imports after sys.path bootstrapping are the norm here (PYTHONPATH=scripts/team)
+]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "scripts/team"
+explicit_package_bases = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "jsonschema"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

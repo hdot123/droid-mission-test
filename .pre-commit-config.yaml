@@ -1,0 +1,23 @@
+# See https://pre-commit.com for more information
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-json
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+  - repo: local
+    hooks:
+      - id: foreman-wall-lints
+        name: foreman wall structural lints
+        entry: bash -c 'PYTHONPATH=scripts/team python3 scripts/team/lint_workflow_foreman.py && PYTHONPATH=scripts/team python3 scripts/team/lint_workflow_wall_exits.py && PYTHONPATH=scripts/team python3 scripts/team/lint_gh_project_parse.py && PYTHONPATH=scripts/team python3 scripts/team/lint_workflow_budgets.py'
+        language: system
+        pass_filenames: false
+        files: ^(\.github/workflows/|scripts/team/|tests/)

@@ -79,9 +79,12 @@ def lint_team_yml(workflow: Path) -> list[str]:
         errs.append("validate job must read adopt reserve from wall (ADOPT_RESERVE_SEC)")
     if vchunk.count(SESSION_RUNNER) < 1:
         errs.append("validate job missing run_droid_session for validator")
-    if text.count("Validator judges evidence packs only") >= 2:
-        if text.count(f"name: {SESSION_RUNNER}") < 2 and vchunk.count(SESSION_RUNNER) < 2:
-            pass  # counted in per-step checks below
+    if (
+        text.count("Validator judges evidence packs only") >= 2
+        and text.count(f"name: {SESSION_RUNNER}") < 2
+        and vchunk.count(SESSION_RUNNER) < 2
+    ):
+        pass  # counted in per-step checks below
     chunk2 = _step_chunk("Validator judges evidence packs only (round 2)")
     if chunk2:
         if SESSION_RUNNER not in chunk2:

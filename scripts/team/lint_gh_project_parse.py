@@ -41,16 +41,19 @@ def scan_file(path: Path) -> list[str]:
     if path.name in ALLOWLIST:
         return []
     text = path.read_text(encoding="utf-8")
-    if "item-list" not in text and "field-list" not in text and "gh project view" not in text:
-        if not PROJECT_SUBCMD.search(text):
-            return []
+    early = "item-list" in text or "field-list" in text or "gh project view" in text
+    if not early and not PROJECT_SUBCMD.search(text):
+        return []
     errs: list[str] = []
-    if PROJECT_SUBCMD.search(text) and BARE_JSON_LOADS.search(text):
-        if not PARSE_LAYER_SYM.search(text):
-            errs.append(
-                f"{path.relative_to(path.parents[2])}: "
-                f"gh project * JSON must use gh_project_parse (found bare json.loads)"
-            )
+    if (
+        PROJECT_SUBCMD.search(text)
+        and BARE_JSON_LOADS.search(text)
+        and not PARSE_LAYER_SYM.search(text)
+    ):
+        errs.append(
+            f"{path.relative_to(path.parents[2])}: "
+            f"gh project * JSON must use gh_project_parse (found bare json.loads)"
+        )
     return errs
 
 

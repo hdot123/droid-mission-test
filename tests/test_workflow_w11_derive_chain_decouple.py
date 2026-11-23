@@ -12,9 +12,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
-from compute_validate_conclusion import derive  # noqa: E402
-from foreman_run_lib import deep_merge, init_wall, save_wall  # noqa: E402
 import wall_sync_job  # noqa: E402
+from foreman_run_lib import deep_merge, init_wall, save_wall  # noqa: E402
 
 
 def _verdict_key(wall: dict) -> str:

@@ -7,7 +7,6 @@ import re
 import sys
 from pathlib import Path
 
-
 FORBIDDEN = [
     (re.compile(r"failed_processes\s*!=\s*['\"]\\?\\[\\]['\"]"), "string compare failed_processes != '[]'"),
     (re.compile(r"needs\.validate\.result\s*==\s*['\"]success['\"]"), "replan bound to validate.result success only"),

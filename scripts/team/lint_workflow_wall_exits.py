@@ -53,15 +53,16 @@ def wall_sync_always_ok(job_text: str, chain_job: str) -> tuple[bool, str]:
         if "wall_sync_job.py" not in chunk and "assemble_chain_facts.py" not in chunk:
             continue
         if chain_job == "assemble":
-            if "assemble_chain_facts.py" in chunk and "--assemble-exit" in chunk:
-                if step_has_always(chunk):
-                    return True, ""
-            if f"--job {chain_job}" in chunk or f'--job "{chain_job}"' in chunk:
-                if step_has_always(chunk):
-                    return True, ""
-        elif f"--job {chain_job}" in chunk or f'--job "{chain_job}"' in chunk:
-            if step_has_always(chunk):
+            if (
+                "assemble_chain_facts.py" in chunk
+                and "--assemble-exit" in chunk
+                and step_has_always(chunk)
+            ):
                 return True, ""
+            if (f"--job {chain_job}" in chunk or f'--job "{chain_job}"' in chunk) and step_has_always(chunk):
+                return True, ""
+        elif (f"--job {chain_job}" in chunk or f'--job "{chain_job}"' in chunk) and step_has_always(chunk):
+            return True, ""
     return False, f"no wall_sync/assemble-exit step with if: always() for chain.{chain_job}"
 
 
@@ -199,9 +200,8 @@ def lead_not_success_only(job_text: str) -> list[str]:
             continue
         if re.search(r"--result\s+success", chunk) and not step_has_always(chunk):
             errs.append("lead wall_sync hardcodes --result success without always() (W-9)")
-        if re.search(r'name:\s*Patch and upload ForemanRun wall \(lead\)', chunk):
-            if not step_has_always(chunk):
-                errs.append("legacy lead patch step without always() (W-9)")
+        if re.search(r'name:\s*Patch and upload ForemanRun wall \(lead\)', chunk) and not step_has_always(chunk):
+            errs.append("legacy lead patch step without always() (W-9)")
     return errs
 
 

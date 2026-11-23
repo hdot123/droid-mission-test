@@ -1,0 +1,14 @@
+{
+  "name": "droid-mission-test",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "python3 -m pip install -r requirements-dev.txt ruff mypy types-jsonschema && pre-commit install || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "ms-python.python"
+      ]
+    }
+  }
+}

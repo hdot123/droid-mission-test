@@ -24,7 +24,11 @@ def wall_excerpt(wall: dict) -> str:
     env = wall.get("env") or {}
     val = wall.get("validation") or {}
     close = (wall.get("closeout") or {}).get("comments") or {}
-    arts = {k: v.get("complete") for k, v in (wall.get("artifacts") or {}).items() if "verdict" in k or k.startswith("foreman")}
+    arts = {
+        k: v.get("complete")
+        for k, v in (wall.get("artifacts") or {}).items()
+        if "verdict" in k or k.startswith("foreman")
+    }
     repl = (wall.get("replan_gate") or {}).get("should_replan")
     return json.dumps(
         {
@@ -51,13 +55,21 @@ def assess(scene: str, wall: dict | None, run_view: dict) -> tuple[str, list[str
         ok_job = lead and lead.get("conclusion") == "failure"
         posted = False
         if wall:
-            posted = bool((wall.get("closeout") or {}).get("comments", {}).get("plan_dispatch", {}).get("posted") is False)
+            posted = (
+                (wall.get("closeout") or {}).get("comments", {}).get("plan_dispatch", {}).get("posted") is False
+            )
         pass_ = ok_job and run_view.get("conclusion") == "failure"
         if wall and not posted:
-            notes.append("wall closeout.comments.plan_dispatch.posted not false (artifact missing or patch absent)")
+            notes.append(
+                "wall closeout.comments.plan_dispatch.posted not false (artifact missing or patch absent)"
+            )
         return ("PASS" if pass_ else "FAIL"), notes
     if scene in ("A", "D"):
-        val_job = next((j for j in jobs if "validator" in j.get("name", "").lower() and "round 2" not in j.get("name", "").lower()), None)
+        val_job = next(
+            (j for j in jobs
+             if "validator" in j.get("name", "").lower() and "round 2" not in j.get("name", "").lower()),
+            None,
+        )
         if scene == "A":
             adopt = (wall or {}).get("validation", {}).get("adoption_status") if wall else None
             hs = (wall or {}).get("human_stop") if wall else None
@@ -126,7 +138,10 @@ def main() -> int:
         "## Notes",
         "",
     ]
-    md.extend(f"- {n}" for n in notes) or ["- (none)"]
+    if notes:
+        md.extend(f"- {n}" for n in notes)
+    else:
+        md.append("- (none)")
     Path(args.out).write_text("\n".join(md) + "\n", encoding="utf-8")
     print(status)
     return 0

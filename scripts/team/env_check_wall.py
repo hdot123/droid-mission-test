@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
-import sys
 
 from foreman_run_lib import init_wall, save_wall
 
 
 def parse_tsv(path: str) -> list[tuple[str, str, str]]:
     rows = []
-    for line in open(path, encoding="utf-8"):
-        parts = line.rstrip("\n").split("\t")
-        if len(parts) == 3:
-            rows.append((parts[0], parts[1], parts[2]))
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) == 3:
+                rows.append((parts[0], parts[1], parts[2]))
     return rows
 
 
@@ -31,7 +30,7 @@ def build_env_slice(rows: list[tuple[str, str, str]], secrets: dict[str, bool]) 
         if not present:
             hard_fails.append(f"Secret 缺失: {name}")
     project_readable = not any("板面配置" in f and "FAIL" in str(r) for r in rows for f in [r[0]])
-    for status, item, detail in rows:
+    for status, item, _detail in rows:
         if item == "板面配置" and status == "FAIL":
             project_readable = False
     hard_fail_count = len(hard_fails)

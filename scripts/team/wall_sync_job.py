@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 
 from foreman_run_lib import (
     chain_summary_code_for_result,

@@ -15,8 +15,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
-from salvage_verdict import PARTIAL_NAME, read_salvage, record_verdict  # noqa: E402
-from salvage_verdict import salvage_verdict  # noqa: E402
+from salvage_verdict import (  # noqa: E402
+    PARTIAL_NAME,
+    read_salvage,
+    record_verdict,
+    salvage_verdict,  # noqa: E402
+)
 
 
 def test_record_then_read_roundtrip(tmp_path: Path):
