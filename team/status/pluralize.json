@@ -1,0 +1,21 @@
+{
+  "id": "pluralize",
+  "title": "英文名词复数（pluralize.py）",
+  "state": "done",
+  "files": [
+    "pluralize.py",
+    "tests/test_pluralize.py",
+    "team/handoffs/pluralize.md",
+    "team/status/pluralize.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_pluralize.py -q",
+      "result": "passed: 35 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 222 passed, 2 skipped in 15.42s"
+    }
+  ]
+}
