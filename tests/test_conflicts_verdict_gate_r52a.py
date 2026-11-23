@@ -170,3 +170,20 @@ def test_board_status_maps_conflicted_verdict_to_blocked(r52a_env):
     assert verdict["overall"] == "fail"
     assert verdict["conflicts_escalated"] is True
     assert project_state_write.STATUS_BY_OVERALL["fail"] == "阻塞"
+
+
+def test_replan_coverage_includes_conflicted_processes():
+    """The replan claim-check must require a decision for every conflicted
+    process (deterministically, from the verdict's conflicts array) — not
+    only the failed ones. A conflicts-only round (failed=∅, one escalated
+    conflict) otherwise dead-ends: the prompt says "revise the conflicted
+    card" while the coverage check demands changes cover failed=∅ exactly."""
+    team_yml = (ROOT / ".github" / "workflows" / "team.yml").read_text(encoding="utf-8")
+    # The coverage merge must exist and run on the verdict's conflicts array.
+    assert "conflicted = {c.get(\"process\") for c in conflicts" in team_yml
+    assert "required |= conflicted" in team_yml
+    # The prompt's coverage rule must name conflicted processes, so the
+    # instruction and the checker agree (no prompt/checker contradiction).
+    assert "conflicted = named in the verdict's conflicts array" in team_yml
+    # The foreman decision line must cover revise AND redispatch for conflicts.
+    assert "or redispatch with a retry_note stating the card stands as" in team_yml

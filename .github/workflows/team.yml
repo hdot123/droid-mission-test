@@ -1765,18 +1765,25 @@ jobs:
                       attributed.append(owner)
               attributed = [p["id"] for p in plan["processes"] if p["id"] in attributed]
           # 52A fix: escalated work-order conflicts reopen the order — the
-          # foreman must name the contradiction in its decision line even
-          # though no process verdict flipped (judged pass as written).
+          # conflicted processes join the required coverage set (deterministic,
+          # from the verdict itself), so the foreman can revise their cards to
+          # resolve the contradiction. Without this the coverage check
+          # (changes must cover failed exactly) would reject any revision of
+          # a passed-but-conflicted card — a prompt/checker contradiction of
+          # the exact class that killed round 51.
           conflicts = verdict.get("conflicts") or []
+          conflicted_ids = sorted({c.get("process") for c in conflicts if isinstance(c, dict) and c.get("process")})
+          required_hint = sorted(set(failed) | set(conflicted_ids))
           conflicts_line = ""
           if conflicts:
-              names = ", ".join(sorted({c.get("process", "?") for c in conflicts}))
+              names = ", ".join(conflicted_ids)
               conflicts_line = (
                   f"The validator escalated {len(conflicts)} work-order conflict(s) "
                   f"(process(es): {names}); details in stage/verdict.json top-level "
-                  "\"conflicts\" array. Decide for each: revise the card to resolve the "
-                  "contradiction (state which value the card now pins), or state why the "
-                  "card is fine as written. "
+                  "\"conflicts\" array. Decide for each conflicted process: revise the "
+                  "card to resolve the contradiction (state which value the card now "
+                  "pins), or redispatch with a retry_note stating the card stands as "
+                  "written. "
               )
           if attribution_mode:
               failed_line = ("No process was judged failed, but the merged test suite is red. "
@@ -1794,10 +1801,10 @@ jobs:
               cover_rule = "The changes list must cover every attributed process exactly once, and no other process."
               claim_rule = "A revised card must not claim files owned by a process other than itself and the other attributed processes."
           else:
-              failed_line = "Failed or blocked processes: " + ", ".join(failed)
+              failed_line = "Failed or blocked processes: " + (", ".join(required_hint) if required_hint else "(none)")
               layer_block = "\n"
-              cover_rule = "The changes list must cover every failed or blocked process exactly once, and no passed process."
-              claim_rule = "A revised card must not claim files owned by a passed process."
+              cover_rule = "The changes list must cover every failed, blocked, or conflicted process exactly once, and no passed process (conflicted = named in the verdict's conflicts array; its verdict may still say pass)."
+              claim_rule = "A revised card must not claim files owned by a passed process (a conflicted process it revises excepted)."
           prompt = f"""You are the FOREMAN （领班） again. Validation of plan v1 did not pass. Your job now is to fix the PLAN, never the code. Do not write application code. Do not edit any file except team-plan-v2.json in the current directory.
 
           In front of you:
@@ -1907,6 +1914,13 @@ jobs:
                   print("unattributed failure cannot be attributed to any process card; stopping the order for a human")
                   sys.exit(1)
               required = attributed
+          # 52A fix: conflicted processes are required coverage too — the
+          # foreman must carry a decision (revise/redispatch) for each card
+          # named in the verdict's conflicts array, deterministically
+          # recomputed from the verdict (the prompt is never trusted).
+          conflicts = verdict.get("conflicts") or []
+          conflicted = {c.get("process") for c in conflicts if isinstance(c, dict) and c.get("process")}
+          required |= conflicted
 
           v2 = json.load(open("team-plan-v2.json"))
           passed_files = {}
@@ -1921,7 +1935,7 @@ jobs:
               print("plan v2 has duplicate process_id entries in changes")
               sys.exit(1)
           if sorted(change_ids) != sorted(required):
-              print(f"plan v2 must cover exactly the required processes {sorted(required)} (multiset comparison; classic mode: the failed processes, attribution mode: the attributed processes)")
+              print(f"plan v2 must cover exactly the required processes {sorted(required)} (multiset comparison; classic mode: the failed processes, attribution mode: the attributed processes, plus every conflicted process named in the verdict's conflicts array)")
               sys.exit(1)
           for pid in change_ids:
               if not re.fullmatch(r"^[a-z0-9][a-z0-9-]*$", str(pid)):
