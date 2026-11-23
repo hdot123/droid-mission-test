@@ -1,0 +1,155 @@
+"""Tests for ellipse.py: area, perimeter (Ramanujan II), eccentricity.
+
+Every acceptance item from the work order has a dedicated case.
+Float comparisons use abs difference < 1e-9.
+"""
+
+import math
+
+import pytest
+
+from ellipse import ellipse_area, ellipse_eccentricity, ellipse_perimeter
+
+TOL = 1e-9
+
+
+# --- ellipse_area -----------------------------------------------------------
+
+def test_area_1_1():
+    assert abs(ellipse_area(1, 1) - 3.141592653589793) < TOL
+
+
+def test_area_2_1():
+    assert abs(ellipse_area(2, 1) - 6.283185307179586) < TOL
+
+
+def test_area_5_3():
+    assert abs(ellipse_area(5, 3) - 47.12388980384689) < TOL
+
+
+def test_area_10_4():
+    assert abs(ellipse_area(10, 4) - 125.66370614359172) < TOL
+
+
+def test_area_3_3():
+    assert abs(ellipse_area(3, 3) - 28.274333882308138) < TOL
+
+
+def test_area_7_2():
+    assert abs(ellipse_area(7, 2) - 43.982297150257104) < TOL
+
+
+# --- ellipse_perimeter ------------------------------------------------------
+
+def test_perimeter_1_1():
+    assert abs(ellipse_perimeter(1, 1) - 6.283185307179586) < TOL
+
+
+def test_perimeter_2_1():
+    assert abs(ellipse_perimeter(2, 1) - 9.688448216130086) < TOL
+
+
+def test_perimeter_5_3():
+    assert abs(ellipse_perimeter(5, 3) - 25.526998862788762) < TOL
+
+
+def test_perimeter_10_4():
+    assert abs(ellipse_perimeter(10, 4) - 46.02622490078541) < TOL
+
+
+def test_perimeter_3_3():
+    assert abs(ellipse_perimeter(3, 3) - 18.84955592153876) < TOL
+
+
+def test_perimeter_7_2():
+    assert abs(ellipse_perimeter(7, 2) - 30.50178748301344) < TOL
+
+
+# --- ellipse_eccentricity ---------------------------------------------------
+
+def test_eccentricity_1_1():
+    assert abs(ellipse_eccentricity(1, 1) - 0.0) < TOL
+
+
+def test_eccentricity_2_1():
+    assert abs(ellipse_eccentricity(2, 1) - 0.8660254037844386) < TOL
+
+
+def test_eccentricity_1_2_swap_same_value():
+    # Swapping axes yields the same value.
+    assert abs(ellipse_eccentricity(1, 2) - 0.8660254037844386) < TOL
+
+
+def test_eccentricity_5_3():
+    assert abs(ellipse_eccentricity(5, 3) - 0.8) < TOL
+
+
+def test_eccentricity_10_4():
+    assert abs(ellipse_eccentricity(10, 4) - 0.916515138991168) < TOL
+
+
+def test_eccentricity_3_3():
+    assert abs(ellipse_eccentricity(3, 3) - 0.0) < TOL
+
+
+def test_eccentricity_7_2():
+    assert abs(ellipse_eccentricity(7, 2) - 0.9583148474999099) < TOL
+
+
+# --- validation: ValueError on non-positive axes ----------------------------
+
+def test_area_zero_axis_raises_value_error():
+    with pytest.raises(ValueError):
+        ellipse_area(0, 1)
+
+
+def test_perimeter_negative_axis_raises_value_error():
+    with pytest.raises(ValueError):
+        ellipse_perimeter(-2, 1)
+
+
+# --- validation: TypeError on non-numeric axes ------------------------------
+
+def test_area_string_raises_type_error():
+    with pytest.raises(TypeError):
+        ellipse_area("2", 1)
+
+
+def test_eccentricity_bool_raises_type_error():
+    with pytest.raises(TypeError):
+        ellipse_eccentricity(2, True)
+
+
+# --- shared validation: finite values required ------------------------------
+
+def test_area_nan_raises_value_error():
+    with pytest.raises(ValueError):
+        ellipse_area(math.nan, 1)
+
+
+def test_perimeter_inf_raises_value_error():
+    with pytest.raises(ValueError):
+        ellipse_perimeter(math.inf, 1)
+
+
+def test_eccentricity_non_numeric_b_raises_type_error():
+    with pytest.raises(TypeError):
+        ellipse_eccentricity(2, None)
+
+
+# --- sanity: functions return floats and agree with formulas ---------------
+
+def test_returns_float_and_matches_formulas():
+    area = ellipse_area(4, 2)
+    assert isinstance(area, float)
+    assert abs(area - math.pi * 4 * 2) < TOL
+
+    h = ((4 - 2) / (4 + 2)) ** 2
+    expected_p = math.pi * (4 + 2) * (1 + 3 * h / (10 + math.sqrt(4 - 3 * h)))
+    perimeter = ellipse_perimeter(4, 2)
+    assert isinstance(perimeter, float)
+    assert abs(perimeter - expected_p) < TOL
+
+    eccentricity = ellipse_eccentricity(4, 2)
+    assert isinstance(eccentricity, float)
+    assert abs(eccentricity - math.sqrt(1 - (2 / 4) ** 2)) < TOL
