@@ -12,6 +12,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
+from compute_replan_gate import compute as compute_replan  # noqa: E402
+from compute_validate_conclusion import derive as derive_validate  # noqa: E402
 from foreman_run_lib import (  # noqa: E402
     init_wall,
     merge_worker_slice,
@@ -20,8 +22,6 @@ from foreman_run_lib import (  # noqa: E402
     validate_schema,
     validate_with_jsonschema,
 )
-from compute_replan_gate import compute as compute_replan  # noqa: E402
-from compute_validate_conclusion import derive as derive_validate  # noqa: E402
 from merge_worker_deltas import apply_deltas  # noqa: E402
 
 

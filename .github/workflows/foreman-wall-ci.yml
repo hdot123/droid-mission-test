@@ -11,13 +11,13 @@ on:
 jobs:
   foreman-wall-contract:
     name: foreman-run.v1 contract tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, pve-linux]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements-dev.txt
+      - run: pip install -r requirements-dev.txt ruff mypy types-jsonschema
       - name: Schema + contract pytest
         run: pytest tests/test_foreman_wall_contract.py tests/test_foreman_wall_failure_paths.py tests/test_foreman_wall_death_matrix.py tests/test_gh_project_parse_contract.py tests/test_budget_slice_batch3.py tests/test_validate_step_workdir_smoke.py tests/test_adopt_session_outcome_w12.py tests/test_workflow_w11_derive_chain_decouple.py tests/test_workflow_workers_merge_wall_sync_decouple.py -q
       - name: Workflow foreman lint
@@ -28,3 +28,7 @@ jobs:
         run: python3 scripts/team/lint_gh_project_parse.py
       - name: Workflow budget lint (batch-3)
         run: python3 scripts/team/lint_workflow_budgets.py
+      - name: ruff
+        run: ruff check .
+      - name: mypy
+        run: mypy --python-version 3.12 --explicit-package-bases scripts/ roman.py

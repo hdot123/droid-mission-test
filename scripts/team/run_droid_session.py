@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import shlex
 import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from budget_resolve import droid_wall_sec, session_completion_status
 from foreman_run_lib import deep_merge, load_wall, save_wall
@@ -127,10 +128,8 @@ class _LeadSegmentGate:
                 file=sys.stderr,
             )
             self.on_trip()
-            try:
+            with contextlib.suppress(OSError):
                 proc.terminate()
-            except OSError:
-                pass
             break
 
 

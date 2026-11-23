@@ -13,6 +13,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
+import project_state_write  # noqa: E402
+import wall_sync_job  # noqa: E402
+import write_worker_delta  # noqa: E402
 from foreman_run_lib import (  # noqa: E402
     chain_summary_code_for_result,
     init_wall,
@@ -20,9 +23,6 @@ from foreman_run_lib import (  # noqa: E402
     save_wall,
     validate_with_jsonschema,
 )
-import project_state_write  # noqa: E402
-import wall_sync_job  # noqa: E402
-import write_worker_delta  # noqa: E402
 
 
 def test_w1_parse_project_item_list_dict_items():

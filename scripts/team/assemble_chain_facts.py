@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 
@@ -42,9 +41,11 @@ FACT_TEMPLATES = {
 def derive_downstream_blocker(wall: dict) -> str | None:
     for job in CHAIN_ORDER:
         node = (wall.get("chain") or {}).get(job) or {}
-        if node.get("started") and not node.get("produced_required_artifact"):
-            if node.get("result") in ("failure", "cancelled"):
-                return job
+        started = node.get("started")
+        produced = node.get("produced_required_artifact")
+        failed = node.get("result") in ("failure", "cancelled")
+        if started and not produced and failed:
+            return job
     return None
 
 
@@ -131,9 +132,8 @@ def pick_fallback_reason(wall: dict) -> str:
         if node.get("result") in ("failure", "cancelled"):
             detail = facts.get("detail") or f"{job} 异常"
             forbidden = facts.get("forbidden_phrases") or []
-            if job == "worker" and (wall.get("workers") or {}).get("completed_pids"):
-                if "备料未启动" in detail:
-                    return "工人 job 失败，但备料链路已部分启动（见 workers.completed_pids）"
+            if job == "worker" and (wall.get("workers") or {}).get("completed_pids") and "备料未启动" in detail:
+                return "工人 job 失败，但备料链路已部分启动（见 workers.completed_pids）"
             if not any(p in detail for p in forbidden):
                 return detail
             return facts.get("detail") or detail

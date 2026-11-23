@@ -1,12 +1,9 @@
 """Batch-3: 480+120 validator budget in wall config and workflow lint."""
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "team"))

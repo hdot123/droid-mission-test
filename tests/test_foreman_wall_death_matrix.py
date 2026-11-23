@@ -11,10 +11,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
+import wall_sync_job  # noqa: E402
 from assemble_chain_facts import sync_assemble_exit  # noqa: E402
 from foreman_run_lib import init_wall, save_wall, validate_with_jsonschema  # noqa: E402
-import wall_sync_job  # noqa: E402
-
 
 DEATH_MATRIX = (
     ("lead", "failure"),

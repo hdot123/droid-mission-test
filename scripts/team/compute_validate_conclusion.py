@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 
 from foreman_run_lib import deep_merge, load_wall, save_wall
 
@@ -35,10 +34,7 @@ def derive(wall: dict, *, round_num: int = 1) -> tuple[dict, str]:
     # 52A fix: an escalated work-order conflict keeps the validate job red —
     # a contradiction in the order is never a silent green for downstream.
     escalated = bool(val.get("conflicts_escalated"))
-    if adoption == "failed" or not complete or session_bad or escalated:
-        conclusion = "failure"
-    else:
-        conclusion = "success"
+    conclusion = "failure" if adoption == "failed" or not complete or session_bad or escalated else "success"
     val = dict(val)
     val["job_conclusion_derived"] = conclusion
     merged = deep_merge(wall, {"validation": val})

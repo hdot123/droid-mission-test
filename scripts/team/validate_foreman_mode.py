@@ -13,7 +13,8 @@ def main() -> int:
     p.add_argument("--plan", required=True)
     p.add_argument("--mode", default="test")
     args = p.parse_args()
-    plan = json.loads(open(args.plan, encoding="utf-8").read())
+    with open(args.plan, encoding="utf-8") as fh:
+        plan = json.loads(fh.read())
     procs = plan.get("processes") or []
     effective_mode = args.mode
     if "foreman_mode" in plan:

@@ -133,14 +133,23 @@ def test_boundaries_reset_latency_clock(tmp_path: Path):
 def test_job_log_format_with_censored_tail(tmp_path: Path):
     # Job logs echo stream events behind a timestamp prefix; the in-flight
     # turn of a killed session never flushes and shows up as a tail.
+    def echo(ts: str, obj: dict) -> str:
+        return f"2026-11-22T{ts} " + json.dumps(obj)
+
     lines = [
         "2026-11-22T10:00:00.000Z preamble before any event is ignored",
-        "2026-11-22T10:00:00.000Z " + json.dumps({"type": "message", "role": "user", "id": "u1", "text": "wo", "timestamp": 1_000}),
-        "2026-11-22T10:00:10.000Z " + json.dumps({"type": "reasoning", "id": "m1", "text": "r" * 50, "timestamp": 1_010}),
-        "2026-11-22T10:00:10.000Z " + json.dumps({"type": "message", "role": "assistant", "id": "m1", "text": "a" * 20, "timestamp": 1_010}),
+        echo("10:00:00.000Z", {"type": "message", "role": "user", "id": "u1", "text": "wo", "timestamp": 1_000}),
+        echo("10:00:10.000Z", {"type": "reasoning", "id": "m1", "text": "r" * 50, "timestamp": 1_010}),
+        echo(
+            "10:00:10.000Z",
+            {"type": "message", "role": "assistant", "id": "m1", "text": "a" * 20, "timestamp": 1_010},
+        ),
         "2026-11-22T10:00:11.000Z heartbeat: still alive",
-        "2026-11-22T10:00:22.500Z " + json.dumps({"type": "reasoning", "id": "m2", "text": "s" * 30, "timestamp": 1_022}),
-        "2026-11-22T10:00:22.500Z " + json.dumps({"type": "message", "role": "assistant", "id": "m2", "text": "t" * 10, "timestamp": 1_022}),
+        echo("10:00:22.500Z", {"type": "reasoning", "id": "m2", "text": "s" * 30, "timestamp": 1_022}),
+        echo(
+            "10:00:22.500Z",
+            {"type": "message", "role": "assistant", "id": "m2", "text": "t" * 10, "timestamp": 1_022},
+        ),
         "2026-11-22T10:00:30.000Z ##[error]Process completed with exit code 124.",
     ]
     path = tmp_path / "45X-lead-1.log"
@@ -203,7 +212,8 @@ def test_log_file_named_as_artifact(tmp_path: Path):
     round_dir = tmp_path / "48A"
     round_dir.mkdir()
     log = round_dir / "droid-stream-lead-run-44555700638.log"
-    line = lambda ts: f"2025-01-01T00:00:{ts:02d}.000Z " + json.dumps(_sample_events()[0])
+    def line(ts: int) -> str:
+        return f"2025-01-01T00:00:{ts:02d}.000Z " + json.dumps(_sample_events()[0])
     log.write_text("\n".join(line(i) for i in range(4)), encoding="utf-8")
     src = tm.measure_path(log)[0]
     assert src["role"] == "lead"
@@ -216,7 +226,8 @@ def test_worker2_role_token(tmp_path: Path):
     round_dir = tmp_path / "45A"
     round_dir.mkdir()
     log = round_dir / "droid-stream-worker2-run-44428440695.log"
-    line = lambda ts: f"2025-01-01T00:00:{ts:02d}.000Z " + json.dumps(_sample_events()[0])
+    def line(ts: int) -> str:
+        return f"2025-01-01T00:00:{ts:02d}.000Z " + json.dumps(_sample_events()[0])
     log.write_text("\n".join(line(i) for i in range(4)), encoding="utf-8")
     src = tm.measure_path(log)[0]
     assert src["role"] == "worker2"
@@ -261,7 +272,7 @@ def test_jsonl_stream_with_job_log_aligned_tail(tmp_path: Path):
         import datetime
 
         dt = datetime.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
-            tzinfo=datetime.timezone.utc
+            tzinfo=datetime.UTC
         )
         return int(dt.timestamp() * 1000)
 
@@ -284,8 +295,10 @@ def test_jsonl_stream_with_job_log_aligned_tail(tmp_path: Path):
     log.write_text(
         "\n".join(
             [
-                "2026-11-22T10:00:01.000Z validator session budget (wall): droid=480s adopt_reserve=120s (I8-A/D may override droid wall only)",
-                "2026-11-22T10:00:25.000Z foreman droid session: role=validator wall_droid_sec=480 cmd=timeout --signal=TERM --kill-after=30s 480s …",
+                "2026-11-22T10:00:01.000Z validator session budget (wall): droid=480s adopt_reserve=120s "
+                "(I8-A/D may override droid wall only)",
+                "2026-11-22T10:00:25.000Z foreman droid session: role=validator wall_droid_sec=480 "
+                "cmd=timeout --signal=TERM --kill-after=30s 480s …",
                 "2026-11-22T10:00:25.100Z ##[error]Process completed with exit code 124.",
             ]
         )
@@ -308,7 +321,7 @@ def test_log_alignment_requires_budget_anchor(tmp_path: Path):
         import datetime
 
         dt = datetime.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
-            tzinfo=datetime.timezone.utc
+            tzinfo=datetime.UTC
         )
         return int(dt.timestamp() * 1000)
 
@@ -332,7 +345,8 @@ def test_log_alignment_requires_budget_anchor(tmp_path: Path):
         "\n".join(
             [
                 "2026-11-22T10:01:00.000Z foreman droid session: role=validator wall_droid_sec=480 cmd=timeout …",
-                "2026-11-22T10:02:00.000Z validator session budget (wall): droid=480s adopt_reserve=120s (I8-A/D may override droid wall only)",
+                "2026-11-22T10:02:00.000Z validator session budget (wall): droid=480s adopt_reserve=120s "
+                "(I8-A/D may override droid wall only)",
             ]
         )
         + "\n",
