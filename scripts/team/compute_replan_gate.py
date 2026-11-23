@@ -8,9 +8,40 @@ import sys
 
 from foreman_run_lib import deep_merge, load_wall, save_wall
 
+# The 2/2 iteration cap is the workflow graph itself: validate2's gate is the
+# terminal one, so its verdict — not round 1's — is the final word on
+# should_replan (round-52 C left a stale true on the wall after round 2
+# absorbed the loop cleanly).
+_TERMINAL_ROUND = 2
 
-def compute(wall: dict) -> dict:
+
+class StaleGateError(RuntimeError):
+    """Raised when a terminal-round recomputation has no final verdict to read."""
+
+
+def compute(wall: dict, *, round_num: int = 1) -> dict:
     val = wall.get("validation") or {}
+    if round_num >= _TERMINAL_ROUND:
+        if (val.get("round") or 0) < _TERMINAL_ROUND:
+            raise StaleGateError(
+                "terminal gate recomputation requires the round-2 validation slice "
+                "on the wall (fail-closed: a killed validate2 never clears the gate)"
+            )
+        not_cancelled = (wall.get("chain") or {}).get("validate2", {}).get(
+            "result"
+        ) != "cancelled"
+        verdict_key = next(
+            (k for k in (wall.get("artifacts") or {}) if k.startswith("team-verdict2-")),
+            "",
+        )
+    else:
+        not_cancelled = (wall.get("chain") or {}).get("validate", {}).get(
+            "result"
+        ) != "cancelled"
+        verdict_key = next(
+            (k for k in (wall.get("artifacts") or {}) if k.startswith("team-verdict-")),
+            "",
+        )
     adoption_ok = val.get("adoption_status") == "ok"
     overall = val.get("overall")
     failed_ids = val.get("failed_process_ids") or []
@@ -19,11 +50,6 @@ def compute(wall: dict) -> dict:
     # vector contradiction) are an actionable signal — they reopen the order
     # via replan instead of riding a pass through to close-out.
     escalated = bool(val.get("conflicts_escalated"))
-    not_cancelled = (wall.get("chain") or {}).get("validate", {}).get("result") != "cancelled"
-    verdict_key = next(
-        (k for k in (wall.get("artifacts") or {}) if k.startswith("team-verdict-")),
-        "",
-    )
     verdict_complete = bool((wall.get("artifacts") or {}).get(verdict_key, {}).get("complete"))
     should = (
         adoption_ok
@@ -54,6 +80,8 @@ def compute(wall: dict) -> dict:
             "string_compare_failed_processes": False,
         },
     }
+    if round_num >= _TERMINAL_ROUND:
+        gate["round"] = round_num
     return deep_merge(wall, {"replan_gate": gate})
 
 
@@ -61,9 +89,16 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--wall", default="foreman-run.json")
     p.add_argument("--github-output", default="")
+    p.add_argument(
+        "--round",
+        type=int,
+        default=1,
+        help="validate round whose verdict the gate is computed from; the "
+        "terminal round overwrites any stale earlier-round gate value",
+    )
     args = p.parse_args()
     wall = load_wall(args.wall)
-    merged = compute(wall)
+    merged = compute(wall, round_num=args.round)
     save_wall(merged, args.wall)
     should = merged["replan_gate"]["should_replan"]
     print("should_replan:", should)

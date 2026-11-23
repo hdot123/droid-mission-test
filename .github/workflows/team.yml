@@ -1,6 +1,7 @@
 name: Droid Team v2.8.0 (foreman pattern test)
 
 # Foreman pattern （领班制）, v2.8.0:
+#   v2.8.1 change note (round-52 ledger fixes): the stitch step now records its scan on the wall (--wall) so plan.output_shape is written by the same step that prints "stitch: shape=...", and the two steps that re-copied the just-downloaded wall over same-job writes (lead plan comment, replan notice) only freshen when absent — the round-52 walls all lost the plan slice to that clobber and the lead close-out detail read lead_plan_output_shape=unknown against a shape=complete log. validate2 recomputes the replan gate from the final verdict (--round 2) so a two-round run no longer ends with round 1's should_replan=true on the wall (round-52 C); the terminal recomputation refuses to run without the round-2 validation slice (StaleGateError, fail-closed).
 #   v2.8.0 change note: segments-only assembly — team-plan.json is stitched by the system (lead_plan_segments.py stitch) from the lead's segments right before the Validate step reads it; the lead prompt no longer asks for a hand-written team-plan.json, and the plan-vs-segments equivalence check was deleted with the second artifact it reconciled (round-51 A/C/D died on summary drift and B on id/summary/task drift — all three triggers require the double write). Card ids are derived from module-name stems (lower-case, underscores -> hyphens, ^[a-z0-9][a-z0-9-]*$) so id==filename holds by construction; the id==filename scan error now says exactly that. Scan shape is disk-truth: none = nothing stitchable, partial = segments on disk with residue, complete = header + every card clean; the lead hard gate still kills only zero-segment sessions, and a timed-out lead session records partial at run level.
 # Foreman pattern （领班制）, v2.7.0:
 #   v2.7.0 change note: 整面 API 墙 ForemanRun / foreman-run.v1 — 唯一产物 foreman-run.json 跨 job 传递 (W1)；采认链 + upload 完整门 (P0-1/B2)；replan_gate.should_replan 唯一编排门 (Y1/W4)；env hard_fail_count + PROJECTS_STATE_PAT (W3)；workers.completed_pids prep 门 (P1-5)；chain_facts 收口 (W5)；closeout 硬评论 + human_stop (W2/W6)；foreman_mode test|prod 默认 test (L6)。
@@ -231,7 +232,7 @@ jobs:
             exit 1
           fi
           [ -f foreman-run.json ] || cp wall-in/foreman-run.json foreman-run.json
-          PYTHONPATH=scripts/team python3 scripts/team/lead_plan_segments.py stitch
+          PYTHONPATH=scripts/team python3 scripts/team/lead_plan_segments.py stitch --wall foreman-run.json
 
       - name: Validate plan, file [计划] issue and sub-issues
         if: steps.dup.outputs.duplicate != 'true'
@@ -421,7 +422,10 @@ jobs:
             echo "foreman-run missing before plan comment"
             exit 1
           fi
-          cp wall-in/foreman-run.json foreman-run.json
+          # Freshen only when absent: an unconditional copy here would revert
+          # the wall to its just-downloaded pre-session state and wipe the
+          # plan slice the stitch/sync steps wrote (round-52 shape=unknown).
+          [ -f foreman-run.json ] || cp wall-in/foreman-run.json foreman-run.json
           if [[ "$ISSUE_TITLE" == "[I8] API墙活验 B 评论硬失败" ]]; then
             export GH_TOKEN="$I8_LIVE_B_INVALID_GH_TOKEN"
             echo "I8-B live fixture: plan dispatch comment uses invalid GH_TOKEN (API hard-fail, not empty)"
@@ -2082,7 +2086,10 @@ jobs:
             echo "foreman-run missing before replan comments"
             exit 1
           fi
-          cp wall-in/foreman-run.json foreman-run.json
+          # Freshen only when absent: the replan session may already have
+          # patched this wall copy with its session outcome; an unconditional
+          # copy would drop that patch from the uploaded wall.
+          [ -f foreman-run.json ] || cp wall-in/foreman-run.json foreman-run.json
           PYTHONPATH=scripts/team python3 scripts/team/post_comment_hard.py \
             --issue "$PLAN_ISSUE_NUMBER" \
             --body-file replan-comment.md \
@@ -3297,6 +3304,16 @@ jobs:
             --round 2 --github-output "$GITHUB_OUTPUT" $MERGE_FLAG $ROUND1
         env:
           PYTHONPATH: scripts/team
+
+      - name: Recompute replan gate from final verdict (52C)
+        if: always()
+        id: replan_gate2
+        run: |
+          # The 2/2 cap makes this the terminal gate: overwrite any stale
+          # round-1 should_replan still on the wall (round-52 C carried a
+          # leftover true through a clean round 2).
+          PYTHONPATH=scripts/team python3 scripts/team/compute_replan_gate.py \
+            --wall foreman-run.json --round 2
 
       - name: Derive validate2 job conclusion (W4)
         id: validate2_conclusion

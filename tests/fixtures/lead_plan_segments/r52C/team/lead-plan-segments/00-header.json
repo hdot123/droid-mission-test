@@ -1,0 +1,5 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "header",
+  "summary": "Concurrent C order: implement three independent stdlib-only components (bell.py, tapcode.py, decimaltime.py) with per-module tests, each as its own process card."
+}

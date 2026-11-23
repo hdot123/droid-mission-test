@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "dijkstra",
+    "title": "实现 dijkstra.py 有向图最短路径与 tests/test_dijkstra.py",
+    "scope": "Owns only dijkstra.py and tests/test_dijkstra.py. Does not touch nthprime, windscale, any existing file, or any team/** path. Stdlib only; must not import the other two modules.",
+    "files": [
+      "dijkstra.py",
+      "tests/test_dijkstra.py"
+    ],
+    "task": "Create dijkstra.py (new file only, do not modify any existing file) implementing the work order's Dijkstra spec, plus tests/test_dijkstra.py covering every acceptance item.\n\nSpec (verbatim requirements):\n- Graph is a dict: keys are node names (str), values are adjacency dicts (neighbor name -> weight). Edges are directed as given; nodes appearing only as neighbors (not as keys) have no outgoing edges. Weights must be int/float (bool rejected); non-numeric raises TypeError; negative weight raises ValueError; non-dict graph, non-dict adjacency, or non-str node name raises TypeError.\n- dijkstra(graph, source) -> tuple[dict, dict]: returns (dist, prev). dist contains every node in the graph (appearing as key or as neighbor): reachable nodes hold the shortest distance (source is 0), unreachable nodes hold math.inf. prev contains only the mapping of reachable non-source nodes to their predecessor (source and unreachable nodes are not in prev). source not in graph raises ValueError.\n- shortest_path(graph, source, target) -> list: returns the shortest path node list from source to target (both ends included); unreachable returns []; source == target returns [source]; source or target not in graph raises ValueError.\n\nAcceptance items (each needs a corresponding test case, transcribed exactly):\n- Graph G1 = {\"A\": {\"B\": 1, \"C\": 4}, \"B\": {\"C\": 2, \"D\": 5}, \"C\": {\"D\": 1}, \"D\": {}, \"E\": {}}: dijkstra(G1, \"A\") dist is A=0, B=1, C=3, D=4, E=math.inf; prev == {\"B\": \"A\", \"C\": \"B\", \"D\": \"C\"}; shortest_path(G1, \"A\", \"D\") == [\"A\", \"B\", \"C\", \"D\"]; shortest_path(G1, \"A\", \"C\") == [\"A\", \"B\", \"C\"]; shortest_path(G1, \"A\", \"E\") == []; shortest_path(G1, \"A\", \"A\") == [\"A\"]; shortest_path(G1, \"D\", \"A\") == [] (directed, not reversible).\n- Graph G2 = {\"S\": {\"T\": 2.5, \"U\": 1.5}, \"U\": {\"T\": 0.5}, \"T\": {}}: dist[\"T\"] == 2.0, dist[\"U\"] == 1.5, prev == {\"U\": \"S\", \"T\": \"U\"}, shortest_path(G2, \"S\", \"T\") == [\"S\", \"U\", \"T\"].\n- Graph G3 = {\"A\": {\"B\": 7}}: dist[\"B\"] == 7, prev == {\"B\": \"A\"}.\n- dijkstra({\"A\": {\"B\": -1}}, \"A\"), dijkstra(G1, \"Z\"), shortest_path(G1, \"A\", \"Z\") raise ValueError.\n- dijkstra([(\"A\", {})], \"A\"), dijkstra({\"A\": {\"B\": \"x\"}}, \"A\"), dijkstra({\"A\": {\"B\": True}}, \"A\") raise TypeError.\n\nDeliverables: only dijkstra.py and tests/test_dijkstra.py (both new; never edit existing files). Standard library only.",
+    "checks": [
+      "python3 -m pytest tests/test_dijkstra.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

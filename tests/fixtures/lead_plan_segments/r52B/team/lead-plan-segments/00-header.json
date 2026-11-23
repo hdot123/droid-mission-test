@@ -1,0 +1,5 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "header",
+  "summary": "Three independent stdlib-only components (dijkstra, nthprime, windscale) with per-module tests, split into three non-overlapping process cards."
+}

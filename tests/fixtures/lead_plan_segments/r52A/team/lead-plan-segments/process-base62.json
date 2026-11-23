@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "base62",
+    "title": "实现 base62.py Base62 编解码与测试",
+    "scope": "Owns only base62.py and tests/test_base62.py. Does not own or touch chaocipher.py, centroid.py, tests/test_chaocipher.py, tests/test_centroid.py, any pre-existing file, or anything under team/. Standard library only; must not import the other two modules.",
+    "files": [
+      "base62.py",
+      "tests/test_base62.py"
+    ],
+    "task": "只新增 base62.py 与 tests/test_base62.py 两个文件；不改任何存量文件；只用标准库；不 import chaocipher/centroid；每个验收要点都要有对应测试用例。\n\n实现规格（逐字为准）：\n- 字母表钉死为 `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`（下标 0–61 依次对应字符值）。\n- `base62_encode(n: int) -> str`：n 须为 int（bool 拒），非 int 抛 TypeError；n < 0 抛 ValueError；`base62_encode(0) == \"0\"`。\n- `base62_decode(s: str) -> int`：非 str 抛 TypeError；空串抛 ValueError；含字母表外字符抛 ValueError。\n\n验收要点（逐字，每条都要有对应测试用例）：\n- `base62_encode(0) == \"0\"`\n- `base62_encode(1) == \"1\"`\n- `base62_encode(9) == \"9\"`\n- `base62_encode(10) == \"A\"`\n- `base62_encode(35) == \"Z\"`\n- `base62_encode(36) == \"a\"`\n- `base62_encode(61) == \"z\"`\n- `base62_encode(62) == \"10\"`\n- `base62_encode(63) == \"11\"`\n- `base62_encode(12345) == \"3D7\"`\n- `base62_encode(3843) == \"zz\"`\n- `base62_encode(238327) == \"zzz\"`\n- `base62_encode(987654321) == \"14q60P\"`\n- `base62_decode(\"0\") == 0`\n- `base62_decode(\"3D7\") == 12345`\n- `base62_decode(\"zzz\") == 238327`\n- `base62_decode(\"14q60P\") == 987654321`\n- 往返：`base62_decode(base62_encode(n)) == n`，n 取 0、1、61、62、3844、10**12、2**63 - 1\n- `base62_encode(-1)` 抛 ValueError\n- `base62_encode(1.5)`、`base62_encode(True)`、`base62_encode(\"12\")` 抛 TypeError\n- `base62_decode(\"\")`、`base62_decode(\"!\")`、`base62_decode(\"a b\")` 抛 ValueError\n- `base62_decode(123)`、`base62_decode(None)` 抛 TypeError",
+    "checks": [
+      "python3 -m pytest tests/test_base62.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

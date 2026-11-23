@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "tapcode",
+    "title": "Tap code 敲击码组件 tapcode.py",
+    "scope": "Owns only tapcode.py and tests/test_tapcode.py (both new files). Does not touch bell.py, decimaltime.py, or any existing file; no imports beyond the standard library; no imports from the other two modules.",
+    "files": [
+      "tapcode.py",
+      "tests/test_tapcode.py"
+    ],
+    "task": "Implement the Tap code (5x5, C/K merged) component exactly to the work order spec, creating only two new files: tapcode.py and tests/test_tapcode.py. Do not modify any existing file; use only the standard library; do not import bell or decimaltime.\n\nFixed 5x5 table (rows and columns are 1-based): row 1 = A B C D E; row 2 = F G H I J; row 3 = L M N O P; row 4 = Q R S T U; row 5 = V W X Y Z. The table contains no K: K merges with C — encoding K yields C's coordinate (1, 3), and decoding (1, 3) returns \"C\".\n\ntapcode_encode(text: str) -> list[tuple[int, int]]: preprocess to uppercase, keep only A-Z (K counts as C); each letter yields (row, column). Non-str raises TypeError; empty string returns [].\n\ntapcode_decode(pairs) -> str: pairs must be a list or tuple, each item a (row, col) pair. If pairs itself is not list/tuple (str also rejected) raise TypeError; malformed pair shape or non-int coordinates (bool rejected) raise TypeError; coordinates outside 1–5 raise ValueError. Empty list returns \"\".\n\nAcceptance examples, every one must have a corresponding test case in tests/test_tapcode.py:\n- tapcode_encode(\"A\") == [(1, 1)]\n- tapcode_encode(\"C\") == [(1, 3)]\n- tapcode_encode(\"K\") == [(1, 3)] (C/K merge)\n- tapcode_encode(\"HELLO\") == [(2, 3), (1, 5), (3, 1), (3, 1), (3, 4)]\n- tapcode_encode(\"Z\") == [(5, 5)]\n- tapcode_encode(\"\") == []\n- tapcode_encode(\"tap code!\") == [(4, 4), (1, 1), (3, 5), (1, 3), (3, 4), (1, 4), (1, 5)] (preprocessing: uppercase, non-letters dropped, K→C)\n- tapcode_decode([(2, 3), (1, 5), (3, 1), (3, 1), (3, 4)]) == \"HELLO\"\n- tapcode_decode([(1, 3)]) == \"C\"\n- tapcode_decode([]) == \"\"\n- Round-trip: tapcode_decode(tapcode_encode(\"WORLD\")) == \"WORLD\" and tapcode_decode(tapcode_encode(\"TAPCODE\")) == \"TAPCODE\"\n- tapcode_decode([(0, 3)]), tapcode_decode([(3, 6)]), tapcode_decode([(6, 1)]) each raise ValueError\n- tapcode_decode([(\"1\", 3)]), tapcode_decode([(1,)]), tapcode_decode(\"13\"), tapcode_encode(42) each raise TypeError\n\nInclude a test case for each acceptance example above (all listed value, round-trip, ValueError and TypeError cases).\n\nChecks (run from repository root):\n1. python3 -m pytest tests/test_bell.py -q   (work order lists this check verbatim for this card)\n2. python3 -m pytest tests/ -q",
+    "checks": [
+      "python3 -m pytest tests/test_bell.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

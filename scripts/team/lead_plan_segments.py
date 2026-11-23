@@ -158,14 +158,17 @@ def write_stitched_plan(plan_path: Path, scan: SegmentScan) -> bool:
     return True
 
 
-def stitch_plan_file(plan_path: Path | None = None) -> PlanOutputShape | None:
+def stitch_plan_file(
+    plan_path: Path | None = None, *, scan: SegmentScan | None = None
+) -> PlanOutputShape | None:
     """Stitch segments into team-plan.json; returns the resulting shape.
 
     Called in the lead job before any step reads team-plan.json. shape is
     complete (header + full segment set), partial (header + at least one
     card), or None when nothing stitchable exists (no team-plan.json written).
     """
-    scan = scan_segments()
+    if scan is None:
+        scan = scan_segments()
     if plan_path is None:
         plan_path = PLAN_PATH
     write_stitched_plan(plan_path, scan)
@@ -204,6 +207,15 @@ def cmd_sync_wall(wall_path: Path, role: str) -> int:
     )
     for err in scan.errors:
         print("segment warning:", err, file=sys.stderr)
+    return 0
+
+
+def cmd_stitch(wall_path: Path | None = None) -> int:
+    scan = scan_segments()
+    shape = stitch_plan_file(scan=scan)
+    print("stitch:", f"shape={shape or 'none'}")
+    if wall_path is not None and wall_path.is_file():
+        patch_wall_plan_slice(wall_path, scan, role="lead")
     return 0
 
 
@@ -247,6 +259,12 @@ def main() -> int:
     gate.add_argument("--wall", default=None)
     stitch = sub.add_parser("stitch", help="Stitch segments into team-plan.json (shape none|partial|complete)")
     stitch.add_argument("--plan", default=None)
+    stitch.add_argument(
+        "--wall",
+        default=None,
+        help="Record the stitch scan on this ForemanRun wall (the plan slice "
+        "then carries the same shape the stitch log prints)",
+    )
     args = p.parse_args()
     if args.cmd == "sync-wall":
         return cmd_sync_wall(Path(args.wall), args.role)
@@ -254,9 +272,8 @@ def main() -> int:
         wall = Path(args.wall) if args.wall else None
         return cmd_assert_ready(wall)
     if args.cmd == "stitch":
-        shape = stitch_plan_file(Path(args.plan) if args.plan else None)
-        print("stitch:", f"shape={shape or 'none'}")
-        return 0
+        wall = Path(args.wall) if args.wall else None
+        return cmd_stitch(wall)
     return 2
 
 

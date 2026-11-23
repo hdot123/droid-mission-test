@@ -1,0 +1,275 @@
+{
+  "schema_version": "foreman-run.v1",
+  "run_id": "45078521269",
+  "issue_number": 763,
+  "plan_issue_number": 769,
+  "foreman_mode": "test",
+  "env": {
+    "schema_version": "env-slice.v1",
+    "ok": true,
+    "hard_fail_count": 0,
+    "hard_fails": [],
+    "soft_warns": [
+      "仓库设置: GITHUB_TOKEN 读不到仓库 Actions 设置（令牌边界，非通过）：gh: Resource not accessible by integration (HTTP 403) ",
+      "并发队伍: 已有 2 条 team run 在飞；同工单由 team workflow 的 concurrency 分组排队，不同工单请人工确认"
+    ],
+    "project_readable": true,
+    "actions_can_create_pr": true,
+    "secrets_required": {
+      "FACTORY_API_KEY": true,
+      "WORKER_CI_KEY": true,
+      "PROJECTS_STATE_PAT": true
+    }
+  },
+  "budgets": {
+    "schema_version": "budget-slice.v1",
+    "roles": {
+      "lead": {
+        "droid_wall_sec": 600,
+        "job_wall_min": 15,
+        "output_contract": "plan_json"
+      },
+      "validator": {
+        "droid_wall_sec": 480,
+        "adopt_reserve_sec": 120,
+        "job_wall_min": 12,
+        "output_contract": "verdict_draft"
+      },
+      "replan": {
+        "droid_wall_sec": 480,
+        "job_wall_min": 15,
+        "output_contract": "plan_v2_json"
+      },
+      "worker": {
+        "droid_wall_sec": 900,
+        "job_wall_min": 25,
+        "output_contract": "handoff_bundle"
+      }
+    },
+    "session_outcome": {
+      "role": "validator2",
+      "completion_status": "ok",
+      "exit_code": 0
+    }
+  },
+  "chain": {
+    "lead": {
+      "result": "success",
+      "started": true,
+      "produced_required_artifact": true,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "ok",
+        "detail": "lead job result=success; lead_plan_output_shape=unknown",
+        "forbidden_phrases": []
+      }
+    },
+    "worker": {
+      "result": "failure",
+      "started": true,
+      "produced_required_artifact": true,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "failed",
+        "detail": "worker job result=failure",
+        "forbidden_phrases": []
+      }
+    },
+    "prep": {
+      "result": "success",
+      "started": true,
+      "produced_required_artifact": true,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "ok",
+        "detail": "prep job result=success",
+        "forbidden_phrases": []
+      }
+    },
+    "validate": {
+      "result": "success",
+      "started": true,
+      "produced_required_artifact": true,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "ok",
+        "detail": "validate job result=success",
+        "forbidden_phrases": []
+      }
+    },
+    "replan": {
+      "result": "success",
+      "started": true,
+      "produced_required_artifact": true,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "ok",
+        "detail": "replan job result=success",
+        "forbidden_phrases": []
+      }
+    },
+    "worker2": {
+      "result": "success",
+      "started": true,
+      "produced_required_artifact": true,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "ok",
+        "detail": "worker2 job result=success",
+        "forbidden_phrases": []
+      }
+    },
+    "prep2": {
+      "result": "success",
+      "started": true,
+      "produced_required_artifact": true,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "ok",
+        "detail": "prep2 job result=success",
+        "forbidden_phrases": []
+      }
+    },
+    "validate2": {
+      "result": "success",
+      "started": true,
+      "produced_required_artifact": true,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "ok",
+        "detail": "validate2 job result=success",
+        "forbidden_phrases": []
+      }
+    },
+    "assemble": {
+      "result": "success",
+      "started": true,
+      "produced_required_artifact": true,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "ok",
+        "detail": "assemble 收口完成",
+        "forbidden_phrases": []
+      }
+    }
+  },
+  "artifacts": {
+    "team-verdict-issue-763-run-45078521269": {
+      "complete": true,
+      "missing": [],
+      "required_members": [
+        "verdict.json",
+        "verdict.md"
+      ],
+      "forbidden_partial": [
+        "work/validator-stream.jsonl"
+      ]
+    },
+    "team-verdict2-issue-763-run-45078521269": {
+      "complete": true,
+      "missing": [],
+      "required_members": [
+        "verdict.json",
+        "verdict.md"
+      ],
+      "forbidden_partial": [
+        "work/validator-stream.jsonl"
+      ]
+    },
+    "foreman-run-45078521269": {
+      "complete": true,
+      "missing": [],
+      "required_members": [
+        "foreman-run.json"
+      ]
+    }
+  },
+  "human_stop": false,
+  "closeout": {
+    "schema_version": "closeout-slice.v1",
+    "comments": {
+      "plan_dispatch": {
+        "posted": true
+      },
+      "replan_notice_plan": {
+        "posted": true
+      },
+      "replan_notice_order": {
+        "posted": true
+      },
+      "final_status_card": {
+        "posted": true
+      }
+    },
+    "project_state_written": true,
+    "project_state_enum": "已验收"
+  },
+  "workers": {
+    "schema_version": "worker-matrix.v1",
+    "any_cancelled": false,
+    "any_failed": true,
+    "completed_pids": [
+      "bell",
+      "decimaltime",
+      "tapcode"
+    ],
+    "cancelled_pids": [],
+    "cancel_reason_by_pid": {}
+  },
+  "validation": {
+    "schema_version": "validation-slice.v1",
+    "round": 2,
+    "draft_path": "work/verdict-droid.json",
+    "verdict_path": "verdict.json",
+    "adoption_status": "ok",
+    "adoption_error": null,
+    "overall": "pass",
+    "failed_process_ids": [],
+    "unattributed_failure": false,
+    "pytest_exit": 0,
+    "job_conclusion_derived": "success"
+  },
+  "replan_gate": {
+    "schema_version": "replan-gate.v1",
+    "should_replan": true,
+    "reasons": [
+      "overall_not_pass"
+    ],
+    "inputs_satisfied": {
+      "adoption_status_ok": true,
+      "verdict_artifact_complete": true,
+      "not_cancelled": true
+    },
+    "forbidden_legacy": {
+      "validate_job_success_only": false,
+      "string_compare_failed_processes": false
+    }
+  },
+  "round2": {
+    "workers": {
+      "schema_version": "worker-matrix.v1",
+      "any_cancelled": false,
+      "any_failed": true,
+      "completed_pids": [
+        "bell",
+        "decimaltime",
+        "tapcode"
+      ],
+      "cancelled_pids": [],
+      "cancel_reason_by_pid": {}
+    },
+    "validation": {
+      "schema_version": "validation-slice.v1",
+      "round": 2,
+      "draft_path": "work/verdict-droid.json",
+      "verdict_path": "verdict.json",
+      "adoption_status": "ok",
+      "adoption_error": null,
+      "overall": "pass",
+      "failed_process_ids": [],
+      "unattributed_failure": false,
+      "pytest_exit": 0
+    },
+    "artifacts_verdict2": "team-verdict2-issue-763-run-45078521269"
+  }
+}
