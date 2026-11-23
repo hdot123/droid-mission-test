@@ -251,6 +251,115 @@ def test_cli_table_output_and_missing_input(tmp_path: Path, capsys):
     assert tm.main([str(tmp_path / "nope.jsonl")]) == 2
 
 
+def test_jsonl_stream_with_job_log_aligned_tail(tmp_path: Path):
+    # A .jsonl stream artifact never carries the censored tail itself (the
+    # in-flight turn never flushes); paired with the seat's job log, the
+    # session-end echo ("foreman droid session:", printed by the wrapper
+    # after the session dies) minus the stream's last event timestamp
+    # recovers the pending span (52B calibration shape).
+    def ts(stamp: str) -> int:
+        import datetime
+
+        dt = datetime.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+            tzinfo=datetime.timezone.utc
+        )
+        return int(dt.timestamp() * 1000)
+
+    events = [
+        {"type": "system", "subtype": "init", "timestamp": ts("2026-11-22T10:00:01.000Z")},
+        {"type": "message", "role": "user", "id": "u1", "text": "wo", "timestamp": ts("2026-11-22T10:00:02.000Z")},
+        {"type": "reasoning", "id": "m1", "text": "r" * 50, "timestamp": ts("2026-11-22T10:00:10.000Z")},
+        {
+            "type": "tool_call",
+            "id": "c1",
+            "messageId": "m1",
+            "toolName": "Execute",
+            "parameters": {"cmd": "x"},
+            "timestamp": ts("2026-11-22T10:00:10.000Z"),
+        },
+        {"type": "tool_result", "id": "c1", "timestamp": ts("2026-11-22T10:00:10.500Z")},
+    ]
+    stream = _jsonl(tmp_path, "validator-stream.jsonl", events)
+    log = tmp_path / "2X-validator-job.log"
+    log.write_text(
+        "\n".join(
+            [
+                "2026-11-22T10:00:01.000Z validator session budget (wall): droid=480s adopt_reserve=120s (I8-A/D may override droid wall only)",
+                "2026-11-22T10:00:25.000Z foreman droid session: role=validator wall_droid_sec=480 cmd=timeout --signal=TERM --kill-after=30s 480s …",
+                "2026-11-22T10:00:25.100Z ##[error]Process completed with exit code 124.",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    src = tm.measure_path(stream, job_logs=[log])[0]
+    # stream last event 10:00:10.500 -> session end echo 10:00:25.000
+    assert src["censored_tail_s"] == pytest.approx(14.5)
+    assert src["censored_tail_method"] == "session_log_alignment"
+    assert src["censored_tail_excerpt"].startswith("foreman droid session:")
+    assert src["censored_tail_source"] == "2X-validator-job.log"
+
+
+def test_log_alignment_requires_budget_anchor(tmp_path: Path):
+    # Guard against pairing with an unrelated log: the session-end echo only
+    # counts when the same log shows the session budget echo EARLIER (the
+    # session actually started there) and ends after the stream's last event.
+    def ts(stamp: str) -> int:
+        import datetime
+
+        dt = datetime.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+            tzinfo=datetime.timezone.utc
+        )
+        return int(dt.timestamp() * 1000)
+
+    events = [
+        {"type": "message", "role": "user", "id": "u1", "text": "wo", "timestamp": ts("2026-11-22T10:00:02.000Z")},
+        {"type": "reasoning", "id": "m1", "text": "r" * 50, "timestamp": ts("2026-11-22T10:00:20.000Z")},
+    ]
+    stream = _jsonl(tmp_path, "validator-stream.jsonl", events)
+    # no budget echo line at all -> not this seat's job log
+    log = tmp_path / "other-job.log"
+    log.write_text(
+        "2026-11-22T10:01:00.000Z foreman droid session: role=lead wall_droid_sec=600 cmd=timeout …\n",
+        encoding="utf-8",
+    )
+    src = tm.measure_path(stream, job_logs=[log])[0]
+    assert src["censored_tail_s"] is None
+    assert src["censored_tail_method"] is None
+    # budget echo AFTER the session echo -> nonsense ordering, rejected
+    log2 = tmp_path / "inverted-job.log"
+    log2.write_text(
+        "\n".join(
+            [
+                "2026-11-22T10:01:00.000Z foreman droid session: role=validator wall_droid_sec=480 cmd=timeout …",
+                "2026-11-22T10:02:00.000Z validator session budget (wall): droid=480s adopt_reserve=120s (I8-A/D may override droid wall only)",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    src2 = tm.measure_path(stream, job_logs=[log2])[0]
+    assert src2["censored_tail_s"] is None
+
+
+def test_52b_censored_tail_calibration():
+    """VAL-M3-006: the killed 52B validator session's censored tail must be
+    measurable from the artifact stream paired with its job log; the
+    calibrated value is 143-144s (event alignment, verify-b-death)."""
+    root = os.environ.get("TURN_METRICS_52B_EVIDENCE", "")
+    if not root:
+        pytest.skip("set TURN_METRICS_52B_EVIDENCE to the round52-verify bdeath evidence root to run calibration")
+    root = Path(root)
+    stream = root / "52B" / "droid-stream-validator-run-45078468896" / "validator-stream.jsonl"
+    log = root / "logs" / "52B-validator-job.log"
+    if not stream.exists() or not log.exists():
+        pytest.skip("TURN_METRICS_52B_EVIDENCE is missing the 52B stream or validator job log")
+    src = tm.measure_path(stream, job_logs=[log])[0]
+    assert src["role"] == "validator"
+    assert src["censored_tail_s"] == pytest.approx(144.05, abs=2.0)
+    assert src["censored_tail_method"] == "session_log_alignment"
+
+
 @pytest.mark.skipif(
     not os.environ.get("TURN_METRICS_50A_STREAM"),
     reason="set TURN_METRICS_50A_STREAM to the archived 50A lead stream to run calibration",
