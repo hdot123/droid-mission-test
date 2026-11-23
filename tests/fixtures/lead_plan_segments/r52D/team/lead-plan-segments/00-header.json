@@ -1,0 +1,5 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "header",
+  "summary": "Implement three independent widgets (numwords, code39, solids) with new modules and tests only, no existing files changed."
+}

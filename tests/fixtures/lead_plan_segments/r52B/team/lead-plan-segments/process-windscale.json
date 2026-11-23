@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "windscale",
+    "title": "实现 windscale.py 蒲福风级与 tests/test_windscale.py",
+    "scope": "Owns only windscale.py and tests/test_windscale.py. Does not touch dijkstra, nthprime, any existing file, or any team/** path. Stdlib only; must not import the other two modules.",
+    "files": [
+      "windscale.py",
+      "tests/test_windscale.py"
+    ],
+    "task": "Create windscale.py (new file only, do not modify any existing file) implementing the work order's Beaufort scale spec, plus tests/test_windscale.py covering every acceptance item.\n\nSpec (verbatim requirements):\n- Thresholds pinned (unit km/h, lower bound inclusive, upper bound is the next level's lower bound): level 0 <1; 1: 1–5; 2: 6–11; 3: 12–19; 4: 20–28; 5: 29–38; 6: 39–49; 7: 50–61; 8: 62–74; 9: 75–88; 10: 89–102; 11: 103–117; 12: >=118.\n- beaufort(speed_kmh) -> int: speed must be int/float (bool rejected); non-numeric raises TypeError; negative raises ValueError; returns level 0–12.\n- beaufort_label(speed_kmh) -> str: returns the Chinese name; levels 0–12 in order are 无风、软风、轻风、微风、和风、清风、强风、疾风、大风、烈风、狂风、暴风、飓风; input validation same as beaufort.\n\nAcceptance items (each needs a corresponding test case, transcribed exactly):\n- beaufort(0) == 0; beaufort(0.9) == 0; beaufort(1) == 1; beaufort(5) == 1; beaufort(6) == 2; beaufort(11) == 2; beaufort(12) == 3; beaufort(19) == 3; beaufort(20) == 4; beaufort(28) == 4; beaufort(29) == 5; beaufort(38) == 5; beaufort(39) == 6; beaufort(49) == 6; beaufort(50) == 7; beaufort(61) == 7; beaufort(62) == 8; beaufort(74) == 8; beaufort(75) == 9; beaufort(88) == 9; beaufort(89) == 10; beaufort(102) == 10; beaufort(103) == 11; beaufort(117) == 11; beaufort(118) == 12; beaufort(200) == 12; beaufort(32.5) == 5.\n- beaufort_label(0) == \"无风\"; beaufort_label(3) == \"软风\"; beaufort_label(30) == \"清风\"; beaufort_label(55) == \"疾风\"; beaufort_label(100) == \"狂风\"; beaufort_label(118) == \"飓风\".\n- beaufort(-1) raises ValueError; beaufort(\"50\"), beaufort(True), beaufort(None) raise TypeError.\n\nDeliverables: only windscale.py and tests/test_windscale.py (both new; never edit existing files). Standard library only.",
+    "checks": [
+      "python3 -m pytest tests/test_windscale.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

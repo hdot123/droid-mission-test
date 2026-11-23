@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "numwords",
+    "title": "numwords.py — 整数转英文词（美式、无 and）",
+    "scope": "Owns numwords.py and tests/test_numwords.py only. Implements number_to_words and its tests. Does not touch code39, solids, or any existing file.",
+    "files": [
+      "numwords.py",
+      "tests/test_numwords.py"
+    ],
+    "task": "Create numwords.py and tests/test_numwords.py (new files only; do not modify any existing file). Standard library only; do not import the other modules.\n\nSpec for number_to_words(n: int) -> str:\n- Range pinned: 0 <= n <= 999,999,999. n must be int (bool rejected); non-int raises TypeError; out of range raises ValueError.\n- Spelling rules pinned: American English, no \"and\"; all lowercase; grouped by thousand/million; within a group the hundreds place is \"X hundred\"; tens and ones combine with a hyphen (e.g. forty-two); groups separated by a single space, no leading/trailing spaces.\n\nAcceptance items (each needs a test case):\n- number_to_words(0) == \"zero\"\n- number_to_words(5) == \"five\"\n- number_to_words(13) == \"thirteen\"\n- number_to_words(20) == \"twenty\"\n- number_to_words(40) == \"forty\"\n- number_to_words(42) == \"forty-two\"\n- number_to_words(99) == \"ninety-nine\"\n- number_to_words(100) == \"one hundred\"\n- number_to_words(115) == \"one hundred fifteen\" (no and)\n- number_to_words(999) == \"nine hundred ninety-nine\"\n- number_to_words(1000) == \"one thousand\"\n- number_to_words(1001) == \"one thousand one\"\n- number_to_words(1100) == \"one thousand one hundred\"\n- number_to_words(12345) == \"twelve thousand three hundred forty-five\"\n- number_to_words(100000) == \"one hundred thousand\"\n- number_to_words(1000000) == \"one million\"\n- number_to_words(2000000) == \"two million\"\n- number_to_words(100000000) == \"one hundred million\"\n- number_to_words(999999999) == \"nine hundred ninety-nine million nine hundred ninety-nine thousand nine hundred ninety-nine\"\n- number_to_words(-1) and number_to_words(1000000000) raise ValueError\n- number_to_words(2.5), number_to_words(\"42\"), number_to_words(True) raise TypeError\n\nEvery acceptance example/value above must have a corresponding test case. checks (verbatim): python3 -m pytest tests/test_numwords.py -q ; python3 -m pytest tests/ -q",
+    "checks": [
+      "python3 -m pytest tests/test_numwords.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

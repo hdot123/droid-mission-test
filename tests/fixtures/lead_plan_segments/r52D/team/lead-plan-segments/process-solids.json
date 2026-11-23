@@ -1,0 +1,18 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "process",
+  "process": {
+    "id": "solids",
+    "title": "solids.py — 常见立体体积与表面积",
+    "scope": "Owns solids.py and tests/test_solids.py only. Implements the ten volume/surface functions and their tests. Does not touch numwords, code39, or any existing file.",
+    "files": [
+      "solids.py",
+      "tests/test_solids.py"
+    ],
+    "task": "Create solids.py and tests/test_solids.py (new files only; do not modify any existing file). Standard library only (use math.pi); do not import the other modules; results are float.\n\nSpec — ten functions:\n- sphere_volume(r), sphere_surface(r), cylinder_volume(r, h), cylinder_surface(r, h) (closed cylinder, both bases included), cone_volume(r, h), cone_surface(r, h) (includes base; slant height = sqrt(r^2+h^2)), box_volume(l, w, h), box_surface(l, w, h), pyramid_volume(b, h), pyramid_surface(b, h) (regular square pyramid: base is a square of side b; surface = base + four triangular faces, triangle slant height = sqrt((b/2)^2+h^2)).\n- Formulas: sphere V=4*pi*r^3/3, S=4*pi*r^2; cylinder V=pi*r^2*h, S=2*pi*r^2+2*pi*r*h; cone V=pi*r^2*h/3, S=pi*r^2+pi*r*slant; box V=l*w*h, S=2*(l*w+l*h+w*h); square pyramid V=b^2*h/3, S=b^2+2*b*slant.\n- Every dimension argument must be positive (int/float, bool rejected): non-numeric raises TypeError; <= 0 raises ValueError.\n\nAcceptance items (float values must be equal within 1e-9; each needs a test case):\n- sphere_volume(1) ~= 4.1887902047863905\n- sphere_surface(1) ~= 12.566370614359172\n- sphere_volume(3) ~= 113.09733552923255\n- sphere_surface(2) ~= 50.26548245743669\n- cylinder_volume(1, 1) ~= 3.141592653589793\n- cylinder_volume(2, 5) ~= 62.83185307179586\n- cylinder_surface(1, 1) ~= 12.566370614359172\n- cylinder_surface(2, 5) ~= 87.96459430051421\n- cone_volume(3, 4) ~= 37.69911184307752\n- cone_volume(1, 1) ~= 1.0471975511965976\n- cone_surface(3, 4) ~= 75.39822368615504\n- cone_surface(1, 1) ~= 7.584475591748159\n- box_volume(2, 3, 4) == 24\n- box_surface(2, 3, 4) == 52\n- pyramid_volume(2, 3) == 4\n- pyramid_volume(6, 4) == 48\n- pyramid_surface(6, 4) == 96\n- pyramid_surface(2, 3) ~= 16.64911064067352\n- sphere_volume(0), sphere_volume(-1), cylinder_volume(1, 0), box_volume(2, -3, 4), cone_volume(0, 1) raise ValueError\n- cone_surface(\"3\", 4), pyramid_volume(True, 3), sphere_surface(None) raise TypeError\n\nEvery acceptance example/value above must have a corresponding test case. checks (verbatim): python3 -m pytest tests/test_solids.py -q ; python3 -m pytest tests/ -q",
+    "checks": [
+      "python3 -m pytest tests/test_solids.py -q",
+      "python3 -m pytest tests/ -q"
+    ]
+  }
+}

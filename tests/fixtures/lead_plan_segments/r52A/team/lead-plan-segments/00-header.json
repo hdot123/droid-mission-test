@@ -1,0 +1,5 @@
+{
+  "schema_version": "lead-plan-segment.v1",
+  "kind": "header",
+  "summary": "第52轮并发A单：三个独立小组件 chaocipher（双字母表演进密码）、centroid（多边形带符号面积与重心）、base62（Base62 编解码）的实现与测试拆分为三个互不依赖的流程卡。"
+}
