@@ -1,0 +1,21 @@
+{
+  "id": "daycount360",
+  "title": "实现 30/360 US（NASD）日计数 days360",
+  "state": "done",
+  "files": [
+    "daycount360.py",
+    "tests/test_daycount360.py",
+    "team/handoffs/daycount360.md",
+    "team/status/daycount360.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_daycount360.py -q",
+      "result": "13 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "200 passed, 2 skipped"
+    }
+  ]
+}
