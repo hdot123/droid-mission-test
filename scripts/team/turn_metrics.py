@@ -18,6 +18,14 @@ directory; a directory input finds ``droid-stream-*-run-*`` artifact dirs
 anywhere below it (a corpus root grouped by round works too). Unknown
 files are skipped, so pointing the
 tool at a mixed run directory never fails.
+
+Censored tails come from two methods, reported in ``censored_tail_method``:
+``log_echo`` when a .log job log echoes the stream itself (tail = first
+non-echo line after the events stop); ``session_log_alignment`` when a
+.jsonl artifact stream is paired with its seat's job log (--job-log): the
+``foreman droid session:`` summary echo is printed only after the session
+ended, so session-end minus the stream's last event times the pending
+span of the killed session's in-flight turn.
 """
 from __future__ import annotations
 
@@ -28,13 +36,19 @@ import re
 import statistics
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 ART_DIR_RE = re.compile(r"^droid-stream-(?P<role>[a-z0-9][a-z0-9-]*?)-run-(?P<run>\w+)$")
 ART_FILE_RE = re.compile(r"^droid-stream-(?P<role>[a-z0-9][a-z0-9-]*?)-run-(?P<run>\w+)\.\w+$")
 
 _LOG_LINE = re.compile(r"^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)\.(\d+)Z (.*)$")
 _MIN_LOG_LINE = len("1970-01-01T00:00:00.000Z ")
+
+# A droid session is bracketed in its job log by two echo lines: the
+# step's budget line starts the session and run_droid_session's summary
+# is printed only after the session (and its timeout wrapper) has ended.
+_BUDGET_ECHO = re.compile(r"\bsession budget \(wall\):")
+_SESSION_ECHO = re.compile(r"\bforeman droid session:")
 
 
 def _log_line_ts(m: re.Match[str]) -> float:
@@ -140,7 +154,71 @@ def _turns(events: list[tuple[float, dict[str, Any]]]) -> list[dict[str, Any]]:
     return turns
 
 
-def measure_events(events: list[tuple[float, dict[str, Any]]], tail: tuple[float, str] | None) -> dict[str, Any]:
+def _log_session_span(log_path: Path) -> tuple[float, float, str] | None:
+    """(session start, session end, echo excerpt) from one job log.
+
+    Valid only when a session budget echo precedes a session summary echo:
+    that ordering proves the log belongs to the seat's own session step.
+    Returns None when either anchor is missing or the order is inverted.
+    """
+    start: float | None = None
+    end: tuple[float, str] | None = None
+    for raw in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        body = raw.strip()
+        if not body:
+            continue
+        m = _LOG_LINE.match(body)
+        if m is None:
+            continue
+        ts = _log_line_ts(m)
+        text = m.group(3)
+        if _SESSION_ECHO.search(text):
+            if end is None:
+                end = (ts, text[:90])
+        elif _BUDGET_ECHO.search(text):
+            if start is None:
+                start = ts
+    if start is not None and end is not None and start < end[0]:
+        return (start, end[0], end[1])
+    return None
+
+
+def _aligned_tail(
+    last_event_ts: float | None,
+    job_logs: Sequence[Path] | None,
+) -> dict[str, Any] | None:
+    """Censored tail for a .jsonl stream: last event -> session end.
+
+    The in-flight turn of a killed session never flushes, so the artifact
+    stream alone cannot time the tail; the seat's job log can. Returns the
+    span fields when a paired log brackets the session and ends after the
+    stream's last event, else None.
+    """
+    if last_event_ts is None or not job_logs:
+        return None
+    best: tuple[float, float, str, str] | None = None
+    for log_path in job_logs:
+        span = _log_session_span(log_path)
+        if span is None or span[1] <= last_event_ts:
+            continue
+        tail_s = span[1] - last_event_ts
+        if best is None or tail_s < best[0]:
+            best = (tail_s, span[1], span[2], log_path.name)
+    if best is None:
+        return None
+    return {
+        "censored_tail_s": round(best[0], 2),
+        "censored_tail_method": "session_log_alignment",
+        "censored_tail_excerpt": best[2],
+        "censored_tail_source": best[3],
+    }
+
+
+def measure_events(
+    events: list[tuple[float, dict[str, Any]]],
+    tail: tuple[float, str] | None,
+    job_logs: Sequence[Path] | None = None,
+) -> dict[str, Any]:
     turns = _turns(events)
     for i, turn in enumerate(turns):
         turn["index"] = i
@@ -149,7 +227,7 @@ def measure_events(events: list[tuple[float, dict[str, Any]]], tail: tuple[float
         turn["chars_per_s"] = round(turn["chars"] / latency, 2) if latency and latency > 0 else None
     rates = [t["chars_per_s"] for t in turns if t["chars_per_s"] is not None and (t["latency_s"] or 0) >= 20]
     first = turns[0] if turns else None
-    return {
+    fields: dict[str, Any] = {
         "n_turns": len(turns),
         "first_response_s": first["latency_s"] if first else None,
         "first_turn_chars": first["chars"] if first else None,
@@ -164,15 +242,28 @@ def measure_events(events: list[tuple[float, dict[str, Any]]], tail: tuple[float
             "median": round(statistics.median([t["latency_s"] for t in turns]), 2) if turns else None,
             "max": max((t["latency_s"] for t in turns), default=None),
         },
-        "censored_tail_s": round(tail[0] - events[-1][0], 2) if tail and events else None,
-        "censored_tail_excerpt": tail[1] if tail else None,
-        "turns": turns,
     }
+    if tail and events:
+        fields["censored_tail_s"] = round(tail[0] - events[-1][0], 2)
+        fields["censored_tail_method"] = "log_echo"
+        fields["censored_tail_excerpt"] = tail[1]
+        fields["censored_tail_source"] = None
+    else:
+        aligned = _aligned_tail(events[-1][0] if events else None, job_logs)
+        if aligned:
+            fields.update(aligned)
+        else:
+            fields["censored_tail_s"] = None
+            fields["censored_tail_method"] = None
+            fields["censored_tail_excerpt"] = None
+            fields["censored_tail_source"] = None
+    fields["turns"] = turns
+    return fields
 
 
-def measure_path(path: Path) -> list[dict[str, Any]]:
+def measure_path(path: Path, job_logs: Sequence[Path] | None = None) -> list[dict[str, Any]]:
     if path.is_dir():
-        return measure_dir(path)
+        return measure_dir(path, job_logs=job_logs)
     events, tail = _read_events(path)
     m = ART_FILE_RE.match(path.name)
     if m:
@@ -187,10 +278,10 @@ def measure_path(path: Path) -> list[dict[str, Any]]:
         if m:
             role = m.group("role")
             run_id = m.group("run")
-    return [{"source": path.name, "path": str(path), "role": role, "run_id": run_id, **measure_events(events, tail)}]
+    return [{"source": path.name, "path": str(path), "role": role, "run_id": run_id, **measure_events(events, tail, job_logs)}]
 
 
-def _measure_art_dir(run_dir: Path) -> list[dict[str, Any]]:
+def _measure_art_dir(run_dir: Path, job_logs: Sequence[Path] | None = None) -> list[dict[str, Any]]:
     m = ART_DIR_RE.match(run_dir.name)
     sources: list[dict[str, Any]] = []
     for stream in sorted(run_dir.glob("*.jsonl")):
@@ -200,12 +291,12 @@ def _measure_art_dir(run_dir: Path) -> list[dict[str, Any]]:
             "path": str(stream),
             "role": m.group("role"),
             "run_id": m.group("run"),
-            **measure_events(events, tail),
+            **measure_events(events, tail, job_logs),
         })
     return sources
 
 
-def measure_dir(directory: Path) -> list[dict[str, Any]]:
+def measure_dir(directory: Path, job_logs: Sequence[Path] | None = None) -> list[dict[str, Any]]:
     if ART_DIR_RE.match(directory.name):
         roots = [directory]
     else:
@@ -214,7 +305,7 @@ def measure_dir(directory: Path) -> list[dict[str, Any]]:
         roots = [p for p in sorted(directory.rglob("*")) if p.is_dir() and ART_DIR_RE.match(p.name)]
     sources: list[dict[str, Any]] = []
     for run_dir in roots:
-        sources.extend(_measure_art_dir(run_dir))
+        sources.extend(_measure_art_dir(run_dir, job_logs=job_logs))
     return sources
 
 
@@ -264,17 +355,27 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("inputs", nargs="+", help="stream artifact path (.jsonl/.log) or run directory")
     parser.add_argument("--json", action="store_true", help="emit the full report as JSON")
+    parser.add_argument(
+        "--job-log",
+        action="append",
+        default=[],
+        help="seat's job log(s) to align against .jsonl streams for the censored tail (session_log_alignment)",
+    )
     args = parser.parse_args(argv)
 
+    job_logs = [Path(p) for p in args.job_log]
+    missing_logs = [str(p) for p in job_logs if not p.exists()]
+    job_logs = [p for p in job_logs if p.exists()]
+
     sources: list[dict[str, Any]] = []
-    errors: list[str] = []
+    errors: list[str] = missing_logs
     for raw in args.inputs:
         path = Path(raw)
         if not path.exists():
             errors.append(f"{raw}: no such file or directory")
             continue
         try:
-            sources.extend(measure_path(path))
+            sources.extend(measure_path(path, job_logs=job_logs or None))
         except OSError as exc:
             errors.append(f"{raw}: {exc}")
     report = {"sources": sources, "errors": errors}
