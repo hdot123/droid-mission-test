@@ -589,6 +589,7 @@ jobs:
             1. team/handoffs/{proc['id']}.md — a self-contained handoff with: what was requested, what you did, what you did not do, checks you ran and their results, and anything the validator must pay attention to.
             2. team/status/{proc['id']}.json — valid JSON with keys: id, title, state ("done"), files (array), checks (array of objects with command and result).
           - Run your process checks before finishing: {'; '.join(proc['checks'])}
+          - Checks may run tests across the whole repo. Files like verdict.json or verdict.md that appear in the repo root because of those checks are pipeline by-products of the test suite, not your deliverables. They are outside your card, so delete them before finishing (e.g. rm -f verdict.json verdict.md).
           - Do not commit or push; the workflow will do that.
           - Do not modify files owned by other processes.
           - Be efficient: at most 20 tool calls.
@@ -2221,6 +2222,7 @@ jobs:
             1. team/handoffs/{proc['id']}.md — a self-contained handoff with: what was requested, what you did, what you did not do, checks you ran and their results, and anything the validator must pay attention to.
             2. team/status/{proc['id']}.json — valid JSON with keys: id, title, state ("done"), files (array), checks (array of objects with command and result).
           - Run your process checks before finishing: {'; '.join(proc['checks'])}
+          - Checks may run tests across the whole repo. Files like verdict.json or verdict.md that appear in the repo root because of those checks are pipeline by-products of the test suite, not your deliverables. They are outside your card, so delete them before finishing (e.g. rm -f verdict.json verdict.md).
           - Do not commit or push; the workflow will do that.
           - Do not modify files owned by other processes.
           - Be efficient: at most 20 tool calls.

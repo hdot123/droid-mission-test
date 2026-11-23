@@ -25,7 +25,10 @@ def _minimal_work(tmp_path: Path) -> Path:
     return work
 
 
-def test_adopt_session_not_started_records_missing_output(tmp_path: Path):
+def test_adopt_session_not_started_records_missing_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # adopt() writes verdict.json/verdict.md to CWD (bare relative paths);
+    # without chdir the suite pollutes the repo root (round-53 F-1 killer).
+    monkeypatch.chdir(tmp_path)
     wall = init_wall(run_id="w12a", issue_number=701)
     wall_path = tmp_path / "foreman-run.json"
     save_wall(wall, wall_path)
@@ -40,7 +43,8 @@ def test_adopt_session_not_started_records_missing_output(tmp_path: Path):
     assert conclusion == "failure"
 
 
-def test_adopt_session_timeout_regression(tmp_path: Path):
+def test_adopt_session_timeout_regression(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.chdir(tmp_path)
     wall = init_wall(run_id="w12b", issue_number=702)
     wall_path = tmp_path / "foreman-run.json"
     save_wall(wall, wall_path)
@@ -52,7 +56,8 @@ def test_adopt_session_timeout_regression(tmp_path: Path):
     assert merged["validation"]["adoption_error"] == "draft_timeout"
 
 
-def test_adopt_session_ok_when_droid_exit_zero_and_no_judgeable(tmp_path: Path):
+def test_adopt_session_ok_when_droid_exit_zero_and_no_judgeable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.chdir(tmp_path)
     assert adopt_session_completion_status(0) == "ok"
     wall = init_wall(run_id="w12c", issue_number=703)
     wall_path = tmp_path / "foreman-run.json"
