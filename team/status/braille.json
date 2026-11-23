@@ -1,0 +1,21 @@
+{
+  "id": "braille",
+  "title": "一级盲文互转小组件（braille.py）",
+  "state": "done",
+  "files": [
+    "braille.py",
+    "tests/test_braille.py",
+    "team/handoffs/braille.md",
+    "team/status/braille.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_braille.py -q",
+      "result": "13 passed, exit 0"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "200 passed, 2 skipped, exit 0"
+    }
+  ]
+}
