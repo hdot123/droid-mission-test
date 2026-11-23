@@ -8,6 +8,13 @@
 - kill recovery: when the validator session was wall-killed, per-process
   conclusions persisted incrementally (salvage_verdict.py) are recovered into
   verdict.json instead of dying with the reasoning that produced them.
+
+Round-53 accounting fix: judgeable==[] means the workflow skipped the droid
+session on purpose (the judging `if` gates it off, so no droid-exit.txt is
+ever written); budgets.session_outcome then records
+completion_status=skipped_no_judgeable with a null exit_code instead of the
+missing_output / exit -1 pseudo-artifact that presented an unstarted session
+as a failed one.
 """
 from __future__ import annotations
 
@@ -187,6 +194,9 @@ def adopt(
     unattributed = False
     pytest_exit = None
     conflicts: list[dict] = []
+    # Assigned before the try so the accounting tail below can never hit an
+    # unbound name when this step died before reading the precheck outputs.
+    judgeable: list = []
 
     manifest_path = work_dir / "manifest.json"
     plan_path = work_dir / "plan.json"
@@ -389,13 +399,29 @@ def adopt(
         }
     session_status = adopt_session_completion_status(droid_exit)
     role = "validator" if round_num == 1 else "validator2"
-    patch["budgets"] = {
-        "session_outcome": {
-            "role": role,
-            "completion_status": session_status,
-            "exit_code": droid_exit if droid_exit is not None else -1,
+    if judgeable == [] and droid_exit is None and adoption_status == "ok":
+        # Round-53 C artifact: with zero judgeable processes the workflow's
+        # judging `if` skips the droid session entirely (no droid-exit.txt,
+        # no stream), so a bare None here means "never started on purpose",
+        # not a missing session output. Record the skip instead of dressing
+        # it up as a failed session; the blocked verdict above already keeps
+        # the round red downstream.
+        session_status = "skipped_no_judgeable"
+        patch["budgets"] = {
+            "session_outcome": {
+                "role": role,
+                "completion_status": session_status,
+                "exit_code": None,
+            }
         }
-    }
+    else:
+        patch["budgets"] = {
+            "session_outcome": {
+                "role": role,
+                "completion_status": session_status,
+                "exit_code": droid_exit if droid_exit is not None else -1,
+            }
+        }
     if round_num == 2:
         patch["round2"] = {
             "validation": patch["validation"],

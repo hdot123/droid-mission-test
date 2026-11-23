@@ -1,6 +1,7 @@
 """W-11: derive must not block chain wall_sync in the same bash run block."""
 from __future__ import annotations
 
+import importlib
 import json
 import subprocess
 import sys
@@ -43,6 +44,23 @@ def _sync_validate_chain(wall_path: Path, *, job: str, art_suffix: str) -> None:
         sys.argv = old_argv
 
 
+def _jsonschema_available() -> bool:
+    # Mirrors foreman_run_lib.validate_with_jsonschema's ImportError guard so the
+    # skip matches exactly the condition that flips the wall validator to the
+    # stricter fallback (true absence or a None-blocked sys.modules entry).
+    try:
+        importlib.import_module("jsonschema")
+    except ImportError:
+        return False
+    return True
+
+
+@pytest.mark.skipif(
+    not _jsonschema_available(),
+    reason="these walls rely on the jsonschema validator: the fallback validator's W6 rule "
+    "is stricter than the schema and rejects adoption_status=failed without run_must_fail "
+    "(round-53 lucas bare-venv finding, verify-targeted §5)",
+)
 @pytest.mark.parametrize(
     "scenario,extra",
     [

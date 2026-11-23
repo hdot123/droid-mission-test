@@ -86,7 +86,13 @@ def session_completion_status(exit_code: int | None) -> str:
 
 
 def adopt_session_completion_status(droid_exit: int | None) -> str:
-    """Adopt step: no recorded exit means the validator droid session never started."""
+    """Adopt step: no recorded exit means the validator droid session never started.
+
+    Callers distinguish "never started" further: an adopt step that skipped
+    the droid session for lack of judgeable processes re-accounts the outcome
+    as "skipped_no_judgeable" (adopt_verdict); this mapper alone reports the
+    bare fact that no exit was recorded.
+    """
     if droid_exit is None:
         return "missing_output"
     return session_completion_status(droid_exit)

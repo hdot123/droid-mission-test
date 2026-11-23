@@ -27,6 +27,10 @@ def derive(wall: dict, *, round_num: int = 1) -> tuple[dict, str]:
         "timeout",
         "droid_failed",
         "missing_output",
+        # The round-53 accounting value for "no judgeable processes, droid
+        # step skipped": an unstarted validator session never clears the
+        # validate job on its own.
+        "skipped_no_judgeable",
     )
     # 52A fix: an escalated work-order conflict keeps the validate job red —
     # a contradiction in the order is never a silent green for downstream.
