@@ -3106,7 +3106,7 @@ jobs:
           {packs}
 
           SESSION DISCIPLINE (mandatory, do first): after you finish analyzing each process, IMMEDIATELY persist that one conclusion by running the verdict-recorder tool, then move on to the next process:
-          python3 -m salvage_verdict --work-dir . --process <process-id> --verdict pass|fail --reason "<one line evidence-based reason>"
+          python3 -m salvage_verdict --work-dir . --process <process-id> --verdict pass|fail --reason "<one line evidence-based reason>" --round 2
           Run it once per judged process as soon as its analysis is done — never batch all conclusions at the end. The recorder file survives a session timeout; conclusions that live only in your reasoning are lost when the session is killed.
 
           Write exactly two files in this directory at the END (after every process has been recorded above):
