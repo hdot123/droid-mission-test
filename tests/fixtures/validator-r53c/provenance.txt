@@ -1,0 +1,4 @@
+source: adversarial round53-verify evidence (read-only), run C 45125143118, issue #792
+manifest-r1.json: evidence (round-1 packs, the tar the replan job unpacks into stage/) verbatim
+plan.json: evidence2 (round-2 effective plan, plan_version=2) verbatim
+manifest.json: evidence2 (round-2 packs; all three branch_present=false — F-1 rejected before branch push) verbatim

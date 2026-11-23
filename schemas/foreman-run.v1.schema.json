@@ -68,9 +68,9 @@
             "role": { "type": "string" },
             "completion_status": {
               "type": "string",
-              "enum": ["ok", "timeout", "droid_failed", "missing_output"]
+              "enum": ["ok", "timeout", "droid_failed", "missing_output", "skipped_no_judgeable"]
             },
-            "exit_code": { "type": "integer" },
+            "exit_code": { "type": ["integer", "null"] },
             "plan_output_shape": {
               "type": "string",
               "enum": ["none", "partial", "complete"]

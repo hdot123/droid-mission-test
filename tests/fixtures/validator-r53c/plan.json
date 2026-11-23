@@ -1,0 +1,61 @@
+{
+  "summary": "Three independent process cards implementing ascii85 encode/decode, nth-weekday date lookup, and single-table substitution cipher, each with its own test file.",
+  "processes": [
+    {
+      "id": "ascii85",
+      "title": "Ascii85 encode/decode (Adobe variant, no delimiters)",
+      "scope": "Owns ascii85.py and tests/test_ascii85.py only. Does not touch nthweekday.py, substitution.py, any existing file, or anything under team/.",
+      "files": [
+        "ascii85.py",
+        "tests/test_ascii85.py"
+      ],
+      "task": "Implement a new module ascii85.py (standard library only, no imports from other project modules) plus tests/test_ascii85.py. Only create these two new files; never modify any existing file.\n\nascii85_encode(data) -> str:\n- data must be bytes; bytearray (and any non-bytes input) raises TypeError.\n- No <~ ~> delimiters in output.\n- Rules fixed: every group of 4 bytes is treated as a 32-bit big-endian integer and written as 5 base-85 characters (each char = one base-85 digit + 33, char range '!' through 'u').\n- A group of exactly four 0x00 bytes outputs the single character 'z' (only for complete all-zero groups).\n- A trailing group shorter than 4 bytes (n = 1, 2, 3 bytes) is first padded with 0x00 to 4 bytes for encoding, then only the first n + 1 characters are output.\n- Empty input returns \"\".\n\nascii85_decode(s) -> bytes:\n- s must be str; non-str inputs raise TypeError.\n- The character 'z' is only allowed at group start (meaning four 0x00 bytes); 'z' inside a group raises ValueError.\n- All other characters must be in '!' through 'u'; out-of-range characters (including whitespace — whitespace is NOT skipped) raise ValueError.\n- Every 5 characters decode to 4 bytes; a group value greater than 0xFFFFFFFF (overflow group) raises ValueError.\n- A trailing group of length m must be 2, 3, or 4 (padded to 5 characters with 'u', decoded, then take the first m - 1 bytes); a trailing group of exactly 1 character raises ValueError.\n- Empty string returns b\"\".\n\nEvery acceptance point below must have a corresponding test case in tests/test_ascii85.py:\n- ascii85_encode(b\"\") == \"\"\n- ascii85_encode(b\"\\x00\\x00\\x00\\x00\") == \"z\"\n- ascii85_encode(b\"\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\") == \"zz\"\n- ascii85_encode(b\"Man \") == \"9jqo^\"\n- ascii85_encode(b\"Man sure\") == \"9jqo^F*2M7\"\n- ascii85_encode(b\"ab\") == \"@:B\"\n- ascii85_encode(b\"hello\") == \"BOu!rDZ\"\n- ascii85_encode(b\"\\xff\\xff\\xff\\xff\") == \"s8W-!\"\n- ascii85_decode(\"\") == b\"\"\n- ascii85_decode(\"z\") == b\"\\x00\\x00\\x00\\x00\"\n- ascii85_decode(\"9jqo^\") == b\"Man \"\n- ascii85_decode(\"9jqo^F*2M7\") == b\"Man sure\"\n- ascii85_decode(\"s8W-!\") == b\"\\xff\\xff\\xff\\xff\"\n- ascii85_decode(\"@:B\") == b\"ab\"\n- ValueError: ascii85_decode(\"uuuuu\") (overflow group), ascii85_decode(\"!\") (1-char tail group), ascii85_decode(\"v!!!!\") (illegal char), ascii85_decode(\"!z!!!\") ('z' inside group), ascii85_decode(\"9jqo^ \") (whitespace not skipped)\n- TypeError: ascii85_encode(\"Man \"), ascii85_encode(bytearray(b\"Man \")), ascii85_decode(b\"9jqo^\"), ascii85_decode(None)\n\nchecks (verbatim): \"python3 -m pytest tests/test_ascii85.py -q\", \"python3 -m pytest tests/ -q\"",
+      "checks": [
+        "python3 -m pytest tests/test_ascii85.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 803,
+      "sub_issue_linked": true,
+      "retry_note": "Verdict blocked this process with reason '料不齐：缺 handoff, status, diff, 未合并'. Evidence pack stage/packs/ascii85/ contains only checks-exit.json, checks-output.txt ('branch not merged; process checks not run by prep') and process-card.json — no handoff, status, or diff artifacts — even though stage/pytest-output.txt shows 170 passed, 2 skipped, so the code and tests are good. Do NOT rewrite ascii85.py or tests/test_ascii85.py unless a check fails. Your job is delivery: (1) run the two verbatim checks and confirm exit 0; (2) write the status file, the handoff document, and the diff of ascii85.py + tests/test_ascii85.py as required by the team protocol; (3) merge the branch so prep can run the checks; (4) leave ownership unchanged — only ascii85.py and tests/test_ascii85.py.",
+      "branch_suffix": "-r2"
+    },
+    {
+      "id": "nthweekday",
+      "title": "nth weekday of a month (n-th or last)",
+      "scope": "Owns nthweekday.py and tests/test_nthweekday.py only. Does not touch ascii85.py, substitution.py, any existing file, or anything under team/.",
+      "files": [
+        "nthweekday.py",
+        "tests/test_nthweekday.py"
+      ],
+      "task": "Implement a new module nthweekday.py (standard library only, no imports from other project modules) plus tests/test_nthweekday.py. Only create these two new files; never modify any existing file.\n\nnth_weekday(year, month, weekday, n) -> datetime.date:\n- weekday is fixed: 0 = Monday, 1 = Tuesday, ..., 6 = Sunday (same as datetime.date.weekday()).\n- n >= 1 means the n-th such weekday of the month; n = -1 means the last such weekday of the month; n may only be -1 or a positive number.\n- All parameters must be int (bool rejected); non-int raises TypeError.\n- month outside 1-12, weekday outside 0-6, or n == 0 or n < -1 raise ValueError.\n- If the month has no n-th such weekday (e.g. a month with only 4 Mondays when taking the 5th) raise ValueError.\n\nEvery acceptance point below must have a corresponding test case in tests/test_nthweekday.py:\n- nth_weekday(2026, 11, 0, 3) == date(2026, 11, 16) (3rd Monday of Nov 2026)\n- nth_weekday(2026, 11, 0, -1) == date(2026, 11, 30) (last Monday)\n- nth_weekday(2026, 11, 6, -1) == date(2026, 11, 29) (last Sunday)\n- nth_weekday(2026, 11, 0, 5) == date(2026, 11, 30) (5th Monday exists)\n- nth_weekday(2024, 2, 3, -1) == date(2024, 2, 29) (leap-year February last Thursday)\n- nth_weekday(2026, 1, 4, 1) == date(2026, 1, 2) (1st Friday)\n- nth_weekday(2026, 12, 2, 2) == date(2026, 12, 9) (2nd Wednesday)\n- nth_weekday(2025, 6, 5, 4) == date(2025, 6, 28) (4th Saturday)\n- ValueError: nth_weekday(2026, 2, 0, 5) (no 5th Monday), nth_weekday(2026, 11, 0, 0), nth_weekday(2026, 11, 0, -2), nth_weekday(2026, 13, 0, 1), nth_weekday(2026, 11, 7, 1)\n- TypeError: nth_weekday(2026, 11, 0, 1.0), nth_weekday(\"2026\", 11, 0, 1), nth_weekday(2026, 11, True, 1)\n\nchecks (verbatim): \"python3 -m pytest tests/test_nthweekday.py -q\", \"python3 -m pytest tests/ -q\"",
+      "checks": [
+        "python3 -m pytest tests/test_nthweekday.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 804,
+      "sub_issue_linked": true,
+      "retry_note": "Verdict blocked this process with reason '料不齐：缺 handoff, status, diff, 未合并'. Evidence pack stage/packs/nthweekday/ contains only checks-exit.json, checks-output.txt ('branch not merged; process checks not run by prep') and process-card.json — no handoff, status, or diff artifacts — even though stage/pytest-output.txt shows 170 passed, 2 skipped, so the code and tests are good. Do NOT rewrite nthweekday.py or tests/test_nthweekday.py unless a check fails. Your job is delivery: (1) run the two verbatim checks and confirm exit 0; (2) write the status file, the handoff document, and the diff of nthweekday.py + tests/test_nthweekday.py as required by the team protocol; (3) merge the branch so prep can run the checks; (4) leave ownership unchanged — only nthweekday.py and tests/test_nthweekday.py.",
+      "branch_suffix": "-r2"
+    },
+    {
+      "id": "substitution",
+      "title": "Single-table substitution cipher (encrypt/decrypt)",
+      "scope": "Owns substitution.py and tests/test_substitution.py only. Does not touch ascii85.py, nthweekday.py, any existing file, or anything under team/.",
+      "files": [
+        "substitution.py",
+        "tests/test_substitution.py"
+      ],
+      "task": "Implement a new module substitution.py (standard library only, no imports from other project modules) plus tests/test_substitution.py. Only create these two new files; never modify any existing file.\n\nsub_encrypt(text, key) and sub_decrypt(text, key):\n- key must be a str (non-str raises TypeError); it is case-insensitive and normalized to uppercase before validation. Validation: length != 26, any character outside A-Z, or any duplicate letter raises ValueError.\n- Mapping fixed: plaintext A maps to key[0], B to key[1], ..., Z to key[25] (0-based key index); decryption uses the inverse mapping.\n- text must be str (non-str raises TypeError). Preprocessing matches the other cipher modules this round: convert to uppercase, keep only A-Z (all other characters dropped); empty string (or empty after preprocessing) returns \"\".\n\nEvery acceptance point below must have a corresponding test case in tests/test_substitution.py. For most, key = \"QWERTYUIOPASDFGHJKLZXCVBNM\":\n- sub_encrypt(\"ABC\", key) == \"QWE\"\n- sub_encrypt(\"HELLO\", key) == \"ITSSG\"\n- sub_encrypt(\"Hello, World!\", key) == \"ITSSGVGKSR\" (preprocessing)\n- sub_encrypt(\"THEQUICKBROWNFOX\", key) == \"ZITJXOEAWKGVFYGB\"\n- sub_encrypt(\"\", key) == \"\"\n- sub_encrypt(\"abc\", \"qwertyuiopasdfghjklzxcvbnm\") == \"QWE\" (lowercase key normalized)\n- sub_decrypt(\"ITSSG\", key) == \"HELLO\"\n- sub_decrypt(\"ITSSGVGKSR\", key) == \"HELLOWORLD\"\n- With key2 = \"ZYXWVUTSRQPONMLKJIHGFEDCBA\": sub_encrypt(\"ABC\", key2) == \"ZYX\" and sub_decrypt(\"ZYX\", key2) == \"ABC\"\n- Roundtrip: sub_decrypt(sub_encrypt(t, key), key) == t for t in \"HELLOWORLD\", \"THEQUICKBROWNFOXJUMPSOVERTHELAZYDOG\", \"A\", \"ZZZZ\"\n- ValueError: sub_encrypt(\"ABC\", \"QWERTYUIOPASDFGHJKLZXCVBN\") (length 25), sub_encrypt(\"ABC\", \"QWERTYUIOPASDFGHJKLZXCVBNA\") (duplicate letter), sub_encrypt(\"ABC\", \"QWERTYUIOPASDFGHJKLZXCVBN1\") (non-letter)\n- TypeError: sub_encrypt(\"ABC\", None), sub_encrypt(123, key), sub_decrypt(None, key)\n\nchecks (verbatim): \"python3 -m pytest tests/test_substitution.py -q\", \"python3 -m pytest tests/ -q\"",
+      "checks": [
+        "python3 -m pytest tests/test_substitution.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 805,
+      "sub_issue_linked": true,
+      "retry_note": "Verdict blocked this process with reason '料不齐：缺 handoff, status, diff, 未合并'. Evidence pack stage/packs/substitution/ contains only checks-exit.json, checks-output.txt ('branch not merged; process checks not run by prep') and process-card.json — no handoff, status, or diff artifacts — even though stage/pytest-output.txt shows 170 passed, 2 skipped, so the code and tests are good. Do NOT rewrite substitution.py or tests/test_substitution.py unless a check fails. Your job is delivery: (1) run the two verbatim checks and confirm exit 0; (2) write the status file, the handoff document, and the diff of substitution.py + tests/test_substitution.py as required by the team protocol; (3) merge the branch so prep can run the checks; (4) leave ownership unchanged — only substitution.py and tests/test_substitution.py.",
+      "branch_suffix": "-r2"
+    }
+  ],
+  "plan_version": 2,
+  "iteration": 1
+}
