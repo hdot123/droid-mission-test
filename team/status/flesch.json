@@ -1,0 +1,21 @@
+{
+  "id": "flesch",
+  "title": "Flesch 易读度小组件（flesch.py）",
+  "state": "done",
+  "files": [
+    "flesch.py",
+    "tests/test_flesch.py",
+    "team/handoffs/flesch.md",
+    "team/status/flesch.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_flesch.py -q",
+      "result": "pass: 27 passed in 0.01s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 214 passed, 2 skipped in 14.52s (2 pre-existing skips unrelated to this card)"
+    }
+  ]
+}
