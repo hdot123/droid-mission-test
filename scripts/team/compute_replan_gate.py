@@ -15,6 +15,10 @@ def compute(wall: dict) -> dict:
     overall = val.get("overall")
     failed_ids = val.get("failed_process_ids") or []
     unattributed = bool(val.get("unattributed_failure"))
+    # 52A fix: escalated work-order conflicts (e.g. the round-52 A chaocipher
+    # vector contradiction) are an actionable signal — they reopen the order
+    # via replan instead of riding a pass through to close-out.
+    escalated = bool(val.get("conflicts_escalated"))
     not_cancelled = (wall.get("chain") or {}).get("validate", {}).get("result") != "cancelled"
     verdict_key = next(
         (k for k in (wall.get("artifacts") or {}) if k.startswith("team-verdict-")),
@@ -24,7 +28,7 @@ def compute(wall: dict) -> dict:
     should = (
         adoption_ok
         and overall != "pass"
-        and (len(failed_ids) > 0 or unattributed)
+        and (len(failed_ids) > 0 or unattributed or escalated)
         and not_cancelled
         and verdict_complete
     )
@@ -34,6 +38,8 @@ def compute(wall: dict) -> dict:
             reasons.append("overall_not_pass")
         if unattributed:
             reasons.append("unattributed_failure")
+        if escalated:
+            reasons.append("conflicts_escalated")
     gate = {
         "schema_version": "replan-gate.v1",
         "should_replan": should,

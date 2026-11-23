@@ -1,0 +1,55 @@
+{
+  "summary": "Three independent stdlib-only components (dijkstra, nthprime, windscale) with per-module tests, split into three non-overlapping process cards.",
+  "processes": [
+    {
+      "id": "dijkstra",
+      "title": "实现 dijkstra.py 有向图最短路径与 tests/test_dijkstra.py",
+      "scope": "Owns only dijkstra.py and tests/test_dijkstra.py. Does not touch nthprime, windscale, any existing file, or any team/** path. Stdlib only; must not import the other two modules.",
+      "files": [
+        "dijkstra.py",
+        "tests/test_dijkstra.py"
+      ],
+      "task": "Create dijkstra.py (new file only, do not modify any existing file) implementing the work order's Dijkstra spec, plus tests/test_dijkstra.py covering every acceptance item.\n\nSpec (verbatim requirements):\n- Graph is a dict: keys are node names (str), values are adjacency dicts (neighbor name -> weight). Edges are directed as given; nodes appearing only as neighbors (not as keys) have no outgoing edges. Weights must be int/float (bool rejected); non-numeric raises TypeError; negative weight raises ValueError; non-dict graph, non-dict adjacency, or non-str node name raises TypeError.\n- dijkstra(graph, source) -> tuple[dict, dict]: returns (dist, prev). dist contains every node in the graph (appearing as key or as neighbor): reachable nodes hold the shortest distance (source is 0), unreachable nodes hold math.inf. prev contains only the mapping of reachable non-source nodes to their predecessor (source and unreachable nodes are not in prev). source not in graph raises ValueError.\n- shortest_path(graph, source, target) -> list: returns the shortest path node list from source to target (both ends included); unreachable returns []; source == target returns [source]; source or target not in graph raises ValueError.\n\nAcceptance items (each needs a corresponding test case, transcribed exactly):\n- Graph G1 = {\"A\": {\"B\": 1, \"C\": 4}, \"B\": {\"C\": 2, \"D\": 5}, \"C\": {\"D\": 1}, \"D\": {}, \"E\": {}}: dijkstra(G1, \"A\") dist is A=0, B=1, C=3, D=4, E=math.inf; prev == {\"B\": \"A\", \"C\": \"B\", \"D\": \"C\"}; shortest_path(G1, \"A\", \"D\") == [\"A\", \"B\", \"C\", \"D\"]; shortest_path(G1, \"A\", \"C\") == [\"A\", \"B\", \"C\"]; shortest_path(G1, \"A\", \"E\") == []; shortest_path(G1, \"A\", \"A\") == [\"A\"]; shortest_path(G1, \"D\", \"A\") == [] (directed, not reversible).\n- Graph G2 = {\"S\": {\"T\": 2.5, \"U\": 1.5}, \"U\": {\"T\": 0.5}, \"T\": {}}: dist[\"T\"] == 2.0, dist[\"U\"] == 1.5, prev == {\"U\": \"S\", \"T\": \"U\"}, shortest_path(G2, \"S\", \"T\") == [\"S\", \"U\", \"T\"].\n- Graph G3 = {\"A\": {\"B\": 7}}: dist[\"B\"] == 7, prev == {\"B\": \"A\"}.\n- dijkstra({\"A\": {\"B\": -1}}, \"A\"), dijkstra(G1, \"Z\"), shortest_path(G1, \"A\", \"Z\") raise ValueError.\n- dijkstra([(\"A\", {})], \"A\"), dijkstra({\"A\": {\"B\": \"x\"}}, \"A\"), dijkstra({\"A\": {\"B\": True}}, \"A\") raise TypeError.\n\nDeliverables: only dijkstra.py and tests/test_dijkstra.py (both new; never edit existing files). Standard library only.",
+      "checks": [
+        "python3 -m pytest tests/test_dijkstra.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 766,
+      "sub_issue_linked": true
+    },
+    {
+      "id": "nthprime",
+      "title": "实现 nthprime.py 第 n 个素数与 tests/test_nthprime.py",
+      "scope": "Owns only nthprime.py and tests/test_nthprime.py. Does not touch dijkstra, windscale, any existing file, or any team/** path. Stdlib only; must not import the other two modules.",
+      "files": [
+        "nthprime.py",
+        "tests/test_nthprime.py"
+      ],
+      "task": "Create nthprime.py (new file only, do not modify any existing file) implementing the work order's nth-prime spec, plus tests/test_nthprime.py covering every acceptance item.\n\nSpec (verbatim requirements):\n- nth_prime(n: int) -> int: 1-based counting (the 1st prime is 2). n must be int (bool rejected); non-int raises TypeError; n < 1 raises ValueError.\n\nAcceptance items (each needs a corresponding test case, transcribed exactly):\n- nth_prime(1) == 2; nth_prime(2) == 3; nth_prime(3) == 5; nth_prime(4) == 7; nth_prime(5) == 11; nth_prime(6) == 13; nth_prime(10) == 29; nth_prime(25) == 97; nth_prime(50) == 229; nth_prime(100) == 541; nth_prime(1000) == 7919.\n- nth_prime(0), nth_prime(-3) raise ValueError.\n- nth_prime(2.0), nth_prime(\"3\"), nth_prime(True) raise TypeError.\n\nDeliverables: only nthprime.py and tests/test_nthprime.py (both new; never edit existing files). Standard library only.",
+      "checks": [
+        "python3 -m pytest tests/test_nthprime.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 767,
+      "sub_issue_linked": true
+    },
+    {
+      "id": "windscale",
+      "title": "实现 windscale.py 蒲福风级与 tests/test_windscale.py",
+      "scope": "Owns only windscale.py and tests/test_windscale.py. Does not touch dijkstra, nthprime, any existing file, or any team/** path. Stdlib only; must not import the other two modules.",
+      "files": [
+        "windscale.py",
+        "tests/test_windscale.py"
+      ],
+      "task": "Create windscale.py (new file only, do not modify any existing file) implementing the work order's Beaufort scale spec, plus tests/test_windscale.py covering every acceptance item.\n\nSpec (verbatim requirements):\n- Thresholds pinned (unit km/h, lower bound inclusive, upper bound is the next level's lower bound): level 0 <1; 1: 1–5; 2: 6–11; 3: 12–19; 4: 20–28; 5: 29–38; 6: 39–49; 7: 50–61; 8: 62–74; 9: 75–88; 10: 89–102; 11: 103–117; 12: >=118.\n- beaufort(speed_kmh) -> int: speed must be int/float (bool rejected); non-numeric raises TypeError; negative raises ValueError; returns level 0–12.\n- beaufort_label(speed_kmh) -> str: returns the Chinese name; levels 0–12 in order are 无风、软风、轻风、微风、和风、清风、强风、疾风、大风、烈风、狂风、暴风、飓风; input validation same as beaufort.\n\nAcceptance items (each needs a corresponding test case, transcribed exactly):\n- beaufort(0) == 0; beaufort(0.9) == 0; beaufort(1) == 1; beaufort(5) == 1; beaufort(6) == 2; beaufort(11) == 2; beaufort(12) == 3; beaufort(19) == 3; beaufort(20) == 4; beaufort(28) == 4; beaufort(29) == 5; beaufort(38) == 5; beaufort(39) == 6; beaufort(49) == 6; beaufort(50) == 7; beaufort(61) == 7; beaufort(62) == 8; beaufort(74) == 8; beaufort(75) == 9; beaufort(88) == 9; beaufort(89) == 10; beaufort(102) == 10; beaufort(103) == 11; beaufort(117) == 11; beaufort(118) == 12; beaufort(200) == 12; beaufort(32.5) == 5.\n- beaufort_label(0) == \"无风\"; beaufort_label(3) == \"软风\"; beaufort_label(30) == \"清风\"; beaufort_label(55) == \"疾风\"; beaufort_label(100) == \"狂风\"; beaufort_label(118) == \"飓风\".\n- beaufort(-1) raises ValueError; beaufort(\"50\"), beaufort(True), beaufort(None) raise TypeError.\n\nDeliverables: only windscale.py and tests/test_windscale.py (both new; never edit existing files). Standard library only.",
+      "checks": [
+        "python3 -m pytest tests/test_windscale.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 768,
+      "sub_issue_linked": true
+    }
+  ],
+  "plan_version": 1,
+  "iteration": 1
+}

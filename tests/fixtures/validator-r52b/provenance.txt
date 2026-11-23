@@ -1,0 +1,3 @@
+source: adversarial round52-verify evidence (read-only), run 45078468896
+validator stream final reasoning turn split at fixed char offsets
+verdict sentence present: - verdicts: dijkstra pass, nthprime pass, windscale pass.

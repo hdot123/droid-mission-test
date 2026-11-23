@@ -159,6 +159,7 @@
         "overall": { "type": "string", "enum": ["pass", "fail"] },
         "failed_process_ids": { "type": "array", "items": { "type": "string" } },
         "unattributed_failure": { "type": "boolean" },
+        "conflicts_escalated": { "type": "boolean" },
         "pytest_exit": { "type": ["integer", "null"] },
         "job_conclusion_derived": {
           "type": "string",

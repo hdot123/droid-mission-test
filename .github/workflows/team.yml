@@ -1413,7 +1413,11 @@ jobs:
           - pytest-output.txt and pytest-exit.txt (full test evidence for the merged candidate)
           {packs}
 
-          Write exactly two files in this directory:
+          SESSION DISCIPLINE (mandatory, do first): after you finish analyzing each process, IMMEDIATELY persist that one conclusion by running the verdict-recorder tool, then move on to the next process:
+          python3 -m salvage_verdict --work-dir . --process <process-id> --verdict pass|fail --reason "<one line evidence-based reason>"
+          Run it once per judged process as soon as its analysis is done — never batch all conclusions at the end. The recorder file survives a session timeout; conclusions that live only in your reasoning are lost when the session is killed.
+
+          Write exactly two files in this directory at the END (after every process has been recorded above):
           1. verdict-droid.json with this shape:
           {{
             "processes": [
@@ -1430,7 +1434,7 @@ jobs:
           Rules:
           - Pass a process only when its card, handoff, status, diff, and check outputs line up.
           - HARD RULE — a red mandated check is never a pass: if any entry in packs/<id>/checks-exit.json has a non-zero "exit", or packs/<id>/checks-failed.marker exists, you MUST judge that process "fail", however well the five artifacts line up. Alignment proves the evidence is honest, not that the work passed. In the reason, cite the failed check command(s) and exit code(s) from checks-exit.json. One exception: exit 127 recorded because pytest was unavailable does not count under this rule (that is an environment failure, judged via the pack/manifest evidence).
-          - If a process's status.json or handoff.md explicitly flags a conflict outside its card or inside the work order itself (for example a body-vs-acceptance mismatch) and neither the card nor the plan addresses it, you MUST record it in the top-level "conflicts" array — do not bury it in a reason and do not silently pass over it. Recording a conflict does not by itself change that process's verdict: judge the card as written; the conflict is escalated for a human to see.
+          - If a process's status.json or handoff.md explicitly flags a conflict outside its card or inside the work order itself (for example a body-vs-acceptance mismatch) and neither the card nor the plan addresses it, you MUST record it in the top-level "conflicts" array — do not bury it in a reason and do not silently pass over it. Recording a conflict does not by itself change that process's verdict: judge the card as written; the conflict is escalated for a human to see, and a verdict carrying any escalated conflict is treated as fail by the machine gates.
           - Judge only from the evidence in this directory. Do not modify any evidence file.
           - Be efficient: at most 12 tool calls, then write the verdict files.
           """
@@ -1463,7 +1467,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: droid-stream-validator-run-${{ github.run_id }}
-          path: work/validator-stream.jsonl
+          path: |
+            work/validator-stream.jsonl
+            work/verdict-partial.json
           if-no-files-found: warn
 
       - name: Merge verdict, enforce gates, verify evidence untouched
@@ -1758,6 +1764,27 @@ jobs:
                   if owner and owner not in attributed:
                       attributed.append(owner)
               attributed = [p["id"] for p in plan["processes"] if p["id"] in attributed]
+          # 52A fix: escalated work-order conflicts reopen the order — the
+          # conflicted processes join the required coverage set (deterministic,
+          # from the verdict itself), so the foreman can revise their cards to
+          # resolve the contradiction. Without this the coverage check
+          # (changes must cover failed exactly) would reject any revision of
+          # a passed-but-conflicted card — a prompt/checker contradiction of
+          # the exact class that killed round 51.
+          conflicts = verdict.get("conflicts") or []
+          conflicted_ids = sorted({c.get("process") for c in conflicts if isinstance(c, dict) and c.get("process")})
+          required_hint = sorted(set(failed) | set(conflicted_ids))
+          conflicts_line = ""
+          if conflicts:
+              names = ", ".join(conflicted_ids)
+              conflicts_line = (
+                  f"The validator escalated {len(conflicts)} work-order conflict(s) "
+                  f"(process(es): {names}); details in stage/verdict.json top-level "
+                  "\"conflicts\" array. Decide for each conflicted process: revise the "
+                  "card to resolve the contradiction (state which value the card now "
+                  "pins), or redispatch with a retry_note stating the card stands as "
+                  "written. "
+              )
           if attribution_mode:
               failed_line = ("No process was judged failed, but the merged test suite is red. "
                              "Failing tests (from verdict.json failing_tests): "
@@ -1774,10 +1801,10 @@ jobs:
               cover_rule = "The changes list must cover every attributed process exactly once, and no other process."
               claim_rule = "A revised card must not claim files owned by a process other than itself and the other attributed processes."
           else:
-              failed_line = "Failed or blocked processes: " + ", ".join(failed)
+              failed_line = "Failed or blocked processes: " + (", ".join(required_hint) if required_hint else "(none)")
               layer_block = "\n"
-              cover_rule = "The changes list must cover every failed or blocked process exactly once, and no passed process."
-              claim_rule = "A revised card must not claim files owned by a passed process."
+              cover_rule = "The changes list must cover every failed, blocked, or conflicted process exactly once, and no passed process (conflicted = named in the verdict's conflicts array; its verdict may still say pass)."
+              claim_rule = "A revised card must not claim files owned by a passed process (a conflicted process it revises excepted)."
           prompt = f"""You are the FOREMAN （领班） again. Validation of plan v1 did not pass. Your job now is to fix the PLAN, never the code. Do not write application code. Do not edit any file except team-plan-v2.json in the current directory.
 
           In front of you:
@@ -1786,7 +1813,7 @@ jobs:
           - stage/manifest.json and stage/packs/<id>/ (evidence packs, including failed ones)
           - stage/pytest-output.txt (full test evidence)
 
-          {failed_line}
+          {failed_line}{conflicts_line}
 
           For EACH failed or blocked process, decide whose fault it is:
           - "redispatch" （工人问题）: the card was fine, the work was not. Keep the original card and add a "retry_note" that tells the next worker exactly what to fix, citing the verdict reason and evidence.
@@ -1887,6 +1914,13 @@ jobs:
                   print("unattributed failure cannot be attributed to any process card; stopping the order for a human")
                   sys.exit(1)
               required = attributed
+          # 52A fix: conflicted processes are required coverage too — the
+          # foreman must carry a decision (revise/redispatch) for each card
+          # named in the verdict's conflicts array, deterministically
+          # recomputed from the verdict (the prompt is never trusted).
+          conflicts = verdict.get("conflicts") or []
+          conflicted = {c.get("process") for c in conflicts if isinstance(c, dict) and c.get("process")}
+          required |= conflicted
 
           v2 = json.load(open("team-plan-v2.json"))
           passed_files = {}
@@ -1901,7 +1935,7 @@ jobs:
               print("plan v2 has duplicate process_id entries in changes")
               sys.exit(1)
           if sorted(change_ids) != sorted(required):
-              print(f"plan v2 must cover exactly the required processes {sorted(required)} (multiset comparison; classic mode: the failed processes, attribution mode: the attributed processes)")
+              print(f"plan v2 must cover exactly the required processes {sorted(required)} (multiset comparison; classic mode: the failed processes, attribution mode: the attributed processes, plus every conflicted process named in the verdict's conflicts array)")
               sys.exit(1)
           for pid in change_ids:
               if not re.fullmatch(r"^[a-z0-9][a-z0-9-]*$", str(pid)):
@@ -2018,6 +2052,15 @@ jobs:
           json.dump(v2, open("team-plan-v2.json", "w"), ensure_ascii=False, indent=2)
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write("processes2=" + json.dumps(processes2, ensure_ascii=False) + "\n")
+          # 52A fix: escalated work-order conflicts stay on the audit trail —
+          # the replan notice names them, and a conflicts-only round (no
+          # failed process, foreman judged the cards fine) is stated as such
+          # instead of silently looking like an ordinary red round.
+          conflicts = verdict.get("conflicts") or []
+          if conflicts:
+              comment_lines += ["", "## 工单层冲突（第 1 轮验收升级，计划 v2 必须给出处置）", ""]
+              for c in conflicts:
+                  comment_lines.append(f"- `{c.get('process')}`：{c.get('summary', '')}（证据：{c.get('evidence', '')}）")
           comment_lines += ["", "审计镜像（只读）：第 2/2 轮再计划通知；板面状态以 Projects PAT 写板为准。"]
           open("replan-comment.md", "w").write("\n".join(comment_lines))
           print("\n".join(comment_lines))
@@ -3055,7 +3098,11 @@ jobs:
           - pytest-output.txt and pytest-exit.txt (full test evidence for the final merged candidate)
           {packs}
 
-          Write exactly two files in this directory:
+          SESSION DISCIPLINE (mandatory, do first): after you finish analyzing each process, IMMEDIATELY persist that one conclusion by running the verdict-recorder tool, then move on to the next process:
+          python3 -m salvage_verdict --work-dir . --process <process-id> --verdict pass|fail --reason "<one line evidence-based reason>"
+          Run it once per judged process as soon as its analysis is done — never batch all conclusions at the end. The recorder file survives a session timeout; conclusions that live only in your reasoning are lost when the session is killed.
+
+          Write exactly two files in this directory at the END (after every process has been recorded above):
           1. verdict-droid.json with this shape:
           {{
             "processes": [
@@ -3072,7 +3119,7 @@ jobs:
           Rules:
           - Pass a process only when its card, handoff, status, diff, and check outputs line up.
           - HARD RULE — a red mandated check is never a pass: if any entry in packs/<id>/checks-exit.json has a non-zero "exit", or packs/<id>/checks-failed.marker exists, you MUST judge that process "fail", however well the five artifacts line up. Alignment proves the evidence is honest, not that the work passed. In the reason, cite the failed check command(s) and exit code(s) from checks-exit.json. One exception: exit 127 recorded because pytest was unavailable does not count under this rule (that is an environment failure, judged via the pack/manifest evidence).
-          - If a process's status.json or handoff.md explicitly flags a conflict outside its card or inside the work order itself (for example a body-vs-acceptance mismatch) and neither the card nor the plan addresses it, you MUST record it in the top-level "conflicts" array — do not bury it in a reason and do not silently pass over it. Recording a conflict does not by itself change that process's verdict: judge the card as written; the conflict is escalated for a human to see.
+          - If a process's status.json or handoff.md explicitly flags a conflict outside its card or inside the work order itself (for example a body-vs-acceptance mismatch) and neither the card nor the plan addresses it, you MUST record it in the top-level "conflicts" array — do not bury it in a reason and do not silently pass over it. Recording a conflict does not by itself change that process's verdict: judge the card as written; the conflict is escalated for a human to see, and a verdict carrying any escalated conflict is treated as fail by the machine gates.
           - Judge only from the evidence in this directory. Do not modify any evidence file.
           - Be efficient: at most 12 tool calls, then write the verdict files.
           """
@@ -3105,7 +3152,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: droid-stream-validator2-run-${{ github.run_id }}
-          path: work/validator-stream.jsonl
+          path: |
+            work/validator-stream.jsonl
+            work/verdict-partial.json
           if-no-files-found: warn
 
       - name: Merge verdict, enforce gates, verify evidence untouched
@@ -3438,6 +3487,8 @@ jobs:
                   block_detail = f"验收未过：{', '.join(failed)}。"
               elif procs and all(p.get("verdict") == "pass" for p in procs) and pytest_exit_v not in (0, None):
                   block_detail = f"工序逐项 pass，但全量 pytest 退出码 {pytest_exit_v}，机器闸判 fail。"
+              elif verdict.get("conflicts"):
+                  block_detail = "验收员升级了工单层冲突（见状态卡冲突清单），含未处置矛盾的工单不通过。"
               elif verdict.get("reason"):
                   block_detail = f"验收未过：{verdict['reason']}。"
               else:
@@ -3498,6 +3549,10 @@ jobs:
               lines += ["", "### 工单层冲突（验收员升级记录，未处置）"]
               for c in conflicts_card:
                   lines.append(f"- `{c.get('process')}`：{c.get('summary')}（证据：{c.get('evidence', '')}）")
+          salvaged_from = verdict.get("salvaged_from")
+          if salvaged_from:
+              lines += ["",
+                        f"⚠ validator 会话被墙杀，采认失败；从 {salvaged_from} 回收了 {verdict.get('salvaged_count', 0)} 件已完成分析的结论（见上），其余工序未完成分析。已回收的 pass 不构成验收通过。", ""]
           lines += ["", f"总判定：**{overall}**", "", "### PR", "", pr_text, "",
                     "板面权威：Projects #33 字段由 `project_state_write.py`（PAT）写入；本评论仅为审计镜像。"]
           open("final-comment.md", "w").write("\n".join(lines))
