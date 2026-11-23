@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Adoption step: always emit verdict.json + update wall validation slice (P0-1)."""
+"""Adoption step: always emit verdict.json + update wall validation slice (P0-1).
+
+52B fixes carried here:
+- conflicts gating: a non-empty escalated conflicts array annotates the verdict
+  (conflicts_escalated) — the round-52 A shape (chaocipher vector contradiction
+  escalated, yet a bare pass) can never be emitted again;
+- kill recovery: when the validator session was wall-killed, per-process
+  conclusions persisted incrementally (salvage_verdict.py) are recovered into
+  verdict.json instead of dying with the reasoning that produced them.
+"""
 from __future__ import annotations
 
 import argparse
@@ -12,6 +21,7 @@ from pathlib import Path
 
 from budget_resolve import adopt_session_completion_status
 from foreman_run_lib import deep_merge, load_wall, save_wall
+from salvage_verdict import read_salvage
 
 ADOPTION_ERRORS = {
     "missing_draft",
@@ -56,6 +66,100 @@ def compute_flips(
                 }
             )
     return flips
+
+
+def conflicts_escalated(conflicts: list[dict] | None) -> bool:
+    """True when the validator escalated at least one work-order conflict."""
+    return bool(conflicts)
+
+
+def _recover_salvage(
+    work_dir: Path,
+    plan: dict,
+    blocked: dict,
+    adoption_error: str,
+    round_num: int,
+) -> None:
+    """52B fix: always emit a verdict.json when the session died before its draft.
+
+    When the validator session was killed (timeout / merge skipped / missing
+    draft), the incremental verdict file written after each finished analysis
+    is folded into verdict.json: recovered processes keep their verdict,
+    everything never analyzed becomes "blocked" with the factual reason. The
+    verdict stays fail-closed — overall=fail, pytest_exit stays None (no
+    merged-suite evidence), the wall artifact stays incomplete — so replan
+    still fires; only the completed per-process analysis survives instead of
+    being lost with the reasoning that produced it.
+    """
+    salvage = read_salvage(work_dir, round_num=round_num)
+    verdicts: dict[str, dict] = {}
+    if salvage:
+        for entry in salvage["processes"]:
+            verdicts[entry["id"]] = {
+                "id": entry["id"],
+                "verdict": entry["verdict"],
+                "reason": entry.get("reason", ""),
+                "salvaged": True,
+            }
+    for pid, missing in (blocked or {}).items():
+        verdicts[pid] = {
+            "id": pid,
+            "verdict": "blocked",
+            "reason": "料不齐：缺 " + ", ".join(missing),
+        }
+    try:
+        plan_ids = [p["id"] for p in (plan or {}).get("processes", [])]
+    except Exception:
+        plan_ids = []
+    for pid in plan_ids:
+        verdicts.setdefault(
+            pid,
+            {
+                "id": pid,
+                "verdict": "blocked",
+                "reason": "validator 会话被墙杀，该工序未完成分析（非料不齐）",
+            },
+        )
+    ordered = [verdicts[pid] for pid in plan_ids if pid in verdicts]
+    conflicts = salvage["conflicts"] if salvage else []
+    verdict = {
+        "overall": "fail",
+        "pytest_exit": None,
+        "iteration": round_num,
+        "processes": ordered,
+        "conflicts": conflicts,
+        "conflicts_escalated": conflicts_escalated(conflicts),
+        "failing_tests": [],
+        "unattributed_failure": False,
+        "adoption_status": "failed",
+        "adoption_error": adoption_error,
+        "verdict_schema_version": "foreman-run.v1",
+    }
+    if salvage:
+        verdict["salvaged_from"] = "verdict-partial.json"
+        verdict["salvaged_count"] = salvage["analyzed_count"]
+    Path("verdict.json").write_text(
+        json.dumps(verdict, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    md_lines = [
+        "## 采认",
+        f"- adoption_status: **failed**（{adoption_error}）",
+    ]
+    if salvage:
+        md_lines.append(
+            f"- 会话被杀前已完成分析并落盘的结论：{salvage['analyzed_count']} 件（从 verdict-partial.json 回收）"
+        )
+        md_lines.append("")
+        for p in ordered:
+            md_lines.append(f"- `{p['id']}`：{p['verdict']} — {p['reason'][:200]}")
+    if conflicts:
+        md_lines += ["", "## 工单层冲突（验收员升级记录）", ""]
+        for c in conflicts:
+            md_lines.append(
+                f"- `{c['process']}`：{c.get('summary', '')}（证据：{c.get('evidence', '')}）"
+            )
+    md_lines.append("\n总判定：**fail**（采认失败；已回收结论仅供参考，不构成 pass）")
+    Path("verdict.md").write_text("\n".join(md_lines), encoding="utf-8")
 
 
 def adopt(
@@ -106,12 +210,16 @@ def adopt(
         elif droid_exit == 124:
             adoption_status = "failed"
             adoption_error = "draft_timeout"
+            if not draft_path.exists():
+                _recover_salvage(work_dir, plan, blocked, adoption_error, round_num)
         elif not merge_step_ran and not draft_path.exists():
             adoption_status = "failed"
             adoption_error = "merge_skipped"
+            _recover_salvage(work_dir, plan, blocked, adoption_error, round_num)
         elif judgeable and not draft_path.exists():
             adoption_status = "failed"
             adoption_error = "missing_draft"
+            _recover_salvage(work_dir, plan, blocked, adoption_error, round_num)
         else:
             verdicts: dict[str, dict] = {}
             droid = {}
@@ -154,15 +262,17 @@ def adopt(
                     adoption_error = "coverage_mismatch"
                 else:
                     pytest_exit = manifest.get("pytest_exit", 1)
+                    escalated = conflicts_escalated(conflicts)
                     overall = (
                         "pass"
                         if all(v["verdict"] == "pass" for v in verdicts.values())
                         and pytest_exit == 0
+                        and not escalated
                         else "fail"
                     )
                     failed = [pid for pid, v in verdicts.items() if v["verdict"] != "pass"]
                     failing_tests: list[str] = []
-                    if overall == "fail" and not failed:
+                    if overall == "fail" and not failed and not escalated:
                         raw = (work_dir / "pytest-output.txt").read_text(
                             encoding="utf-8", errors="replace"
                         ) if (work_dir / "pytest-output.txt").exists() else ""
@@ -189,6 +299,9 @@ def adopt(
                         "iteration": iteration,
                         "processes": [verdicts[p["id"]] for p in plan["processes"]],
                         "conflicts": conflicts,
+                        # 52A fix: escalated conflicts annotate the verdict — a
+                        # bare pass can no longer hide a work-order contradiction.
+                        "conflicts_escalated": escalated,
                         "failing_tests": failing_tests[:50],
                         "unattributed_failure": unattributed,
                         "adoption_status": adoption_status,
@@ -204,6 +317,12 @@ def adopt(
                     md_lines = ["## 采认", f"- adoption_status: **{adoption_status}**", ""]
                     if (work_dir / "verdict-droid.md").exists():
                         md_lines.append((work_dir / "verdict-droid.md").read_text(encoding="utf-8"))
+                    if escalated:
+                        md_lines += ["", "## 工单层冲突（验收员升级记录）", ""]
+                        for c in conflicts:
+                            md_lines.append(
+                                f"- `{c['process']}`：{c.get('summary', '')}（证据：{c.get('evidence', '')}）"
+                            )
                     md_lines.append(f"\n总判定：**{overall}**")
                     Path("verdict.md").write_text("\n".join(md_lines), encoding="utf-8")
     except Exception as exc:
@@ -212,19 +331,27 @@ def adopt(
         err = detect_droid_failure(work_dir)
         if err:
             adoption_error = err
-        verdict = {
-            "overall": "fail",
-            "pytest_exit": None,
-            "iteration": 1,
-            "processes": [],
-            "adoption_status": adoption_status,
-            "adoption_error": adoption_error or "droid_step_failed",
-            "adoption_detail": str(exc)[:500],
-            "verdict_schema_version": "foreman-run.v1",
-        }
-        Path("verdict.json").write_text(
-            json.dumps(verdict, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
+        if not Path("verdict.json").exists():
+            try:
+                plan = json.loads(plan_path.read_text(encoding="utf-8"))
+                blocked = json.loads(blocked_path.read_text()) if blocked_path.exists() else {}
+                _recover_salvage(work_dir, plan, blocked, adoption_error, round_num)
+            except Exception:
+                pass
+        if not Path("verdict.json").exists():
+            verdict = {
+                "overall": "fail",
+                "pytest_exit": None,
+                "iteration": 1,
+                "processes": [],
+                "adoption_status": adoption_status,
+                "adoption_error": adoption_error or "droid_step_failed",
+                "adoption_detail": str(exc)[:500],
+                "verdict_schema_version": "foreman-run.v1",
+            }
+            Path("verdict.json").write_text(
+                json.dumps(verdict, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            )
         Path("verdict.md").write_text(
             f"## 采认失败\n\n`{adoption_error}`\n", encoding="utf-8"
         )
@@ -242,6 +369,7 @@ def adopt(
             "overall": overall,
             "failed_process_ids": failed,
             "unattributed_failure": unattributed,
+            "conflicts_escalated": conflicts_escalated(conflicts),
             "pytest_exit": pytest_exit,
         },
         "artifacts": {

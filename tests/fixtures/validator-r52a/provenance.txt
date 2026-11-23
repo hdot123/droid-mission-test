@@ -1,0 +1,4 @@
+source: adversarial round52-verify evidence (read-only), run 45078438609, issue #761
+provenance: conflicts[0] copied verbatim from the real round-52 A verdict artifact
+(team-verdict-issue-761-run-45078438609). That run emitted overall=pass with this
+escalated work-order contradiction — the 52A counterexample this fix closes.

@@ -28,7 +28,10 @@ def derive(wall: dict, *, round_num: int = 1) -> tuple[dict, str]:
         "droid_failed",
         "missing_output",
     )
-    if adoption == "failed" or not complete or session_bad:
+    # 52A fix: an escalated work-order conflict keeps the validate job red —
+    # a contradiction in the order is never a silent green for downstream.
+    escalated = bool(val.get("conflicts_escalated"))
+    if adoption == "failed" or not complete or session_bad or escalated:
         conclusion = "failure"
     else:
         conclusion = "success"
