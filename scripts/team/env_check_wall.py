@@ -79,7 +79,7 @@ def main() -> int:
         foreman_mode=args.foreman_mode,
     )
     wall["env"] = env_slice
-    wall["artifacts"][f"foreman-run-{args.run_id}"]["complete"] = True
+    wall["artifacts"][f"foreman-run-{args.run_id}"]["complete"] = bool(env_slice["ok"])
     wall["artifacts"][f"foreman-run-{args.run_id}"]["missing"] = []
     save_wall(wall, args.out)
     if args.github_output:
