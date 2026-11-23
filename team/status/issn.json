@@ -1,0 +1,21 @@
+{
+  "id": "issn",
+  "title": "ISSN 校验位（issn.py）",
+  "state": "done",
+  "files": [
+    "issn.py",
+    "tests/test_issn.py",
+    "team/handoffs/issn.md",
+    "team/status/issn.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_issn.py -q",
+      "result": "7 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "194 passed, 2 skipped in 16.37s"
+    }
+  ]
+}
