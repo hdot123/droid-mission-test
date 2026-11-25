@@ -1115,22 +1115,15 @@ jobs:
           open("evidence/pytest-exit.txt", "w").write(str(pytest_exit))
           print(f"full pytest exit: {pytest_exit}")
 
-          # I-4 (round54-root-cure): check-summary.json is the authoritative
-          # count — per-card passed/skipped from the checks prep itself ran,
-          # merged totals from the real pytest output. Written BEFORE the
-          # manifest hashes the tree, so the pack's sha covers it. Worker
-          # status files are never rewritten (evidence immutability).
-          per_card = {}
-          for proc in plan["processes"]:
-              pid = proc["id"]
-              out_path = f"evidence/packs/{pid}/checks-output.txt"
-              card_out = open(out_path).read() if os.path.exists(out_path) else ""
-              per_card[pid] = {"passed": _count_passed(card_out), "skipped": _count_skipped(card_out)}
-          totals = {"passed": _count_passed(pytest_output), "skipped": _count_skipped(pytest_output)}
-          json.dump({"schema_version": "check-summary.v1",
-                     "per_card": per_card, "totals": totals},
-                    open("evidence/check-summary.json", "w"), indent=2)
-          print("check-summary:", json.dumps(totals))
+          def _focused_counts(card_out, checks):
+              # I-4, scrutiny PR2-2b: a card's count is the count of THAT
+              # card's focused check (its own file-level pytest run), never a
+              # sum across the card's check commands — the card runs its
+              # focused test AND the merged suite, and 18+240 must never be
+              # reported as 258, a number corresponding to nothing. The last
+              # summary line of the FIRST check (the focused one) wins.
+              focused = (card_out.split("$ ", 2)[1] if card_out.count("$ ") else card_out) or ""
+              return {"passed": _count_passed(focused), "skipped": _count_skipped(focused)}
 
           for proc in plan["processes"]:
               pid = proc["id"]
@@ -1186,6 +1179,25 @@ jobs:
                   "checks_output": True,
               }
               info["complete"] = all(info["pack"].values()) and info["merged"] and not info.get("out_of_bounds")
+
+          # I-4 (round54-root-cure): check-summary.json is the authoritative
+          # count — per-card passed/skipped from the focused check prep ran
+          # for that card, merged totals from the real pytest output. Written
+          # AFTER the per-card checks loop (scrutiny PR2-2: the loop creates
+          # checks-output.txt; a summary written before it reads zeros) and
+          # BEFORE the manifest hashes the tree, so the pack's sha covers it.
+          # Worker status files are never rewritten (evidence immutability).
+          per_card = {}
+          for proc in plan["processes"]:
+              pid = proc["id"]
+              out_path = f"evidence/packs/{pid}/checks-output.txt"
+              card_out = open(out_path).read() if os.path.exists(out_path) else ""
+              per_card[pid] = _focused_counts(card_out, proc["checks"])
+          totals = {"passed": _count_passed(pytest_output), "skipped": _count_skipped(pytest_output)}
+          json.dump({"schema_version": "check-summary.v1",
+                     "per_card": per_card, "totals": totals},
+                    open("evidence/check-summary.json", "w"), indent=2)
+          print("check-summary:", json.dumps(totals))
 
           json.dump(plan, open("evidence/plan.json", "w"), ensure_ascii=False, indent=2)
           open("evidence/candidate-branch.txt", "w").write(candidate if merged_any else "")
@@ -1320,6 +1332,7 @@ jobs:
       failed_processes: ${{ steps.adopt.outputs.failed_processes }}
       unattributed_failure: ${{ steps.adopt.outputs.unattributed_failure }}
       should_replan: ${{ steps.replan_gate.outputs.should_replan }}
+      should_revalidate: ${{ steps.replan_gate.outputs.should_revalidate }}
       validate_job_conclusion: ${{ steps.validate_conclusion.outputs.validate_job_conclusion }}
     steps:
       - name: Checkout
@@ -1694,7 +1707,7 @@ jobs:
 
   revalidate:
     name: validator revalidate (single retry, evidence pack reused)
-    needs: validate
+    needs: [validate, prep]
     if: ${{ !cancelled() && needs.validate.outputs.should_revalidate == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -1710,19 +1723,6 @@ jobs:
       should_replan: ${{ steps.replan_gate.outputs.should_replan }}
       validate_job_conclusion: ${{ steps.validate_conclusion.outputs.validate_job_conclusion }}
     steps:
-      - name: Refuse a second revalidate (at most one, fail-closed)
-        run: |
-          if [ ! -f wall-in/foreman-run.json ]; then
-            echo "foreman-run missing before revalidate guard"
-            exit 1
-          fi
-          ATTEMPTED=$(python3 -c "import json;g=json.load(open('wall-in/foreman-run.json')).get('replan_gate') or {};print('true' if g.get('revalidate_attempted') else 'false')")
-          if [ "$ATTEMPTED" = "true" ]; then
-            echo "revalidate already attempted once; refusing to run again (fail-closed)"
-            exit 1
-          fi
-          echo "first revalidate attempt: proceeding"
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -1731,6 +1731,30 @@ jobs:
         with:
           name: foreman-run-${{ github.run_id }}
           path: wall-in
+
+      - name: Refuse a second revalidate, stamp this run started (at most one, fail-closed)
+        run: |
+          if [ ! -f wall-in/foreman-run.json ]; then
+            echo "foreman-run missing before revalidate guard"
+            exit 1
+          fi
+          STARTED=$(python3 -c "import json;g=json.load(open('wall-in/foreman-run.json')).get('replan_gate') or {};print('true' if g.get('revalidate_run_started') else 'false')")
+          if [ "$STARTED" = "true" ]; then
+            echo "revalidate already ran once; refusing to run again (fail-closed)"
+            exit 1
+          fi
+          # The attempt marker is stamped when the retry session actually
+          # starts (not when adopt requested it): a first-timeout wall never
+          # talks its own one legitimate retry out of running.
+          python3 -c "
+          import json
+          w = json.load(open('wall-in/foreman-run.json'))
+          g = w.get('replan_gate') or {}
+          g['revalidate_run_started'] = True
+          w['replan_gate'] = g
+          json.dump(w, open('wall-in/foreman-run.json', 'w'), ensure_ascii=False, indent=2)
+          "
+          echo "first revalidate attempt: run-start marker stamped, proceeding"
 
       - name: Download evidence artifact (same pack, sha unchanged)
         uses: actions/download-artifact@v4
@@ -2036,8 +2060,10 @@ jobs:
 
   replan:
     name: replan (foreman revises plan or re-dispatches)
-    needs: [lead, prep, validate]
-    if: ${{ !cancelled() && needs.validate.outputs.should_replan == 'true' }}
+    needs: [lead, prep, validate, revalidate]
+    if: >-
+      ${{ !cancelled() && needs.validate.outputs.should_replan == 'true' &&
+      (needs.revalidate.result == 'success' || needs.revalidate.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -2940,7 +2966,7 @@ jobs:
 
   prep2:
     name: prep round 2 (replace rerun processes, repack evidence)
-    needs: [lead, prep, validate, replan, worker2, workers2-wall-merge]
+    needs: [lead, prep, validate, revalidate, replan, worker2, workers2-wall-merge]
     if: >-
       ${{ !cancelled() && needs.replan.result == 'success' &&
       needs.workers2-wall-merge.outputs.prep_should_run == 'true' }}
@@ -3207,20 +3233,15 @@ jobs:
           open("evidence/pytest-exit.txt", "w").write(str(pytest_exit))
           print(f"full pytest exit (round 2): {pytest_exit}")
 
-          # I-4 (round54-root-cure): check-summary.json is the authoritative
-          # count (round 2). Written BEFORE the manifest hashes the tree so
-          # the sha covers it; worker status files stay untouched.
-          per_card = {}
-          for proc in plan["processes"]:
-              pid = proc["id"]
-              out_path = f"evidence/packs/{pid}/checks-output.txt"
-              card_out = open(out_path).read() if os.path.exists(out_path) else ""
-              per_card[pid] = {"passed": _count_passed(card_out), "skipped": _count_skipped(card_out)}
-          totals = {"passed": _count_passed(pytest_output), "skipped": _count_skipped(pytest_output)}
-          json.dump({"schema_version": "check-summary.v1",
-                     "per_card": per_card, "totals": totals},
-                    open("evidence/check-summary.json", "w"), indent=2)
-          print("check-summary (round 2):", json.dumps(totals))
+          def _focused_counts(card_out, checks):
+              # I-4, scrutiny PR2-2b: a card's count is the count of THAT
+              # card's focused check (its own file-level pytest run), never a
+              # sum across the card's check commands — the card runs its
+              # focused test AND the merged suite, and 18+240 must never be
+              # reported as 258, a number corresponding to nothing. The last
+              # summary line of the FIRST check (the focused one) wins.
+              focused = (card_out.split("$ ", 2)[1] if card_out.count("$ ") else card_out) or ""
+              return {"passed": _count_passed(focused), "skipped": _count_skipped(focused)}
 
           for proc in plan["processes"]:
               pid = proc["id"]
@@ -3278,6 +3299,23 @@ jobs:
                               "diff": os.path.exists(f"{pack_dir}/diff.patch"),
                               "checks_output": True}
               info["complete"] = all(info["pack"].values()) and info["merged"] and not info.get("out_of_bounds")
+
+          # I-4 (round54-root-cure): check-summary.json is the authoritative
+          # count (round 2) — per-card counts from the focused check, written
+          # AFTER the per-card checks loop (scrutiny PR2-2) and BEFORE the
+          # manifest hashes the tree so the sha covers it. Worker status
+          # files stay untouched (evidence immutability).
+          per_card = {}
+          for proc in plan["processes"]:
+              pid = proc["id"]
+              out_path = f"evidence/packs/{pid}/checks-output.txt"
+              card_out = open(out_path).read() if os.path.exists(out_path) else ""
+              per_card[pid] = _focused_counts(card_out, proc["checks"])
+          totals = {"passed": _count_passed(pytest_output), "skipped": _count_skipped(pytest_output)}
+          json.dump({"schema_version": "check-summary.v1",
+                     "per_card": per_card, "totals": totals},
+                    open("evidence/check-summary.json", "w"), indent=2)
+          print("check-summary (round 2):", json.dumps(totals))
 
           effective_plan = dict(plan)
           effective_plan["processes"] = [rerun.get(p["id"], p) for p in plan["processes"]]
@@ -3414,6 +3452,7 @@ jobs:
       overall: ${{ steps.adopt2.outputs.overall }}
       failed_processes: ${{ steps.adopt2.outputs.failed_processes }}
       flips: ${{ steps.adopt2.outputs.flips }}
+      should_revalidate: ${{ steps.replan_gate2.outputs.should_revalidate }}
       validate2_job_conclusion: ${{ steps.validate2_conclusion.outputs.validate_job_conclusion }}
     steps:
       - name: Checkout
@@ -3784,7 +3823,7 @@ jobs:
 
   revalidate2:
     name: validator revalidate round 2 (single retry, evidence pack reused)
-    needs: validate2
+    needs: [validate2, prep2]
     if: ${{ !cancelled() && needs.validate2.outputs.should_revalidate == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -3799,19 +3838,6 @@ jobs:
       flips: ${{ steps.adopt2.outputs.flips }}
       validate2_job_conclusion: ${{ steps.validate2_conclusion.outputs.validate_job_conclusion }}
     steps:
-      - name: Refuse a second revalidate (at most one, fail-closed)
-        run: |
-          if [ ! -f wall-in/foreman-run.json ]; then
-            echo "foreman-run missing before revalidate2 guard"
-            exit 1
-          fi
-          ATTEMPTED=$(python3 -c "import json;g=json.load(open('wall-in/foreman-run.json')).get('replan_gate') or {};print('true' if g.get('revalidate_attempted') else 'false')")
-          if [ "$ATTEMPTED" = "true" ]; then
-            echo "revalidate already attempted once; refusing to run again (fail-closed)"
-            exit 1
-          fi
-          echo "first revalidate attempt: proceeding"
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -3820,6 +3846,30 @@ jobs:
         with:
           name: foreman-run-${{ github.run_id }}
           path: wall-in
+
+      - name: Refuse a second revalidate, stamp this run started (at most one, fail-closed)
+        run: |
+          if [ ! -f wall-in/foreman-run.json ]; then
+            echo "foreman-run missing before revalidate2 guard"
+            exit 1
+          fi
+          STARTED=$(python3 -c "import json;g=json.load(open('wall-in/foreman-run.json')).get('replan_gate') or {};print('true' if g.get('revalidate_run_started') else 'false')")
+          if [ "$STARTED" = "true" ]; then
+            echo "revalidate already ran once; refusing to run again (fail-closed)"
+            exit 1
+          fi
+          # The attempt marker is stamped when the retry session actually
+          # starts (not when adopt requested it): a first-timeout wall never
+          # talks its own one legitimate retry out of running.
+          python3 -c "
+          import json
+          w = json.load(open('wall-in/foreman-run.json'))
+          g = w.get('replan_gate') or {}
+          g['revalidate_run_started'] = True
+          w['replan_gate'] = g
+          json.dump(w, open('wall-in/foreman-run.json', 'w'), ensure_ascii=False, indent=2)
+          "
+          echo "first revalidate attempt: run-start marker stamped, proceeding"
 
       - name: Download evidence round 2 artifact (same pack, sha unchanged)
         uses: actions/download-artifact@v4
@@ -4144,7 +4194,7 @@ jobs:
 
   assemble:
     name: assemble (final status card, close-out, PR)
-    needs: [lead, worker, prep, validate, replan, worker2, prep2, validate2]
+    needs: [lead, worker, prep, validate, revalidate, replan, worker2, prep2, validate2, revalidate2]
     if: >-
       ${{ always() && needs.lead.result != 'skipped' &&
       needs.lead.outputs.duplicate != 'true' }}

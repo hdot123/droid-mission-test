@@ -43,10 +43,10 @@ def _embedded_prompt(step_name: str) -> str:
     assert "validator_prompt_template" in chunk, (
         f"step must build its prompt from the single-source template module: {step_name}"
     )
-    marker = str(ROOT / "REVAL_TEST_JSON")
     round_num = 1 if step_name == R1_STEP else 2
     shim = (
-        f"\nopen('{marker}', 'w').write(build_validator_prompt(['proc-a', 'proc-b'], round_num={round_num}))\n"
+        "\nopen('REVAL_TEST_JSON', 'w').write(build_validator_prompt(['proc-a', 'proc-b'], "
+        f"round_num={round_num}))\n"
     )
     body = chunk[chunk.index("python3 - <<'PY'") : chunk.index("\n          PY\n")]
     body = body[body.index("\n") + 1 :]
@@ -70,8 +70,9 @@ def _embedded_prompt(step_name: str) -> str:
             cwd=work_dir,
             env={**_os.environ, "REPO_ROOT": str(ROOT)},
         )
-    assert r.returncode == 0, r.stderr
-    return (ROOT / marker).read_text(encoding="utf-8")
+        assert r.returncode == 0, r.stderr
+        # read inside the with: the tempdir is deleted on exit
+        return (Path(work_dir) / "REVAL_TEST_JSON").read_text(encoding="utf-8")
 
 
 def test_template_module_exists():

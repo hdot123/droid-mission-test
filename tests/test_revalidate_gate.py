@@ -10,7 +10,8 @@ EXPECTED_MANIFEST_SHA, same pack) is a pure retry of one session.
 The fix: adopt_verdict writes replan_gate.should_revalidate=true on the
 draft_timeout/no-draft path (no human_stop, no closeout), and the gate gains a
 should_revalidate field consumed by the revalidate job in team.yml. Fail-closed
-stays intact: revalidate re-runs ONLY the validator, at most once; a second
+stays intact: revalidate re-runs ONLY the validator, at most once (the job's
+guard stamps revalidate_run_started when the session actually starts); a second
 failure re-terminates with human_stop.
 """
 from __future__ import annotations
@@ -120,8 +121,8 @@ def test_revalidate_already_used_second_failure_human_stop(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     """At most one revalidate: when the wall shows the revalidate already ran
-    (attempted + should_revalidate from the first kill), a second draft_timeout
-    re-terminates fail-closed with human_stop."""
+    (attempt marker stamped by the revalidate job's guard), a second
+    draft_timeout re-terminates fail-closed with human_stop."""
     monkeypatch.chdir(tmp_path)
     wall_path = tmp_path / "foreman-run.json"
     wall = init_wall(run_id="r54b2", issue_number=812)
@@ -129,7 +130,7 @@ def test_revalidate_already_used_second_failure_human_stop(
         "schema_version": "replan-gate.v1",
         "should_replan": False,
         "should_revalidate": True,
-        "revalidate_attempted": True,
+        "revalidate_run_started": True,
     }
     save_wall(wall, wall_path)
     work = _minimal_work(tmp_path)
@@ -154,7 +155,7 @@ def test_revalidate_not_duplicated_after_success(tmp_path: Path, monkeypatch: py
         "schema_version": "replan-gate.v1",
         "should_replan": False,
         "should_revalidate": True,
-        "revalidate_attempted": True,
+        "revalidate_run_started": True,
     }
     save_wall(wall, wall_path)
     work = _minimal_work(tmp_path)
@@ -229,7 +230,7 @@ def test_gate_should_revalidate_reached_terminal_round_overwrites(
         "schema_version": "replan-gate.v1",
         "should_replan": False,
         "should_revalidate": True,
-        "revalidate_attempted": True,
+        "revalidate_run_started": True,
     }
     wall["artifacts"]["team-verdict2-issue-1-run-gterm"] = {
         "complete": False,
@@ -252,7 +253,7 @@ def test_draft_timeout_derive_failure_without_human_stop(
 ):
     """derive() keeps the validate job red on a draft_timeout (fail-closed) but
     must not hard-patch human_stop while the one revalidate retry is still
-    available (revalidate_attempted false)."""
+    available (the revalidate job has not stamped its start marker)."""
     monkeypatch.chdir(tmp_path)
     wall_path = tmp_path / "foreman-run.json"
     wall = init_wall(run_id="gderive", issue_number=1)
@@ -264,7 +265,7 @@ def test_draft_timeout_derive_failure_without_human_stop(
         "schema_version": "replan-gate.v1",
         "should_replan": False,
         "should_revalidate": True,
-        "revalidate_attempted": False,
+        "revalidate_run_started": False,
     }
     save_wall(wall, wall_path)
     merged, conclusion = derive(wall)
@@ -286,7 +287,7 @@ def test_draft_timeout_terminal_derive_sets_human_stop(
     wall = json.loads(wall_path.read_text(encoding="utf-8"))
     assert wall["replan_gate"]["should_revalidate"] is True
     # the revalidate ran and its adopt died the same way
-    wall["replan_gate"]["revalidate_attempted"] = True
+    wall["replan_gate"]["revalidate_run_started"] = True
     save_wall(wall, wall_path)
     merged, conclusion = derive(wall, round_num=1)
     assert conclusion == "failure"

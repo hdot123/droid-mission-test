@@ -48,13 +48,15 @@ def derive(wall: dict, *, round_num: int = 1) -> tuple[dict, str]:
         # I-5 revalidate chain: a draft_timeout with the one validator-only
         # retry still available is not terminal — human_stop stays off so the
         # revalidate job can run. Any other adoption failure, or a draft
-        # timeout after the retry was already attempted, terminates
-        # fail-closed. I-6: a draft_timeout that nonetheless produced a
-        # complete artifact (adoption ok) never reaches this branch.
+        # timeout after the revalidate job already started (its guard stamps
+        # revalidate_run_started), terminates fail-closed. I-6: a
+        # draft_timeout that nonetheless produced a complete artifact
+        # (adoption ok) never reaches this branch. The marker read is the
+        # SAME field adopt() consumes — one truth for "the retry is spent".
         gate = merged.get("replan_gate") or {}
         revalidate_pending = (
             val.get("adoption_error") == "draft_timeout"
-            and not gate.get("revalidate_attempted")
+            and not gate.get("revalidate_run_started")
         )
         if not revalidate_pending:
             merged = deep_merge(

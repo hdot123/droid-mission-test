@@ -240,6 +240,23 @@ def _recover_salvage(
     Path("verdict.md").write_text("\n".join(md_lines), encoding="utf-8")
 
 
+def _draft_is_intact(draft_path: Path, judgeable: list) -> bool:
+    """True when the draft file parses and covers EXACTLY the judgeable set.
+
+    The wall's kill window covers the draft write itself (scrutiny PR2-1): on
+    exit 124 a torn / zero-byte / truncated draft must not be trusted by its
+    mere existence — it would crash the judge block with json.loads and get
+    relabeled droid_step_failed, escaping the revalidate chain. The file has
+    to prove its own completeness before the L-6 fast path takes it.
+    """
+    try:
+        droid = json.loads(draft_path.read_text(encoding="utf-8"))
+        entries = droid.get("processes", [])
+        return sorted(p.get("id") for p in entries) == sorted(judgeable)
+    except Exception:
+        return False
+
+
 def adopt(
     work_dir: Path,
     wall_path: Path,
@@ -299,7 +316,10 @@ def adopt(
             # recorded. A complete draft adopts normally; a sealed partial
             # covering the full judgeable set is machine-assembled into the
             # draft and adopts normally; anything less is the revalidate path.
-            if draft_path.exists():
+            # A draft that cannot prove its own completeness (torn write, the
+            # kill landing mid-file) is NOT the L-6 path — it falls through to
+            # the assembler and then to revalidate, never droid_step_failed.
+            if draft_path.exists() and _draft_is_intact(draft_path, judgeable):
                 proceed_to_judge = True
             elif judgeable:
                 assembled = assemble_assembled_draft(work_dir, judgeable)
@@ -522,11 +542,16 @@ def adopt(
     # of killing the order — the evidence pack is intact and the manifest sha
     # unchanged, so only the validator session needs a second chance. Any
     # other adoption failure, or a draft_timeout AFTER that one retry
-    # (revalidate_attempted already true), stays terminal fail-closed.
+    # (revalidate_run_started already true), stays terminal fail-closed.
+    # Requesting the retry is not the attempt itself: the marker is stamped
+    # by the revalidate job's guard when the session actually starts, so a
+    # first-timeout wall can never talk its own one legitimate retry out of
+    # running.
+    gate = wall.get("replan_gate") or {}
     revalidate_requested = (
         adoption_status == "failed"
         and adoption_error == "draft_timeout"
-        and not ((wall.get("replan_gate") or {}).get("revalidate_attempted"))
+        and not gate.get("revalidate_run_started")
     )
     # W-12 session accounting: a timeout is a timeout even when the artifacts
     # on disk were good enough to adopt (I-6) — the budget ledger keeps the
@@ -536,16 +561,14 @@ def adopt(
     if adoption_status == "failed":
         gate_patch = {
             "schema_version": "replan-gate.v1",
-            "should_replan": bool(
-                (wall.get("replan_gate") or {}).get("should_replan")
-            ),
+            "should_replan": bool(gate.get("should_replan")),
             "should_revalidate": bool(revalidate_requested),
+            "revalidate_run_started": bool(gate.get("revalidate_run_started")),
         }
-        if revalidate_requested:
-            gate_patch["revalidate_attempted"] = True
-            # The revalidate request is NOT terminal: no human_stop, no
-            # closeout — the retry job consumes the flag.
-        else:
+        if not revalidate_requested:
+            # Terminal: human_stop + closeout. A revalidate request (the
+            # pending retry) is the one non-terminal failed shape — no
+            # human_stop, no closeout; the retry job consumes the flag.
             patch["human_stop"] = True
             patch["closeout"] = {
                 "schema_version": "closeout-slice.v1",
@@ -555,10 +578,9 @@ def adopt(
     else:
         gate_patch = {
             "schema_version": "replan-gate.v1",
-            "should_replan": bool(
-                (wall.get("replan_gate") or {}).get("should_replan")
-            ),
+            "should_replan": bool(gate.get("should_replan")),
             "should_revalidate": False,
+            "revalidate_run_started": bool(gate.get("revalidate_run_started")),
         }
         patch["replan_gate"] = gate_patch
     if judgeable == [] and droid_exit is None and adoption_status == "ok":
