@@ -126,8 +126,14 @@ def test_full_analysis_kill_recovers_all_verdicts(r52b_env):
     """The exact 52B death replay: all three analyses done, conclusions all pass,
     killed before the draft files were written (they never existed).
 
-    With the fix, the incremental verdict file holds all three conclusions and
-    adopt recovers them instead of returning an empty verdict list."""
+    U-3 (round54-root-cure PR-2) overturns the M3-era contract "recovery never
+    upgrades the verdict": artifact completeness on disk now outranks the exit
+    code. The r52b fixtures were recorded WITHOUT the D-2 seal (the seal did
+    not exist yet), so this shape still routes to the revalidate chain — the
+    recovered conclusions survive, pytest_exit stays None (no merged-suite
+    evidence may be smuggled in), and no human_stop fires while the one retry
+    is available. The adoptable sealed variant is pinned in
+    test_artifact_first_adoption.py."""
     wall_path, work, analyses = r52b_env
     salvage = salvage_verdict(
         work,
@@ -143,9 +149,11 @@ def test_full_analysis_kill_recovers_all_verdicts(r52b_env):
     rc = adopt(work, wall_path, droid_exit=124, merge_step_ran=False)
     assert rc == 0
     merged = json.loads(wall_path.read_text(encoding="utf-8"))
-    # The session still timed out: adoption keeps fail-closed accounting.
+    # Unsealed full partial -> the draft_timeout revalidate path (VAL-P1-002).
     assert merged["validation"]["adoption_status"] == "failed"
     assert merged["validation"]["adoption_error"] == "draft_timeout"
+    assert merged.get("human_stop") is not True
+    assert merged["replan_gate"]["should_revalidate"] is True
     verdict = json.loads(Path("verdict.json").read_text(encoding="utf-8"))
     recovered = {p["id"]: p["verdict"] for p in verdict["processes"]}
     assert recovered == {pid: "pass" for pid in PIDS}
@@ -181,3 +189,38 @@ def test_partial_salvage_file_is_not_forged_by_success(r52b_env):
     # evidence) and overall staying fail regardless of claimed passes.
     assert verdict["overall"] == "fail"
     assert verdict["pytest_exit"] is None
+
+
+def test_full_analysis_kill_with_seal_adopts_normally(r52b_env):
+    """U-3 inversion, sealed variant: the same full analysis kill, but the
+    partial carries the D-2 seal — the machine assembles the draft and
+    adoption is a NORMAL ok adoption (the 52B conclusions were real and
+    complete; the exit code no longer vetoes them)."""
+    wall_path, work, analyses = r52b_env
+    salvage = salvage_verdict(
+        work,
+        analyzed={
+            pid: {"verdict": "pass", "reason": analyses[pid][:200]} for pid in PIDS
+        },
+        conflicts=[],
+        round_num=1,
+        final=True,
+    )
+    (work / "verdict-partial.json").write_text(
+        json.dumps(salvage, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    rc = adopt(work, wall_path, droid_exit=124, merge_step_ran=False)
+    assert rc == 0
+    merged = json.loads(wall_path.read_text(encoding="utf-8"))
+    assert merged["validation"]["adoption_status"] == "ok"
+    assert merged.get("human_stop") is not True
+    verdict = json.loads(Path("verdict.json").read_text(encoding="utf-8"))
+    # The r52b evidence pack is complete with pytest_exit=0 (all packs green),
+    # so the assembled verdict carries the same machine-gated pass a live
+    # draft would have produced.
+    assert verdict["overall"] == "pass"
+    assert verdict["pytest_exit"] == 0
+    assert verdict["salvage_assembled"] is True
+    recovered = {p["id"]: p["verdict"] for p in verdict["processes"]}
+    assert recovered == {pid: "pass" for pid in PIDS}
+    validate_with_jsonschema(merged)

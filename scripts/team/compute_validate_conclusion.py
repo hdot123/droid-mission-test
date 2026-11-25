@@ -22,16 +22,18 @@ def derive(wall: dict, *, round_num: int = 1) -> tuple[dict, str]:
             None,
         )
     complete = bool((wall.get("artifacts") or {}).get(art_key or "", {}).get("complete"))
+    # I-6: the session outcome is bookkeeping, not a verdict — when the
+    # artifacts on disk were complete enough to adopt (a timeout kill after
+    # the draft / sealed partial was written, L-6), the round is judged on
+    # the artifacts like any other. Two outcomes still never clear the job
+    # on their own: a skipped validator session (no judgeable processes —
+    # the round-53 C accounting value) and a session that never started.
     session = (wall.get("budgets") or {}).get("session_outcome") or {}
-    session_bad = session.get("completion_status") in (
-        "timeout",
-        "droid_failed",
+    status = session.get("completion_status")
+    session_bad = status in (
         "missing_output",
-        # The round-53 accounting value for "no judgeable processes, droid
-        # step skipped": an unstarted validator session never clears the
-        # validate job on its own.
         "skipped_no_judgeable",
-    )
+    ) or (status == "droid_failed" and not complete)
     # 52A fix: an escalated work-order conflict keeps the validate job red —
     # a contradiction in the order is never a silent green for downstream.
     escalated = bool(val.get("conflicts_escalated"))
@@ -47,7 +49,8 @@ def derive(wall: dict, *, round_num: int = 1) -> tuple[dict, str]:
         # retry still available is not terminal — human_stop stays off so the
         # revalidate job can run. Any other adoption failure, or a draft
         # timeout after the retry was already attempted, terminates
-        # fail-closed.
+        # fail-closed. I-6: a draft_timeout that nonetheless produced a
+        # complete artifact (adoption ok) never reaches this branch.
         gate = merged.get("replan_gate") or {}
         revalidate_pending = (
             val.get("adoption_error") == "draft_timeout"

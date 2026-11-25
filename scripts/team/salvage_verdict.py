@@ -33,6 +33,7 @@ def salvage_verdict(
     analyzed: dict[str, dict],
     conflicts: list[dict] | None = None,
     round_num: int = 1,
+    final: bool = False,
 ) -> dict:
     """Build the persisted per-process verdict document (one write per analysis).
 
@@ -40,6 +41,11 @@ def salvage_verdict(
     analysis has FINISHED. It never includes claims about processes that were
     not analyzed, and the pytest exit is intentionally absent: without the
     merged-suite evidence there is no basis for an overall pass.
+
+    `final` is the D-2 seal: the validator asserts this partial file is its
+    deliverable (analysis finished for the processes it covers). Only a
+    sealed partial whose coverage equals the judgeable set is adoptable
+    (see salvage_assemble.py / adopt_verdict.py).
     """
     entries = []
     for pid, entry in (analyzed or {}).items():
@@ -53,6 +59,7 @@ def salvage_verdict(
     return {
         "salvage_schema_version": "validator-partial.v1",
         "round": round_num,
+        "final": bool(final),
         "analyzed_count": len(entries),
         "processes": entries,
         "conflicts": clean_conflicts,
@@ -63,6 +70,7 @@ def _empty_doc(round_num: int) -> dict:
     return {
         "salvage_schema_version": "validator-partial.v1",
         "round": round_num,
+        "final": False,
         "analyzed_count": 0,
         "processes": [],
         "conflicts": [],
@@ -77,14 +85,20 @@ def record_verdict(
     reason: str = "",
     conflicts: list[dict] | None = None,
     round_num: int = 1,
+    final: bool = False,
 ) -> dict:
     """Persist one process's conclusion immediately after analyzing it (the
-    per-process write discipline; idempotent per process within a round)."""
+    per-process write discipline; idempotent per process within a round).
+
+    `final=True` stamps the D-2 seal. The seal is sticky: a later unsealed
+    write (a late recorder call) must not unseal an already-sealed partial.
+    """
     doc = salvage_verdict(
         work_dir,
         analyzed={pid: {"verdict": verdict, "reason": reason}},
         conflicts=conflicts,
         round_num=round_num,
+        final=final,
     )
     entry = doc["processes"][0]
     path = work_dir / PARTIAL_NAME
@@ -104,9 +118,11 @@ def record_verdict(
     }
     for c in doc["conflicts"]:
         conflicts_merged[c["process"]] = c
+    sealed = bool(current.get("final")) or bool(doc.get("final"))
     out = {
         "salvage_schema_version": "validator-partial.v1",
         "round": round_num,
+        "final": sealed,
         "analyzed_count": len(processes),
         "processes": processes,
         "conflicts": list(conflicts_merged.values()),
@@ -134,6 +150,7 @@ def read_salvage(work_dir: Path, *, round_num: int = 1) -> dict | None:
     return {
         "salvage_schema_version": doc["salvage_schema_version"],
         "round": doc["round"],
+        "final": bool(doc.get("final")),
         "analyzed_count": len(entries),
         "processes": entries,
         "conflicts": [
@@ -148,14 +165,41 @@ def main() -> int:
     p.add_argument("--process", required=True, help="process id")
     p.add_argument("--verdict", required=True, choices=("pass", "fail"))
     p.add_argument("--reason", default="")
+    p.add_argument(
+        "--conflict",
+        action="append",
+        default=[],
+        metavar="PROCESS|SUMMARY|EVIDENCE",
+        help="escalate one work-order conflict (repeatable); fields separated by |",
+    )
+    p.add_argument(
+        "--final",
+        action="store_true",
+        help="D-2 seal: this partial is the validator's deliverable "
+        "(adoptable only with full judgeable coverage)",
+    )
     p.add_argument("--round", type=int, default=1)
     args = p.parse_args()
+    conflicts = []
+    for raw in args.conflict:
+        parts = raw.split("|")
+        if len(parts) != 3 or not all(part.strip() for part in parts):
+            print(
+                f"invalid --conflict {raw!r}: expected PROCESS|SUMMARY|EVIDENCE",
+                file=sys.stderr,
+            )
+            return 2
+        conflicts.append(
+            {"process": parts[0].strip(), "summary": parts[1].strip(), "evidence": parts[2].strip()}
+        )
     out = record_verdict(
         Path(args.work_dir),
         pid=args.process,
         verdict=args.verdict,
         reason=args.reason,
+        conflicts=conflicts,
         round_num=args.round,
+        final=args.final,
     )
     print(f"recorded {args.process}={args.verdict} (analyzed {out['analyzed_count']} so far)")
     return 0

@@ -71,9 +71,9 @@ def build_validator_prompt(judgeable: list[str], *, round_num: int = 1) -> str:
           - {evidence_line}
           {packs}
 
-          SESSION DISCIPLINE (mandatory, do first): after you finish analyzing each process, IMMEDIATELY persist that one conclusion by running the verdict-recorder tool, then move on to the next process:
+          SESSION DISCIPLINE (mandatory, do first): work through the processes one at a time — read one piece of evidence, IMMEDIATELY persist that one conclusion by running the verdict-recorder tool, then move on to the next piece:
           {_recorder_line(round_num)}
-          Run it once per judged process as soon as its analysis is done — never batch all conclusions at the end. The recorder file survives a session timeout; conclusions that live only in your reasoning are lost when the session is killed.
+          FALLBACK: if you have already formed conclusions for several processes, record them all in the same turn right away — late is better than never. The recorder file survives a session timeout; conclusions that live only in your reasoning are lost when the session is killed.
 
           Write exactly two files in this directory at the END (after every process has been recorded above):
           1. verdict-droid.json with this shape:
@@ -93,8 +93,9 @@ def build_validator_prompt(judgeable: list[str], *, round_num: int = 1) -> str:
           - Pass a process only when its card, handoff, status, diff, and check outputs line up.
           - HARD RULE — a red mandated check is never a pass: if any entry in packs/<id>/checks-exit.json has a non-zero "exit", or packs/<id>/checks-failed.marker exists, you MUST judge that process "fail", however well the five artifacts line up. Alignment proves the evidence is honest, not that the work passed. In the reason, cite the failed check command(s) and exit code(s) from checks-exit.json. One exception: exit 127 recorded because pytest was unavailable does not count under this rule (that is an environment failure, judged via the pack/manifest evidence).
           - If a process's status.json or handoff.md explicitly flags a conflict outside its card or inside the work order itself (for example a body-vs-acceptance mismatch) and neither the card nor the plan addresses it, you MUST record it in the top-level "conflicts" array — do not bury it in a reason and do not silently pass over it. Recording a conflict does not by itself change that process's verdict: judge the card as written; the conflict is escalated for a human to see, and a verdict carrying any escalated conflict is treated as fail by the machine gates.
+          - NOT conflicts: the team/handoffs/* and team/status/* files are protocol artifacts the pipeline itself maintains (they are whitelisted for the workers); their presence or absence is never an out-of-card conflict. A count difference between any pre-merge report and check-summary.json is bookkeeping, not a conflict — check-summary.json is the single authoritative count.
+          - Authoritative counts: check-summary.json (per-card passed/skipped and merged totals) is the ONLY authoritative test-count source. Do not recount from worker status files and do not treat a mismatch as evidence of tampering.
           - Judge only from the evidence in this directory. Do not modify any evidence file.
-          - Be efficient: at most 12 tool calls, then write the verdict files.
           """
 
 

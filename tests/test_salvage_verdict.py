@@ -75,10 +75,14 @@ def test_schema_error_shape_round_trips(tmp_path: Path):
     record_verdict(tmp_path, pid="bell", verdict="pass", reason="clean")
     doc = json.loads((tmp_path / PARTIAL_NAME).read_text(encoding="utf-8"))
     assert doc["salvage_schema_version"] == "validator-partial.v1"
+    # PR-2 (D-2): the partial carries the final seal key (false until the
+    # validator stamps --final); see test_salvage_verdict_cli_flags.py.
     assert set(doc) == {
         "salvage_schema_version",
         "round",
+        "final",
         "analyzed_count",
         "processes",
         "conflicts",
     }
+    assert doc["final"] is False

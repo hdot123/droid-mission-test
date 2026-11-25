@@ -1,0 +1,55 @@
+{
+  "summary": "并发 A 单：三个独立标准库小组件——东正教复活节日期计算、无权无向图邻接表、Damm 校验位，各配独立测试文件，仅新增六个文件。",
+  "processes": [
+    {
+      "id": "damm",
+      "title": "实现 Damm 算法校验位 damm.py",
+      "scope": "只拥有新增 damm.py 与 tests/test_damm.py；不拥有 easterorthodox.py、graph.py、任何存量文件或 team/ 路径。实现与测试只用标准库，不 import 另外两个组件。",
+      "files": [
+        "damm.py",
+        "tests/test_damm.py"
+      ],
+      "task": "在仓库根目录新增两个文件：damm.py 与 tests/test_damm.py（只新增，不改任何存量文件；标准库 only；不 import easterorthodox 或 graph）。逐字实现以下验收规格：\n\n三、damm.py —— Damm 算法校验位\n\n- 准群运算表钉死如下（行 = 当前中间位 interim，列 = 下一位数字，初始 interim = 0，逐位替换 interim = 表[interim][数字]）：\n  - 行 0：0 3 1 7 5 9 8 6 4 2\n  - 行 1：7 0 9 2 1 5 4 8 6 3\n  - 行 2：4 2 0 6 8 7 1 3 5 9\n  - 行 3：1 7 5 0 9 8 3 4 2 6\n  - 行 4：6 1 2 3 0 4 5 9 7 8\n  - 行 5：3 6 7 4 2 0 9 5 8 1\n  - 行 6：5 8 6 9 7 2 0 1 3 4\n  - 行 7：8 9 4 5 3 6 2 0 1 7\n  - 行 8：9 4 3 8 6 1 7 2 0 5\n  - 行 9：2 5 8 1 4 3 6 7 9 0\n- `damm_check_digit(number) -> str`：number 为不含校验位的数字串，返回一位校验位字符串（即全串处理后的最终 interim，因表对角线全 0，校验位直接取 interim 本身、无附加变换）。\n- `damm_validate(number) -> bool`：number 为含校验位的完整数字串，全串处理后 interim == 0 返回 True，否则 False。\n- 两函数的入参：非 str 抛 TypeError；空串或含非 ASCII 数字字符抛 ValueError。\n- 验收要点：`damm_check_digit(\"572\") == \"4\"`（公开示例）；`damm_validate(\"5724\") is True`（公开示例）；`damm_validate(\"5742\") is False`（相邻换位必被检出）；`damm_check_digit(\"123\") == \"4\"`；`damm_check_digit(\"0\") == \"0\"`；`damm_check_digit(\"42\") == \"7\"`；`damm_check_digit(\"987654321\") == \"5\"`；`damm_check_digit(\"2024\") == \"0\"`；`damm_validate(\"1234\") is True`；`damm_validate(\"1235\") is False`；`damm_validate(\"427\") is True`；`damm_check_digit(572)` 抛 TypeError；`damm_check_digit(\"\")`、`damm_check_digit(\"57a\")`、`damm_validate(\"57 24\")` 抛 ValueError。\n- 每个验收要点都要有对应测试用例。checks（逐字）：`python3 -m pytest tests/test_damm.py -q`、`python3 -m pytest tests/ -q`",
+      "checks": [
+        "python3 -m pytest tests/test_damm.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 817,
+      "sub_issue_linked": true
+    },
+    {
+      "id": "easterorthodox",
+      "title": "实现东正教复活节公历日期计算 easterorthodox.py",
+      "scope": "只拥有新增 easterorthodox.py 与 tests/test_easterorthodox.py；不拥有 graph.py、damm.py、任何存量文件或 team/ 路径。实现与测试只用标准库，不 import 另外两个组件。",
+      "files": [
+        "easterorthodox.py",
+        "tests/test_easterorthodox.py"
+      ],
+      "task": "在仓库根目录新增两个文件：easterorthodox.py 与 tests/test_easterorthodox.py（只新增，不改任何存量文件；标准库 only；不 import graph 或 damm）。逐字实现以下验收规格：\n\n一、easterorthodox.py —— 东正教复活节（公历日期）\n\n- `orthodox_easter(year) -> tuple[int, int]`：返回该年东正教复活节在**公历**下的 (month, day)。算法钉死两步：① Julian computus——a = year % 4、b = year % 7、c = year % 19、d = (19c + 15) % 30、e = (2a + 4b − d + 34) % 7、儒略历月 = (d + e + 114) // 31、儒略历日 = ((d + e + 114) % 31) + 1；② 换公历——把儒略历日期加上偏移量 (year // 100 − year // 400 − 2) 天，得公历日期，取其 (month, day) 返回。\n- year 须为 int（bool 拒），非 int 抛 TypeError；year 不在 1583 ≤ year ≤ 9999 抛 ValueError。\n- 验收要点：`orthodox_easter(2010) == (4, 4)`；`orthodox_easter(2016) == (5, 1)`；`orthodox_easter(2020) == (4, 19)`；`orthodox_easter(2021) == (5, 2)`；`orthodox_easter(2022) == (4, 24)`；`orthodox_easter(2023) == (4, 16)`；`orthodox_easter(2024) == (5, 5)`；`orthodox_easter(2025) == (4, 20)`；`orthodox_easter(2026) == (4, 12)`；`orthodox_easter(2000) == (4, 30)`；`orthodox_easter(1900) == (4, 22)`；`orthodox_easter(2100) == (5, 2)`；`orthodox_easter(1582)`、`orthodox_easter(10000)` 抛 ValueError；`orthodox_easter(2024.0)`、`orthodox_easter(\"2024\")`、`orthodox_easter(True)` 抛 TypeError。\n- 每个验收要点都要有对应测试用例。checks（逐字）：`python3 -m pytest tests/test_easterorthodox.py -q`、`python3 -m pytest tests/ -q`",
+      "checks": [
+        "python3 -m pytest tests/test_easterorthodox.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 818,
+      "sub_issue_linked": true
+    },
+    {
+      "id": "graph",
+      "title": "实现无权无向图邻接表 graph.py",
+      "scope": "只拥有新增 graph.py 与 tests/test_graph.py；不拥有 easterorthodox.py、damm.py、任何存量文件或 team/ 路径。实现与测试只用标准库，不 import 另外两个组件。",
+      "files": [
+        "graph.py",
+        "tests/test_graph.py"
+      ],
+      "task": "在仓库根目录新增两个文件：graph.py 与 tests/test_graph.py（只新增，不改任何存量文件；标准库 only；不 import easterorthodox 或 damm）。逐字实现以下验收规格：\n\n二、graph.py —— 无权无向图（邻接表）\n\n- 类 `Graph`，节点名限定为 str。`Graph()` 建空图。\n- `add_node(v)`：v 非 str 抛 TypeError；已存在则无操作（幂等）。\n- `add_edge(u, v)`：任一端点非 str 抛 TypeError；u == v（自环）抛 ValueError；端点不存在时自动加入；重复边无操作。无向边双向登记。\n- `nodes() -> list`：全部节点名字典序升序列表。\n- `neighbors(v) -> list`：v 的邻居字典序升序列表；v 不在图中抛 ValueError。\n- `bfs(start) -> list`：广度优先访问序——从 start 出发，每次出队一个节点并把其未访问邻居按字典序升序依次入队；start 不在图中抛 ValueError；只含 start 所在连通分量。\n- `dfs(start) -> list`：深度优先先序，等价于递归定义——访问节点后，按字典序升序依次对每个未访问邻居递归深入；start 不在图中抛 ValueError；只含 start 所在连通分量。\n- `connected_components() -> list[list]`：每个分量为字典序升序列表；分量之间按各自最小元素升序排列。\n- `has_path(u, v) -> bool`：任一端点不在图中抛 ValueError；u == v 且在图中返回 True。\n- 验收要点（图 G 由边 (a,b)、(a,c)、(b,d)、(c,d)、(d,e) 与孤立节点 z 构成）：`G.nodes() == [\"a\", \"b\", \"c\", \"d\", \"e\", \"z\"]`；`G.neighbors(\"d\") == [\"b\", \"c\", \"e\"]`；`G.neighbors(\"z\") == []`；`G.bfs(\"a\") == [\"a\", \"b\", \"c\", \"d\", \"e\"]`；`G.dfs(\"a\") == [\"a\", \"b\", \"d\", \"c\", \"e\"]`；`G.bfs(\"z\") == [\"z\"]`；`G.connected_components() == [[\"a\", \"b\", \"c\", \"d\", \"e\"], [\"z\"]]`；`G.has_path(\"a\", \"e\") is True`；`G.has_path(\"a\", \"z\") is False`；`G.has_path(\"a\", \"a\") is True`；图 G2 由边 (m,n)、(m,o)、(n,p)、(o,p)、(p,q) 构成：`G2.bfs(\"m\") == [\"m\", \"n\", \"o\", \"p\", \"q\"]`、`G2.dfs(\"m\") == [\"m\", \"n\", \"p\", \"o\", \"q\"]`；空图 `Graph().nodes() == []`、`Graph().connected_components() == []`；`G.add_edge(\"a\", \"a\")`、`G.neighbors(\"q\")`、`G.bfs(\"q\")`、`G.has_path(\"a\", \"q\")` 抛 ValueError；`G.add_node(1)`、`G.add_edge(\"a\", 2)` 抛 TypeError；对 G 重复 `add_edge(\"a\", \"b\")` 后 `G.neighbors(\"a\") == [\"b\", \"c\"]`（重复边无操作）。\n- 每个验收要点都要有对应测试用例。checks（逐字）：`python3 -m pytest tests/test_graph.py -q`、`python3 -m pytest tests/ -q`",
+      "checks": [
+        "python3 -m pytest tests/test_graph.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 819,
+      "sub_issue_linked": true
+    }
+  ],
+  "plan_version": 1,
+  "iteration": 1
+}
