@@ -28,6 +28,7 @@ from pathlib import Path
 
 from budget_resolve import adopt_session_completion_status
 from foreman_run_lib import deep_merge, load_wall, save_wall
+from salvage_assemble import assemble_assembled_draft
 from salvage_verdict import read_salvage
 
 ADOPTION_ERRORS = {
@@ -197,6 +198,9 @@ def adopt(
     # Assigned before the try so the accounting tail below can never hit an
     # unbound name when this step died before reading the precheck outputs.
     judgeable: list = []
+    # Set when adoption proceeded on a machine-assembled draft (I-6): the
+    # verdict is then annotated with salvage_assembled for auditability.
+    assembled_draft = False
 
     manifest_path = work_dir / "manifest.json"
     plan_path = work_dir / "plan.json"
@@ -214,13 +218,35 @@ def adopt(
 
         expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
         actual_sha = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        proceed_to_judge = False
         if expected_sha and actual_sha != expected_sha:
             adoption_status = "failed"
             adoption_error = "evidence_tampered"
         elif droid_exit == 124:
-            adoption_status = "failed"
-            adoption_error = "draft_timeout"
-            if not draft_path.exists():
+            # I-6 / L-6 (U-3): artifact completeness outranks the exit code —
+            # the wall often kills the session during its censored tail after
+            # the draft was already written, or after every conclusion was
+            # recorded. A complete draft adopts normally; a sealed partial
+            # covering the full judgeable set is machine-assembled into the
+            # draft and adopts normally; anything less is the revalidate path.
+            if draft_path.exists():
+                proceed_to_judge = True
+            elif judgeable:
+                assembled = assemble_assembled_draft(work_dir, judgeable)
+                if assembled is not None:
+                    draft_path.write_text(
+                        json.dumps(assembled, ensure_ascii=False, indent=2) + "\n",
+                        encoding="utf-8",
+                    )
+                    assembled_draft = True
+                    proceed_to_judge = True
+                else:
+                    adoption_status = "failed"
+                    adoption_error = "draft_timeout"
+                    _recover_salvage(work_dir, plan, blocked, adoption_error, round_num)
+            else:
+                adoption_status = "failed"
+                adoption_error = "draft_timeout"
                 _recover_salvage(work_dir, plan, blocked, adoption_error, round_num)
         elif not merge_step_ran and not draft_path.exists():
             adoption_status = "failed"
@@ -231,6 +257,8 @@ def adopt(
             adoption_error = "missing_draft"
             _recover_salvage(work_dir, plan, blocked, adoption_error, round_num)
         else:
+            proceed_to_judge = True
+        if proceed_to_judge:
             verdicts: dict[str, dict] = {}
             droid = {}
             if judgeable:
@@ -320,11 +348,19 @@ def adopt(
                     }
                     if flips:
                         verdict["flips"] = flips
+                    if assembled_draft:
+                        verdict["salvage_assembled"] = True
                     Path("verdict.json").write_text(
                         json.dumps(verdict, ensure_ascii=False, indent=2) + "\n",
                         encoding="utf-8",
                     )
                     md_lines = ["## 采认", f"- adoption_status: **{adoption_status}**", ""]
+                    if assembled_draft:
+                        md_lines.append(
+                            "- 草稿由机器组装（verdict-partial.json 全盖 judgeable＋收口标记），"
+                            "会话退出码不参与判定；机器闸照常适用"
+                        )
+                        md_lines.append("")
                     if (work_dir / "verdict-droid.md").exists():
                         md_lines.append((work_dir / "verdict-droid.md").read_text(encoding="utf-8"))
                     if escalated:
@@ -402,28 +438,39 @@ def adopt(
         and adoption_error == "draft_timeout"
         and not ((wall.get("replan_gate") or {}).get("revalidate_attempted"))
     )
-    if adoption_status == "failed" and not revalidate_requested:
-        patch["human_stop"] = True
-        patch["closeout"] = {
-            "schema_version": "closeout-slice.v1",
-            "run_must_fail": True,
-        }
-    gate_patch = {
-        "schema_version": "replan-gate.v1",
-        "should_replan": bool(
-            (wall.get("replan_gate") or {}).get("should_replan")
-        ),
-        "should_revalidate": bool(revalidate_requested),
-    }
-    if revalidate_requested:
-        gate_patch["revalidate_attempted"] = True
-    elif adoption_status == "ok":
-        # A successful adoption IS the revalidate outcome: clear the flag so
-        # the gate cannot keep requesting a retry that already happened.
-        gate_patch["should_revalidate"] = False
-    patch["replan_gate"] = gate_patch
+    # W-12 session accounting: a timeout is a timeout even when the artifacts
+    # on disk were good enough to adopt (I-6) — the budget ledger keeps the
+    # real session outcome; only the adoption verdict follows the artifacts.
     session_status = adopt_session_completion_status(droid_exit)
     role = "validator" if round_num == 1 else "validator2"
+    if adoption_status == "failed":
+        gate_patch = {
+            "schema_version": "replan-gate.v1",
+            "should_replan": bool(
+                (wall.get("replan_gate") or {}).get("should_replan")
+            ),
+            "should_revalidate": bool(revalidate_requested),
+        }
+        if revalidate_requested:
+            gate_patch["revalidate_attempted"] = True
+            # The revalidate request is NOT terminal: no human_stop, no
+            # closeout — the retry job consumes the flag.
+        else:
+            patch["human_stop"] = True
+            patch["closeout"] = {
+                "schema_version": "closeout-slice.v1",
+                "run_must_fail": True,
+            }
+        patch["replan_gate"] = gate_patch
+    else:
+        gate_patch = {
+            "schema_version": "replan-gate.v1",
+            "should_replan": bool(
+                (wall.get("replan_gate") or {}).get("should_replan")
+            ),
+            "should_revalidate": False,
+        }
+        patch["replan_gate"] = gate_patch
     if judgeable == [] and droid_exit is None and adoption_status == "ok":
         # Round-53 C artifact: with zero judgeable processes the workflow's
         # judging `if` skips the droid session entirely (no droid-exit.txt,
@@ -455,7 +502,11 @@ def adopt(
     merged = deep_merge(wall, patch)
     save_wall(merged, wall_path)
     print("adoption:", adoption_status, adoption_error or "")
-    return 0 if complete or adoption_status == "failed" else 1
+    # The wall is the truth surface: the step's exit code carries no verdict
+    # (job red/green comes from the wall-driven conclusion steps), exactly
+    # like the pre-I-6 contract — terminal failures land human_stop on the
+    # wall, revalidate requests land the gate flag.
+    return 0
 
 
 def main() -> int:

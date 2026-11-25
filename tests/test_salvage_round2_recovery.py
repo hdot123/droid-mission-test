@@ -122,7 +122,10 @@ def test_prompted_round2_records_survive_validate2_kill(r52b_round2_env):
 def test_prompted_round2_full_kill_recovers_all_conclusions(r52b_round2_env):
     """52B loss shape on the round-2 path: every process analyzed and recorded
     via the prompted command, killed before the draft — adopt2 recovers all of
-    them, never zero."""
+    them, never zero. U-3 (PR-2): the unsealed shape routes to the revalidate
+    chain instead of terminating (the round-2 revalidate job re-runs the
+    validator); the sealed variant adopts normally (see
+    test_artifact_first_adoption.py)."""
     wall_path, work = r52b_round2_env
     prompt = _validator_prompt(round_num=2)
     for pid in PIDS:
@@ -137,6 +140,9 @@ def test_prompted_round2_full_kill_recovers_all_conclusions(r52b_round2_env):
     assert verdict["overall"] == "fail"
     assert verdict["pytest_exit"] is None
     merged = json.loads(wall_path.read_text(encoding="utf-8"))
+    assert merged["round2"]["validation"]["adoption_error"] == "draft_timeout"
+    assert merged.get("human_stop") is not True
+    assert merged["replan_gate"]["should_revalidate"] is True
     validate_with_jsonschema(merged)
 
 
