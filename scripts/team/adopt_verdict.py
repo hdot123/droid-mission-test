@@ -391,12 +391,37 @@ def adopt(
             }
         },
     }
-    if adoption_status == "failed":
+    # I-5 revalidate chain: a first draft_timeout (wall-killed validator, no
+    # complete verdict artifact) is retried once by the revalidate job instead
+    # of killing the order — the evidence pack is intact and the manifest sha
+    # unchanged, so only the validator session needs a second chance. Any
+    # other adoption failure, or a draft_timeout AFTER that one retry
+    # (revalidate_attempted already true), stays terminal fail-closed.
+    revalidate_requested = (
+        adoption_status == "failed"
+        and adoption_error == "draft_timeout"
+        and not ((wall.get("replan_gate") or {}).get("revalidate_attempted"))
+    )
+    if adoption_status == "failed" and not revalidate_requested:
         patch["human_stop"] = True
         patch["closeout"] = {
             "schema_version": "closeout-slice.v1",
             "run_must_fail": True,
         }
+    gate_patch = {
+        "schema_version": "replan-gate.v1",
+        "should_replan": bool(
+            (wall.get("replan_gate") or {}).get("should_replan")
+        ),
+        "should_revalidate": bool(revalidate_requested),
+    }
+    if revalidate_requested:
+        gate_patch["revalidate_attempted"] = True
+    elif adoption_status == "ok":
+        # A successful adoption IS the revalidate outcome: clear the flag so
+        # the gate cannot keep requesting a retry that already happened.
+        gate_patch["should_revalidate"] = False
+    patch["replan_gate"] = gate_patch
     session_status = adopt_session_completion_status(droid_exit)
     role = "validator" if round_num == 1 else "validator2"
     if judgeable == [] and droid_exit is None and adoption_status == "ok":

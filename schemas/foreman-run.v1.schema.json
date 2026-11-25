@@ -172,6 +172,8 @@
       "properties": {
         "schema_version": { "const": "replan-gate.v1" },
         "should_replan": { "type": "boolean" },
+        "should_revalidate": { "type": "boolean" },
+        "revalidate_attempted": { "type": "boolean" },
         "reasons": { "type": "array", "items": { "type": "string" } },
         "inputs_satisfied": {
           "type": "object",
