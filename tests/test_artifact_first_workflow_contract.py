@@ -158,21 +158,27 @@ def test_revalidate_job_routes_through_library_merge(yml, job_key: str):
     assert "compute_replan_gate.py" in text
 
 
-def test_no_merge_step_exits_on_final_coverage_mismatch_alone(yml):
+@pytest.mark.parametrize(
+    "job_key",
+    ["validate", "validate2", "revalidate", "revalidate2"],
+)
+def test_no_merge_step_exits_on_final_coverage_mismatch_alone(yml, job_key: str):
     """The A/C death line is defanged: the final-coverage-mismatch print no
     longer sits in an immediate `sys.exit(1)` branch — the merge step fills
     the missing processes as blocked and lets the adopt library classify
-    (revalidate path). Pin: the line's branch tail contains no bare exit."""
-    for job_key in ("validate", "validate2"):
-        text = _job_text(yml, job_key)
-        assert "assemble_assembled_draft" in text
-        idx = text.find("final coverage mismatch")
-        assert idx != -1, f"{job_key}: mismatch handler expected"
-        tail = text[idx : idx + 500]
-        assert "sys.exit(1)" not in tail.split("#")[0] or "routing through adopt classification" in tail, (
-            f"{job_key}: the A/C death line must route through adopt classification, not exit"
-        )
-        assert "routing through adopt classification" in tail
+    (revalidate path). Pin: the line's branch tail contains no bare exit.
+    All four judging jobs share the defused shape (PR-2 carry-over: the
+    revalidate jobs' inline copies were demoted from exit-1 to the same
+    classification routing)."""
+    text = _job_text(yml, job_key)
+    assert "assemble_assembled_draft" in text, f"{job_key} must accept assembled drafts"
+    idx = text.find("final coverage mismatch")
+    assert idx != -1, f"{job_key}: mismatch handler expected"
+    tail = text[idx : idx + 500]
+    assert "sys.exit(1)" not in tail.split("#")[0] or "routing through adopt classification" in tail, (
+        f"{job_key}: the A/C death line must route through adopt classification, not exit"
+    )
+    assert "routing through adopt classification" in tail
 
 
 def test_stream_upload_keeps_partial_file(yml):
