@@ -28,3 +28,5 @@ jobs:
         run: python3 scripts/team/lint_gh_project_parse.py
       - name: Workflow budget lint (batch-3)
         run: python3 scripts/team/lint_workflow_budgets.py
+      - name: Workflow needs lint (declared-output wiring)
+        run: python3 scripts/team/lint_workflow_needs.py

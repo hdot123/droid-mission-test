@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -78,6 +79,133 @@ def test_replan_reads_wall_not_validate_success():
     }
     gated = compute_replan(wall)
     assert gated["replan_gate"]["should_replan"] is True
+
+
+def test_replan_gate_slice_full_shape():
+    """Every field of the schema's replan_gate_slice is written by compute()
+    with the declared type (scratch R2-9): the slice is the workflow's
+    orchestration contract, so a silently dropped or mistyped field must fail
+    here — not only in the revalidate-specific suites."""
+    wall = init_wall(run_id="slice", issue_number=8)
+    wall["validation"] = {
+        "schema_version": "validation-slice.v1",
+        "adoption_status": "ok",
+        "overall": "fail",
+        "failed_process_ids": ["p1"],
+        "unattributed_failure": False,
+    }
+    wall["artifacts"]["team-verdict-issue-8-run-slice"]["complete"] = True
+    gate = compute_replan(wall)["replan_gate"]
+    assert sorted(gate.keys()) == EXPECTED_REPLAN_GATE_KEYS
+    assert gate["schema_version"] == "replan-gate.v1"
+    assert isinstance(gate["should_replan"], bool) and gate["should_replan"] is True
+    assert isinstance(gate["should_revalidate"], bool) and gate["should_revalidate"] is False
+    assert isinstance(gate["revalidate_run_started"], bool) and gate["revalidate_run_started"] is False
+    assert isinstance(gate["reasons"], list) and gate["reasons"] == ["overall_not_pass"]
+    inputs = gate["inputs_satisfied"]
+    assert sorted(inputs.keys()) == ["adoption_status_ok", "not_cancelled", "verdict_artifact_complete"]
+    assert inputs == {
+        "adoption_status_ok": True,
+        "verdict_artifact_complete": True,
+        "not_cancelled": True,
+    }
+    legacy = gate["forbidden_legacy"]
+    assert sorted(legacy.keys()) == ["string_compare_failed_processes", "validate_job_success_only"]
+    assert legacy == {
+        "validate_job_success_only": False,
+        "string_compare_failed_processes": False,
+    }
+    validate_with_jsonschema(gate)
+
+
+# --- contract sync (R2-9): schema replan_gate_slice <-> the test suite ------
+
+# The replan_gate slice's full key set, pinned here and checked against the
+# schema both ways: a field added anywhere must be asserted (meta test), a
+# field removed or renamed on either side breaks the equality below.
+EXPECTED_REPLAN_GATE_KEYS = [
+    "forbidden_legacy",
+    "inputs_satisfied",
+    "reasons",
+    "revalidate_run_started",
+    "schema_version",
+    "should_replan",
+    "should_revalidate",
+]
+
+
+def _schema_replan_gate_fields() -> dict[str, list[str]]:
+    schema = json.loads(
+        (ROOT / "schemas" / "foreman-run.v1.schema.json").read_text(encoding="utf-8")
+    )
+    slice_def = schema["$defs"]["replan_gate_slice"]
+    return {
+        name: sorted(props.keys())
+        for name, props in (
+            ("slice", slice_def.get("properties", {})),
+            ("inputs_satisfied", slice_def["properties"]["inputs_satisfied"].get("properties", {})),
+            ("forbidden_legacy", slice_def["properties"]["forbidden_legacy"].get("properties", {})),
+        )
+    }
+
+
+def test_schema_replan_gate_slice_fields_are_asserted_somewhere():
+    """The mission's contract-sync rule, made mechanical (R2-9): every field
+    the schema declares in replan_gate_slice must be exercised by name inside
+    some test function (helper/fixture text does not count). Adding a field
+    to the schema without a pin now fails this test instead of drifting out
+    of the contract."""
+    suite = "\n".join(
+        p.read_text(encoding="utf-8") for p in sorted((ROOT / "tests").glob("test_*.py"))
+    )
+    test_bodies = suite.split("def test_")[1:]
+    missing = []
+    for group, fields in _schema_replan_gate_fields().items():
+        prefix = "" if group == "slice" else f"{group}."
+        for field in fields:
+            needle = f'"{field}"'
+            if not any(needle in body for body in test_bodies):
+                missing.append(f"replan_gate_slice.{prefix}{field}")
+    assert not missing, (
+        f"schema fields with no assertion anywhere in tests/: {missing}; "
+        "pin them (test_foreman_wall_contract.py is the replan_gate slice's home)"
+    )
+
+
+def test_schema_replan_gate_slice_matches_pinned_shape():
+    """Both directions (R2-9): the schema slice must equal the pinned key set —
+    a field dropped from the schema (the reverse mutation) is the same
+    contract breach as a field added without a pin."""
+    fields = _schema_replan_gate_fields()
+    assert fields["slice"] == EXPECTED_REPLAN_GATE_KEYS
+    assert fields["inputs_satisfied"] == [
+        "adoption_status_ok",
+        "not_cancelled",
+        "verdict_artifact_complete",
+    ]
+    assert fields["forbidden_legacy"] == [
+        "string_compare_failed_processes",
+        "validate_job_success_only",
+    ]
+
+
+def test_foreman_wall_contract_is_ci_gate():
+    """R2-11 companion: the five-lint + contract surface must stay in CI.
+    If you add a lint script or contract test file, extend
+    .github/workflows/foreman-wall-ci.yml in the same change — CI is the only
+    gate that can stop a wiring-defect PR from reaching main."""
+    ci = (ROOT / ".github" / "workflows" / "foreman-wall-ci.yml").read_text(encoding="utf-8")
+    for script in (
+        "lint_workflow_foreman.py",
+        "lint_workflow_wall_exits.py",
+        "lint_gh_project_parse.py",
+        "lint_workflow_budgets.py",
+        "lint_workflow_needs.py",
+    ):
+        assert script in ci, f"{script} missing from CI"
+    schema_tests = [p.name for p in (ROOT / "tests").glob("test_foreman_wall_*.py")]
+    for name in schema_tests:
+        assert name in ci, f"{name} exists but is not run by CI"
 
 
 def test_worker_failed_prep_started_forbids_phrase(tmp_path: Path):

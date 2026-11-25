@@ -173,3 +173,56 @@ def test_revalidate_producers_declare_output(yml, job_key: str, producer: str):
     m = re.search(r"outputs:\n((?:      [a-z_]+: .*\n)+)", text)
     assert m, f"{job_key}: outputs block expected"
     assert f"{producer}:" in m.group(1), f"{job_key} must declare output {producer}"
+
+
+# --- scrutiny R2-1/R2-3: the replan condition must carry the retry's verdict --
+
+
+def _replan_condition(yml: str) -> str:
+    """The replan job's rendered `if:` as a single logical expression string."""
+    text = _job_text(yml, "replan")
+    m = re.search(r"if:\s*>-\n((?: {6}.*\n)+)", text)
+    assert m, "replan: folded if: block expected"
+    cond = "".join(line.strip() for line in m.group(1).splitlines())
+    assert cond.startswith("${{") and cond.endswith("}}"), cond
+    return cond[len("${{") : -len("}}")].strip()
+
+
+def test_replan_condition_carries_revalidate_success_verdict(yml):
+    """R2-1 (VAL-P1-003): after a successful retry the chain must take the same
+    path a non-timeout FAIL verdict takes. Concretely: the replan job's `if:`
+    must route on the revalidate job's own should_replan output when the retry
+    ran (revalidate=success) — the validate job's copy is necessarily 'false'
+    in that state, because every validate outcome that requests a revalidation
+    is adoption_status=failed. The old condition (validate-only, tolerated
+    result) reads false here and round 2 is lost for a legitimately-FAIL
+    retry."""
+    cond = _replan_condition(yml)
+    assert (
+        "needs.revalidate.result == 'success'"
+        " && needs.revalidate.outputs.should_replan == 'true'" in cond
+    ), f"replan if: must route on the retry's own gate when it ran; got: {cond}"
+
+
+def test_replan_condition_keeps_normal_chain_when_retry_skipped(yml):
+    """R2-3: every normal run has revalidate skipped — replan must still read
+    the validate job's should_replan in that case. Pin: the condition contains
+    the skipped-tolerance arm; dropping it (mutation-tested: 308 green today)
+    silently disables round 2 for the whole normal chain."""
+    cond = _replan_condition(yml)
+    assert (
+        "needs.revalidate.result == 'skipped'"
+        " && needs.validate.outputs.should_replan == 'true'" in cond
+    ), f"replan if: must keep the normal (skipped-revalidate) path; got: {cond}"
+
+
+def test_replan_condition_covers_all_retry_results(yml):
+    """The revalidate job can end success / failure / skipped / cancelled; the
+    condition must decide every case explicitly (no silent fall-through: a
+    failure or cancelled retry must NOT replan — the terminal recompute
+    already landed human_stop)."""
+    cond = _replan_condition(yml)
+    assert "needs.revalidate.result == 'success'" in cond
+    assert "needs.revalidate.result == 'skipped'" in cond
+    assert "needs.revalidate.outputs.should_replan" in cond
+    assert "needs.validate.outputs.should_replan" in cond
