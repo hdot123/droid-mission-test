@@ -1776,6 +1776,7 @@ jobs:
           if not expected_sha or actual_sha != expected_sha:
               print(f"manifest sha256 mismatch: expected {expected_sha!r}, actual {actual_sha}; refusing to judge")
               sys.exit(1)
+          print("manifest sha256 verified against prep output:", actual_sha)
           manifest = json.load(open("work/manifest.json"))
           bad = []
           for path, digest in manifest["sha256"].items():
@@ -1854,7 +1855,7 @@ jobs:
           TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'
           import json, os, sys
-          sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"] if "REPO_ROOT" in os.environ else os.environ["GITHUB_WORKSPACE"], "scripts", "team"))
+          sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"], "scripts", "team"))
           from validator_prompt_template import build_validator_prompt
           judgeable = json.load(open("judgeable.json"))
           prompt = build_validator_prompt(judgeable, round_num=1)
@@ -3977,7 +3978,7 @@ jobs:
           TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'
           import json, os, sys
-          sys.path.insert(0, os.path.join(os.environ["GITHUB_WORKSPACE"], "scripts", "team"))
+          sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"], "scripts", "team"))
           from validator_prompt_template import build_validator_prompt
           judgeable = json.load(open("judgeable.json"))
           prompt = build_validator_prompt(judgeable, round_num=2)

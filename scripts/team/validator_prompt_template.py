@@ -67,13 +67,15 @@ def build_validator_prompt(judgeable: list[str], *, round_num: int = 1) -> str:
           Judge ONLY these processes: {ids}
 
           Evidence available in this directory:
-          - {plan_line}
-          - {evidence_line}
+          {plan_line}
+          {evidence_line}
           {packs}
 
           SESSION DISCIPLINE (mandatory, do first): work through the processes one at a time — read one piece of evidence, IMMEDIATELY persist that one conclusion by running the verdict-recorder tool, then move on to the next piece:
           {_recorder_line(round_num)}
+          The same persistence discipline applies to out-of-card conflicts: the moment you find one, record it in the same call by appending --conflict "<process-id>|<what conflicts, both values/sections named>|<where it is flagged, file with a short quote>" (repeat the flag for each extra conflict). A conflict recorded only in your reasoning is lost when the session is killed.
           FALLBACK: if you have already formed conclusions for several processes, record them all in the same turn right away — late is better than never. The recorder file survives a session timeout; conclusions that live only in your reasoning are lost when the session is killed.
+          FINISHING: when your last process is recorded, run the recorder once more with --final (same --process/--verdict/--reason as that last conclusion). --final seals the partial file as your deliverable: a sealed partial that covers every process listed above is adopted as the verdict even if the session dies before the final files below are written. Without --final the partial is treated as incomplete work and the whole round is re-validated.
 
           Write exactly two files in this directory at the END (after every process has been recorded above):
           1. verdict-droid.json with this shape:
