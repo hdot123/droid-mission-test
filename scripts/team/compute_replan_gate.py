@@ -58,6 +58,11 @@ def compute(wall: dict, *, round_num: int = 1) -> dict:
         and not_cancelled
         and verdict_complete
     )
+    # I-5 revalidate chain: adopt_verdict requests the single validator-only
+    # retry via should_revalidate; this recomputation carries the flag through
+    # (never flips it off — only a successful adoption clears it) and mirrors
+    # the attempt marker so the workflow's guard and the wall stay one truth.
+    should_revalidate = bool((wall.get("replan_gate") or {}).get("should_revalidate"))
     reasons = []
     if adoption_ok and overall != "pass":
         if failed_ids:
@@ -69,6 +74,10 @@ def compute(wall: dict, *, round_num: int = 1) -> dict:
     gate = {
         "schema_version": "replan-gate.v1",
         "should_replan": should,
+        "should_revalidate": should_revalidate,
+        "revalidate_attempted": bool(
+            (wall.get("replan_gate") or {}).get("revalidate_attempted")
+        ),
         "reasons": reasons,
         "inputs_satisfied": {
             "adoption_status_ok": adoption_ok,
@@ -101,10 +110,12 @@ def main() -> int:
     merged = compute(wall, round_num=args.round)
     save_wall(merged, args.wall)
     should = merged["replan_gate"]["should_replan"]
+    revalidate = merged["replan_gate"]["should_revalidate"]
     print("should_replan:", should)
     if args.github_output:
         with open(args.github_output, "a", encoding="utf-8") as out:
             out.write(f"should_replan={'true' if should else 'false'}\n")
+            out.write(f"should_revalidate={'true' if revalidate else 'false'}\n")
     return 0
 
 

@@ -28,21 +28,16 @@ sys.path.insert(0, str(ROOT / "scripts" / "team"))
 
 from adopt_verdict import adopt  # noqa: E402
 from foreman_run_lib import init_wall, save_wall, validate_with_jsonschema  # noqa: E402
+from validator_prompt_template import build_validator_prompt  # noqa: E402
 
-TEAM_YML = ROOT / ".github" / "workflows" / "team.yml"
 FIXTURES = ROOT / "tests" / "fixtures" / "validator-r52b"
 PIDS = ["dijkstra", "nthprime", "windscale"]
 
-STEP_R1 = "- name: Validator judges evidence packs only\n"
-STEP_R2 = "- name: Validator judges evidence packs only (round 2)\n"
 
-
-def _validator_prompt(step_name: str) -> str:
-    yml = TEAM_YML.read_text(encoding="utf-8")
-    step = yml.index(step_name)
-    start = yml.index('prompt = f"""', step) + len('prompt = f"""')
-    end = yml.index('"""', start)
-    return yml[start:end]
+def _validator_prompt(round_num: int) -> str:
+    # Single-source template (VAL-P1-001): the same module the workflow's
+    # droid_validate steps render; no more string-slicing team.yml.
+    return build_validator_prompt(PIDS, round_num=round_num)
 
 
 def _recorder_line(prompt: str) -> str:
@@ -102,7 +97,7 @@ def test_prompted_round2_records_survive_validate2_kill(r52b_round2_env):
     command the round-2 prompt mandates, then adopt2 (--round 2) must recover
     it instead of silently returning zero conclusions."""
     wall_path, work = r52b_round2_env
-    prompt = _validator_prompt(STEP_R2)
+    prompt = _validator_prompt(round_num=2)
     _run_recorder(work, _prompted_command(prompt, PIDS[0]))
     assert (work / "verdict-partial.json").exists()
 
@@ -129,7 +124,7 @@ def test_prompted_round2_full_kill_recovers_all_conclusions(r52b_round2_env):
     via the prompted command, killed before the draft — adopt2 recovers all of
     them, never zero."""
     wall_path, work = r52b_round2_env
-    prompt = _validator_prompt(STEP_R2)
+    prompt = _validator_prompt(round_num=2)
     for pid in PIDS:
         _run_recorder(work, _prompted_command(prompt, pid))
 
@@ -149,7 +144,7 @@ def test_recorder_round_flags_pair_with_adopt_flags():
     """Each validator prompt's discipline line must stamp the round its adopt
     step reads back: round 1 relies on the CLI default (adopt1 reads round 1),
     the round-2 prompt must pass --round 2 explicitly (adopt2 reads round 2)."""
-    r1_line = _recorder_line(_validator_prompt(STEP_R1))
-    r2_line = _recorder_line(_validator_prompt(STEP_R2))
+    r1_line = _recorder_line(_validator_prompt(round_num=1))
+    r2_line = _recorder_line(_validator_prompt(round_num=2))
     assert "--round" not in r1_line
     assert "--round 2" in r2_line

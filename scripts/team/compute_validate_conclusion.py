@@ -43,16 +43,27 @@ def derive(wall: dict, *, round_num: int = 1) -> tuple[dict, str]:
     val["job_conclusion_derived"] = conclusion
     merged = deep_merge(wall, {"validation": val})
     if adoption == "failed":
-        merged = deep_merge(
-            merged,
-            {
-                "human_stop": True,
-                "closeout": {
-                    "schema_version": "closeout-slice.v1",
-                    "run_must_fail": True,
-                },
-            },
+        # I-5 revalidate chain: a draft_timeout with the one validator-only
+        # retry still available is not terminal — human_stop stays off so the
+        # revalidate job can run. Any other adoption failure, or a draft
+        # timeout after the retry was already attempted, terminates
+        # fail-closed.
+        gate = merged.get("replan_gate") or {}
+        revalidate_pending = (
+            val.get("adoption_error") == "draft_timeout"
+            and not gate.get("revalidate_attempted")
         )
+        if not revalidate_pending:
+            merged = deep_merge(
+                merged,
+                {
+                    "human_stop": True,
+                    "closeout": {
+                        "schema_version": "closeout-slice.v1",
+                        "run_must_fail": True,
+                    },
+                },
+            )
     return merged, conclusion
 
 

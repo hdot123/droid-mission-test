@@ -520,6 +520,9 @@ jobs:
       - name: Record base SHA (session self-commit guard)
         run: echo "BASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
+      - name: Install dev dependencies (U-10)
+        run: python3 -m pip install -r requirements-dev.txt
+
       - name: Install droid CLI
         run: curl -fsSL https://app.factory.ai/cli | sh
 
@@ -1406,43 +1409,11 @@ jobs:
           export PYTHONPATH="${REPO_ROOT}/scripts/team"
           TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'
-          import json
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"], "scripts", "team"))
+          from validator_prompt_template import build_validator_prompt
           judgeable = json.load(open("judgeable.json"))
-          packs = "\n".join(f"- packs/{pid}/ (process-card.json, handoff.md, status.json, diff.patch, checks-output.txt, checks-exit.json, checks-failed.marker (present only when the worker's own checks failed))" for pid in judgeable)
-          prompt = f"""You are the VALIDATOR on a development team, working in the squad-leader acceptance style. You only judge pre-packed evidence. You have no GitHub access and must not try to fetch anything else.
-
-          Judge ONLY these processes: {', '.join(judgeable)}
-
-          Evidence available in this directory:
-          - plan.json (the plan and process cards)
-          - pytest-output.txt and pytest-exit.txt (full test evidence for the merged candidate)
-          {packs}
-
-          SESSION DISCIPLINE (mandatory, do first): after you finish analyzing each process, IMMEDIATELY persist that one conclusion by running the verdict-recorder tool, then move on to the next process:
-          python3 -m salvage_verdict --work-dir . --process <process-id> --verdict pass|fail --reason "<one line evidence-based reason>"
-          Run it once per judged process as soon as its analysis is done — never batch all conclusions at the end. The recorder file survives a session timeout; conclusions that live only in your reasoning are lost when the session is killed.
-
-          Write exactly two files in this directory at the END (after every process has been recorded above):
-          1. verdict-droid.json with this shape:
-          {{
-            "processes": [
-              {{"id": "process-id", "verdict": "pass" or "fail", "reason": "evidence-based reason"}}
-            ],
-            "conflicts": [
-              {{"process": "process-id", "summary": "what conflicts, both values/sections named", "evidence": "where it is flagged (handoff/status) with a short quote"}}
-            ]
-          }}
-          The top-level "conflicts" array is required in verdict-droid.json: write an empty array when no judged process flagged an out-of-card conflict.
-          It must contain exactly one verdict for each judged process listed above, no more, no fewer.
-          2. verdict-droid.md — a human-readable report, one section per judged process, naming the evidence you relied on.
-
-          Rules:
-          - Pass a process only when its card, handoff, status, diff, and check outputs line up.
-          - HARD RULE — a red mandated check is never a pass: if any entry in packs/<id>/checks-exit.json has a non-zero "exit", or packs/<id>/checks-failed.marker exists, you MUST judge that process "fail", however well the five artifacts line up. Alignment proves the evidence is honest, not that the work passed. In the reason, cite the failed check command(s) and exit code(s) from checks-exit.json. One exception: exit 127 recorded because pytest was unavailable does not count under this rule (that is an environment failure, judged via the pack/manifest evidence).
-          - If a process's status.json or handoff.md explicitly flags a conflict outside its card or inside the work order itself (for example a body-vs-acceptance mismatch) and neither the card nor the plan addresses it, you MUST record it in the top-level "conflicts" array — do not bury it in a reason and do not silently pass over it. Recording a conflict does not by itself change that process's verdict: judge the card as written; the conflict is escalated for a human to see, and a verdict carrying any escalated conflict is treated as fail by the machine gates.
-          - Judge only from the evidence in this directory. Do not modify any evidence file.
-          - Be efficient: at most 12 tool calls, then write the verdict files.
-          """
+          prompt = build_validator_prompt(judgeable, round_num=1)
           open("validator-prompt.txt", "w").write(prompt)
           PY
           cp ../wall-in/foreman-run.json ../foreman-run.json
@@ -1672,6 +1643,330 @@ jobs:
           overwrite: true
 
       - name: Fail validate job when adoption failed (W6)
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py --wall foreman-run.json
+
+  revalidate:
+    name: validator revalidate (single retry, evidence pack reused)
+    needs: validate
+    if: ${{ !cancelled() && needs.validate.outputs.should_revalidate == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: {}
+    env:
+      GITHUB_TOKEN: ""
+      GH_TOKEN: ""
+      EXPECTED_MANIFEST_SHA: ${{ needs.prep.outputs.manifest_sha256 }}
+    outputs:
+      overall: ${{ steps.adopt.outputs.overall }}
+      failed_processes: ${{ steps.adopt.outputs.failed_processes }}
+      unattributed_failure: ${{ steps.adopt.outputs.unattributed_failure }}
+      should_replan: ${{ steps.replan_gate.outputs.should_replan }}
+      validate_job_conclusion: ${{ steps.validate_conclusion.outputs.validate_job_conclusion }}
+    steps:
+      - name: Refuse a second revalidate (at most one, fail-closed)
+        run: |
+          if [ ! -f wall-in/foreman-run.json ]; then
+            echo "foreman-run missing before revalidate guard"
+            exit 1
+          fi
+          ATTEMPTED=$(python3 -c "import json;g=json.load(open('wall-in/foreman-run.json')).get('replan_gate') or {};print('true' if g.get('revalidate_attempted') else 'false')")
+          if [ "$ATTEMPTED" = "true" ]; then
+            echo "revalidate already attempted once; refusing to run again (fail-closed)"
+            exit 1
+          fi
+          echo "first revalidate attempt: proceeding"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download ForemanRun wall (W1)
+        uses: actions/download-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: wall-in
+
+      - name: Download evidence artifact (same pack, sha unchanged)
+        uses: actions/download-artifact@v4
+        with:
+          name: team-evidence-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
+
+      - name: Extract evidence and keep verdict inputs
+        timeout-minutes: 2
+        run: |
+          mkdir -p work
+          tar -xzf evidence.tar.gz -C work
+          # The validator's partial file (if the killed session recorded any
+          # conclusions) lives in the stream artifact, not the evidence pack;
+          # the fresh work dir judges the pack as-is.
+          python3 - <<'PY'
+          import hashlib, json, os, sys
+          expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
+          actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
+          if not expected_sha or actual_sha != expected_sha:
+              print(f"manifest sha256 mismatch: expected {expected_sha!r}, actual {actual_sha}; refusing to judge")
+              sys.exit(1)
+          manifest = json.load(open("work/manifest.json"))
+          bad = []
+          for path, digest in manifest["sha256"].items():
+              local = "work/" + path[len("evidence/"):] if path.startswith("evidence/") else path
+              if not os.path.exists(local) or hashlib.sha256(open(local, "rb").read()).hexdigest() != digest:
+                  bad.append(path)
+          if bad:
+              print("evidence integrity check failed:", bad)
+              sys.exit(1)
+          judgeable, blocked = [], {}
+          for pid, info in manifest["packs"].items():
+              if info["complete"]:
+                  judgeable.append(pid)
+              else:
+                  missing = [k for k, v in info["pack"].items() if not v]
+                  if not info["merged"]:
+                      missing.append("未合并")
+                  if info.get("out_of_bounds"):
+                      missing.append("越界文件：" + ", ".join(info["out_of_bounds"]))
+                  blocked[pid] = missing
+          json.dump(judgeable, open("work/judgeable.json", "w"))
+          json.dump(blocked, open("work/blocked.json", "w"))
+          print("revalidate judgeable:", judgeable, "| blocked:", blocked)
+          PY
+
+      - name: Install droid CLI
+        if: steps.pre.outputs.judgeable != '[]'
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Write BYOM settings (validator revalidate session)
+        if: steps.pre.outputs.judgeable != '[]'
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GW_TOKEN_KNOWN: ${{ secrets.GW_TOKEN_KNOWN }}
+          SESSION_NAME: team-validator
+        run: |
+          mkdir -p ~/.factory
+          python3 - <<'PY'
+          import json, os
+          p = os.path.expanduser("~/.factory/settings.json")
+          s = {}
+          if os.path.exists(p):
+              s = json.load(open(p))
+          headers = {
+              "x-ci-key": os.environ.get("WORKER_CI_KEY", ""),
+              "x-opencode-session": os.environ.get("SESSION_NAME", "team-validator"),
+              "cf-aig-authorization": "Bearer " + os.environ.get("GW_TOKEN_KNOWN", ""),
+          }
+          s["customModels"] = [{
+              "model": "dynamic/droid-review",
+              "id": "custom:DeepSeek-V4.1-Flash-Go",
+              "baseUrl": "https://droid-test.lumivane.dpdns.org",
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
+              "provider": "generic-chat-completion-api",
+              "extraHeaders": headers,
+          }]
+          json.dump(s, open(p, "w"), indent=2)
+          print("settings written for validator revalidate session")
+          PY
+
+      - name: Validator judges evidence packs only (revalidate)
+        id: pre
+        if: always() && hashFiles('work/judgeable.json') != ''
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+          GITHUB_TOKEN: ""
+          GH_TOKEN: ""
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          VALIDATOR_DROID_TIMEOUT_SECONDS: ${{ vars.VALIDATOR_DROID_TIMEOUT_SECONDS || '600' }}
+        working-directory: work
+        run: |
+          set -o pipefail
+          REPO_ROOT="${GITHUB_WORKSPACE}"
+          export PYTHONPATH="${REPO_ROOT}/scripts/team"
+          TEAM_PY="${REPO_ROOT}/scripts/team"
+          python3 - <<'PY'
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"] if "REPO_ROOT" in os.environ else os.environ["GITHUB_WORKSPACE"], "scripts", "team"))
+          from validator_prompt_template import build_validator_prompt
+          judgeable = json.load(open("judgeable.json"))
+          prompt = build_validator_prompt(judgeable, round_num=1)
+          open("validator-prompt.txt", "w").write(prompt)
+          PY
+          cp ../wall-in/foreman-run.json ../foreman-run.json
+          OVERRIDE_ARGS=""
+          if [[ "$ISSUE_TITLE" == "[I8] API墙活验 A 采认失败" ]] || [[ "$ISSUE_TITLE" == "[I8] API墙活验 D 半套artifact" ]]; then
+            OVERRIDE_ARGS="--droid-wall-override-sec ${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
+          fi
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import json
+          from budget_resolve import validator_session_budget
+          w = json.load(open("../foreman-run.json"))
+          droid, adopt = validator_session_budget(w)
+          print(f"VALIDATOR_DROID_WALL_SEC={droid}")
+          print(f"ADOPT_RESERVE_SEC={adopt}")
+          PY
+          echo "revalidate session budget (wall): droid=${VALIDATOR_DROID_WALL_SEC}s adopt_reserve=${ADOPT_RESERVE_SEC}s"
+          FOREMAN_RUN_PATCH=1 python3 "${TEAM_PY}/run_droid_session.py" \
+            --wall ../foreman-run.json --role validator \
+            --prompt-file validator-prompt.txt \
+            --stream-out validator-stream.jsonl \
+            --exit-out droid-exit.txt \
+            $OVERRIDE_ARGS
+          cp ../foreman-run.json ../wall-in/foreman-run.json
+
+      - name: Merge verdict, enforce gates, verify evidence untouched
+        id: verdict
+        if: always()
+        timeout-minutes: 3
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, sys
+          expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
+          actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
+          if not expected_sha or actual_sha != expected_sha:
+              print(f"manifest sha256 changed since precheck: expected {expected_sha!r}, actual {actual_sha}; verdict refused")
+              sys.exit(1)
+          manifest = json.load(open("work/manifest.json"))
+          plan = json.load(open("work/plan.json"))
+          judgeable = json.load(open("work/judgeable.json")) if os.path.exists("work/judgeable.json") else []
+          blocked = json.load(open("work/blocked.json")) if os.path.exists("work/blocked.json") else {}
+          merge_ran = bool(judgeable and os.path.exists("work/verdict-droid.json"))
+
+          for path, digest in manifest["sha256"].items():
+              local = "work/" + path[len("evidence/"):] if path.startswith("evidence/") else path
+              if not os.path.exists(local) or hashlib.sha256(open(local, "rb").read()).hexdigest() != digest:
+                  print("validator modified evidence:", path)
+                  sys.exit(1)
+
+          verdicts = {}
+          if judgeable and merge_ran:
+              droid = json.load(open("work/verdict-droid.json"))
+              entries = droid.get("processes", [])
+              if sorted(p.get("id") for p in entries) != sorted(judgeable):
+                  print(f"verdict coverage mismatch (multiset): judged {sorted(p.get('id') for p in entries)}, expected {sorted(judgeable)}")
+                  sys.exit(1)
+              got = {p["id"]: p for p in entries}
+              for pid, entry in got.items():
+                  if entry.get("verdict") not in ("pass", "fail"):
+                      print("invalid verdict value:", entry)
+                      sys.exit(1)
+                  verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
+                                   "reason": entry.get("reason", "")}
+          for pid, missing in blocked.items():
+              verdicts[pid] = {"id": pid, "verdict": "blocked",
+                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+
+          expected_ids = sorted(p["id"] for p in plan["processes"])
+          if sorted(verdicts) != expected_ids:
+              print(f"final coverage mismatch (multiset): {sorted(verdicts)} vs {expected_ids}")
+              sys.exit(1)
+          conflicts = []
+          if judgeable and merge_ran:
+              for centry in droid.get("conflicts") or []:
+                  if isinstance(centry, dict) and centry.get("process") and centry.get("summary"):
+                      conflicts.append({"process": centry["process"],
+                                        "summary": centry["summary"],
+                                        "evidence": centry.get("evidence", "")})
+                  else:
+                      print("dropping malformed conflicts entry:", centry)
+
+          pytest_exit = manifest.get("pytest_exit", 1)
+          overall = "pass" if all(v["verdict"] == "pass" for v in verdicts.values()) and pytest_exit == 0 else "fail"
+          failed = [pid for pid, v in verdicts.items() if v["verdict"] != "pass"]
+          failing_tests = []
+          unattributed_failure = bool(overall == "fail" and not failed)
+          verdict = {"overall": overall, "pytest_exit": pytest_exit,
+                     "iteration": manifest.get("iteration", 1),
+                     "processes": [verdicts[p["id"]] for p in plan["processes"]],
+                     "conflicts": conflicts,
+                     "failing_tests": failing_tests,
+                     "unattributed_failure": unattributed_failure}
+          json.dump(verdict, open("verdict.json", "w"), ensure_ascii=False, indent=2)
+
+          lines = []
+          if os.path.exists("work/verdict-droid.md"):
+              lines.append(open("work/verdict-droid.md").read())
+          lines += ["", "## 机器闸与缺料判定（脚本）", "",
+                    f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
+          for pid, missing in blocked.items():
+              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+          if unattributed_failure:
+              lines.append("无主失败：逐工序全 pass 但合并 pytest 退出码非 0（见 verdict.json）。")
+          if conflicts:
+              lines += ["", "## 工单层冲突（验收员升级记录）", ""]
+              for c in conflicts:
+                  lines.append(f"- `{c['process']}`：{c['summary']}（证据：{c.get('evidence', '')}）")
+          lines += ["", f"总判定：**{overall}**"]
+          open("verdict.md", "w").write("\n".join(lines))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"overall={overall}\n")
+              out.write("failed_processes=" + json.dumps(failed) + "\n")
+              out.write(f"unattributed_failure={'true' if unattributed_failure else 'false'}\n")
+          print("revalidate merge done | overall:", overall, "| failed:", failed)
+          PY
+
+      - name: Adopt verdict into ForemanRun wall (P0-1, revalidate)
+        id: adopt
+        if: always()
+        run: |
+          if [ ! -f foreman-run.json ]; then
+            if [ ! -f wall-in/foreman-run.json ]; then
+              echo "foreman-run missing before revalidate adopt"
+              exit 1
+            fi
+            cp wall-in/foreman-run.json foreman-run.json
+          fi
+          DROID_EXIT=-1
+          [ -f work/droid-exit.txt ] && DROID_EXIT=$(cat work/droid-exit.txt)
+          MERGE_FLAG=""
+          [ -f verdict.json ] && MERGE_FLAG="--merge-step-ran"
+          FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_adopt_step.py \
+            --wall foreman-run.json --work-dir work --droid-exit "$DROID_EXIT" \
+            --github-output "$GITHUB_OUTPUT" $MERGE_FLAG
+        env:
+          PYTHONPATH: scripts/team
+
+      - name: Compute replan gate (Y1, revalidate)
+        id: replan_gate
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/compute_replan_gate.py \
+            --wall foreman-run.json --github-output "$GITHUB_OUTPUT"
+
+      - name: Derive validate job conclusion (W4, revalidate)
+        id: validate_conclusion
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py \
+            --wall foreman-run.json --github-output "$GITHUB_OUTPUT"
+
+      - name: Assert verdict artifact complete (B2, revalidate)
+        id: assert_verdict
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/assert_artifact_complete.py \
+            --wall foreman-run.json \
+            --name team-verdict-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
+
+      - name: Upload verdict artifact (revalidate)
+        if: steps.assert_verdict.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-verdict-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
+          path: |
+            verdict.json
+            verdict.md
+          overwrite: true
+
+      - name: Upload foreman-run wall artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: foreman-run.json
+          overwrite: true
+
+      - name: Fail revalidate job when adoption failed (W6)
         if: always()
         run: |
           PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py --wall foreman-run.json
@@ -2208,6 +2503,9 @@ jobs:
 
       - name: Record base SHA (session self-commit guard)
         run: echo "BASE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Install dev dependencies (U-10)
+        run: python3 -m pip install -r requirements-dev.txt
 
       - name: Install droid CLI
         run: curl -fsSL https://app.factory.ai/cli | sh
@@ -3146,43 +3444,11 @@ jobs:
           export PYTHONPATH="${REPO_ROOT}/scripts/team"
           TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'
-          import json
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ["REPO_ROOT"], "scripts", "team"))
+          from validator_prompt_template import build_validator_prompt
           judgeable = json.load(open("judgeable.json"))
-          packs = "\n".join(f"- packs/{pid}/ (process-card.json, handoff.md, status.json, diff.patch, checks-output.txt, checks-exit.json, checks-failed.marker (present only when the worker's own checks failed))" for pid in judgeable)
-          prompt = f"""You are the VALIDATOR on a development team, working in the squad-leader acceptance style. This is the final validation round after a replan. You only judge pre-packed evidence. You have no GitHub access and must not try to fetch anything else.
-
-          Judge ONLY these processes: {', '.join(judgeable)}
-
-          Evidence available in this directory:
-          - plan.json (the effective plan: revised cards for re-dispatched processes, original cards otherwise)
-          - pytest-output.txt and pytest-exit.txt (full test evidence for the final merged candidate)
-          {packs}
-
-          SESSION DISCIPLINE (mandatory, do first): after you finish analyzing each process, IMMEDIATELY persist that one conclusion by running the verdict-recorder tool, then move on to the next process:
-          python3 -m salvage_verdict --work-dir . --process <process-id> --verdict pass|fail --reason "<one line evidence-based reason>" --round 2
-          Run it once per judged process as soon as its analysis is done — never batch all conclusions at the end. The recorder file survives a session timeout; conclusions that live only in your reasoning are lost when the session is killed.
-
-          Write exactly two files in this directory at the END (after every process has been recorded above):
-          1. verdict-droid.json with this shape:
-          {{
-            "processes": [
-              {{"id": "process-id", "verdict": "pass" or "fail", "reason": "evidence-based reason"}}
-            ],
-            "conflicts": [
-              {{"process": "process-id", "summary": "what conflicts, both values/sections named", "evidence": "where it is flagged (handoff/status) with a short quote"}}
-            ]
-          }}
-          The top-level "conflicts" array is required in verdict-droid.json: write an empty array when no judged process flagged an out-of-card conflict.
-          It must contain exactly one verdict for each judged process listed above, no more, no fewer.
-          2. verdict-droid.md — a human-readable report, one section per judged process, naming the evidence you relied on.
-
-          Rules:
-          - Pass a process only when its card, handoff, status, diff, and check outputs line up.
-          - HARD RULE — a red mandated check is never a pass: if any entry in packs/<id>/checks-exit.json has a non-zero "exit", or packs/<id>/checks-failed.marker exists, you MUST judge that process "fail", however well the five artifacts line up. Alignment proves the evidence is honest, not that the work passed. In the reason, cite the failed check command(s) and exit code(s) from checks-exit.json. One exception: exit 127 recorded because pytest was unavailable does not count under this rule (that is an environment failure, judged via the pack/manifest evidence).
-          - If a process's status.json or handoff.md explicitly flags a conflict outside its card or inside the work order itself (for example a body-vs-acceptance mismatch) and neither the card nor the plan addresses it, you MUST record it in the top-level "conflicts" array — do not bury it in a reason and do not silently pass over it. Recording a conflict does not by itself change that process's verdict: judge the card as written; the conflict is escalated for a human to see, and a verdict carrying any escalated conflict is treated as fail by the machine gates.
-          - Judge only from the evidence in this directory. Do not modify any evidence file.
-          - Be efficient: at most 12 tool calls, then write the verdict files.
-          """
+          prompt = build_validator_prompt(judgeable, round_num=2)
           open("validator-prompt.txt", "w").write(prompt)
           PY
           cp ../wall-in/foreman-run.json ../foreman-run.json
@@ -3410,6 +3676,347 @@ jobs:
           overwrite: true
 
       - name: Fail validate2 job when adoption failed (W6)
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py --wall foreman-run.json --round 2
+
+  revalidate2:
+    name: validator revalidate round 2 (single retry, evidence pack reused)
+    needs: validate2
+    if: ${{ !cancelled() && needs.validate2.outputs.should_revalidate == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: {}
+    env:
+      GITHUB_TOKEN: ""
+      GH_TOKEN: ""
+      EXPECTED_MANIFEST_SHA: ${{ needs.prep2.outputs.manifest_sha256 }}
+    outputs:
+      overall: ${{ steps.adopt2.outputs.overall }}
+      failed_processes: ${{ steps.adopt2.outputs.failed_processes }}
+      flips: ${{ steps.adopt2.outputs.flips }}
+      validate2_job_conclusion: ${{ steps.validate2_conclusion.outputs.validate_job_conclusion }}
+    steps:
+      - name: Refuse a second revalidate (at most one, fail-closed)
+        run: |
+          if [ ! -f wall-in/foreman-run.json ]; then
+            echo "foreman-run missing before revalidate2 guard"
+            exit 1
+          fi
+          ATTEMPTED=$(python3 -c "import json;g=json.load(open('wall-in/foreman-run.json')).get('replan_gate') or {};print('true' if g.get('revalidate_attempted') else 'false')")
+          if [ "$ATTEMPTED" = "true" ]; then
+            echo "revalidate already attempted once; refusing to run again (fail-closed)"
+            exit 1
+          fi
+          echo "first revalidate attempt: proceeding"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download ForemanRun wall (W1)
+        uses: actions/download-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: wall-in
+
+      - name: Download evidence round 2 artifact (same pack, sha unchanged)
+        uses: actions/download-artifact@v4
+        with:
+          name: team-evidence2-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
+
+      - name: Download round 1 verdict (flip accounting)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: team-verdict-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
+          path: round1
+
+      - name: Extract evidence and keep verdict inputs
+        timeout-minutes: 2
+        run: |
+          mkdir -p work
+          tar -xzf evidence.tar.gz -C work
+          python3 - <<'PY'
+          import hashlib, json, os, sys
+          expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
+          actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
+          if not expected_sha or actual_sha != expected_sha:
+              print(f"manifest sha256 mismatch: expected {expected_sha!r}, actual {actual_sha}; refusing to judge")
+              sys.exit(1)
+          print("manifest sha256 verified against prep2 output:", actual_sha)
+          manifest = json.load(open("work/manifest.json"))
+          bad = []
+          for path, digest in manifest["sha256"].items():
+              local = "work/" + path[len("evidence/"):] if path.startswith("evidence/") else path
+              if not os.path.exists(local) or hashlib.sha256(open(local, "rb").read()).hexdigest() != digest:
+                  bad.append(path)
+          if bad:
+              print("evidence integrity check failed:", bad)
+              sys.exit(1)
+          judgeable, blocked = [], {}
+          for pid, info in manifest["packs"].items():
+              if info["complete"]:
+                  judgeable.append(pid)
+              else:
+                  missing = [k for k, v in info["pack"].items() if not v]
+                  if not info["merged"]:
+                      missing.append("未合并/未替换")
+                  if info.get("out_of_bounds"):
+                      missing.append("越界文件：" + ", ".join(info["out_of_bounds"]))
+                  blocked[pid] = missing
+          json.dump(judgeable, open("work/judgeable.json", "w"))
+          json.dump(blocked, open("work/blocked.json", "w"))
+          print("revalidate judgeable:", judgeable, "| blocked:", blocked)
+          PY
+
+      - name: Install droid CLI
+        run: curl -fsSL https://app.factory.ai/cli | sh
+
+      - name: Write BYOM settings (validator revalidate round 2 session)
+        env:
+          WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}
+          GO_GITHUB_RUN_TOKEN: ${{ secrets.GO_GITHUB_RUN_TOKEN }}
+          GW_TOKEN_KNOWN: ${{ secrets.GW_TOKEN_KNOWN }}
+          SESSION_NAME: team-validator-r2
+        run: |
+          mkdir -p ~/.factory
+          python3 - <<'PY'
+          import json, os
+          p = os.path.expanduser("~/.factory/settings.json")
+          s = {}
+          if os.path.exists(p):
+              s = json.load(open(p))
+          headers = {
+              "x-ci-key": os.environ.get("WORKER_CI_KEY", ""),
+              "x-opencode-session": os.environ.get("SESSION_NAME", "team-validator"),
+              "cf-aig-authorization": "Bearer " + os.environ.get("GW_TOKEN_KNOWN", ""),
+          }
+          s["customModels"] = [{
+              "model": "dynamic/droid-review",
+              "id": "custom:DeepSeek-V4.1-Flash-Go",
+              "baseUrl": "https://droid-test.lumivane.dpdns.org",
+              "apiKey": os.environ.get("GO_GITHUB_RUN_TOKEN", ""),
+              "provider": "generic-chat-completion-api",
+              "extraHeaders": headers,
+          }]
+          json.dump(s, open(p, "w"), indent=2)
+          print("settings written for validator revalidate round 2 session")
+          PY
+
+      - name: Validator judges evidence packs only (revalidate round 2)
+        id: droid_validate2
+        env:
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+          GITHUB_TOKEN: ""
+          GH_TOKEN: ""
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          VALIDATOR_DROID_TIMEOUT_SECONDS: ${{ vars.VALIDATOR_DROID_TIMEOUT_SECONDS || '600' }}
+        working-directory: work
+        run: |
+          set -o pipefail
+          REPO_ROOT="${GITHUB_WORKSPACE}"
+          export PYTHONPATH="${REPO_ROOT}/scripts/team"
+          TEAM_PY="${REPO_ROOT}/scripts/team"
+          python3 - <<'PY'
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ["GITHUB_WORKSPACE"], "scripts", "team"))
+          from validator_prompt_template import build_validator_prompt
+          judgeable = json.load(open("judgeable.json"))
+          prompt = build_validator_prompt(judgeable, round_num=2)
+          open("validator-prompt.txt", "w").write(prompt)
+          PY
+          cp ../wall-in/foreman-run.json ../foreman-run.json
+          OVERRIDE_ARGS=""
+          if [[ "$ISSUE_TITLE" == "[I8] API墙活验 A 采认失败" ]] || [[ "$ISSUE_TITLE" == "[I8] API墙活验 D 半套artifact" ]]; then
+            OVERRIDE_ARGS="--droid-wall-override-sec ${VALIDATOR_DROID_TIMEOUT_SECONDS:-600}"
+          fi
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import json
+          from budget_resolve import validator_session_budget
+          w = json.load(open("../foreman-run.json"))
+          droid, adopt = validator_session_budget(w)
+          print(f"VALIDATOR_DROID_WALL_SEC={droid}")
+          print(f"ADOPT_RESERVE_SEC={adopt}")
+          PY
+          echo "revalidate session budget (wall): droid=${VALIDATOR_DROID_WALL_SEC}s adopt_reserve=${ADOPT_RESERVE_SEC}s"
+          FOREMAN_RUN_PATCH=1 python3 "${TEAM_PY}/run_droid_session.py" \
+            --wall ../foreman-run.json --role validator \
+            --prompt-file validator-prompt.txt \
+            --stream-out validator-stream.jsonl \
+            --exit-out droid-exit.txt \
+            $OVERRIDE_ARGS
+          cp ../foreman-run.json ../wall-in/foreman-run.json
+
+      - name: Merge verdict, enforce gates, verify evidence untouched (round 2)
+        id: verdict
+        if: always()
+        timeout-minutes: 3
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, sys
+          expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
+          actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
+          if not expected_sha or actual_sha != expected_sha:
+              print(f"manifest sha256 changed since precheck: expected {expected_sha!r}, actual {actual_sha}; verdict refused")
+              sys.exit(1)
+          manifest = json.load(open("work/manifest.json"))
+          plan = json.load(open("work/plan.json"))
+          judgeable = json.load(open("work/judgeable.json")) if os.path.exists("work/judgeable.json") else []
+          blocked = json.load(open("work/blocked.json")) if os.path.exists("work/blocked.json") else {}
+
+          for path, digest in manifest["sha256"].items():
+              local = "work/" + path[len("evidence/"):] if path.startswith("evidence/") else path
+              if not os.path.exists(local) or hashlib.sha256(open(local, "rb").read()).hexdigest() != digest:
+                  print("validator modified evidence:", path)
+                  sys.exit(1)
+
+          verdicts = {}
+          if judgeable and os.path.exists("work/verdict-droid.json"):
+              droid = json.load(open("work/verdict-droid.json"))
+              entries = droid.get("processes", [])
+              if sorted(p.get("id") for p in entries) != sorted(judgeable):
+                  print(f"verdict coverage mismatch (multiset): judged {sorted(p.get("id") for p in entries)}, expected {sorted(judgeable)}")
+                  sys.exit(1)
+              got = {p["id"]: p for p in entries}
+              for pid, entry in got.items():
+                  if entry.get("verdict") not in ("pass", "fail"):
+                      print("invalid verdict value:", entry)
+                      sys.exit(1)
+                  verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
+                                   "reason": entry.get("reason", "")}
+          for pid, missing in blocked.items():
+              verdicts[pid] = {"id": pid, "verdict": "blocked",
+                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+
+          expected_ids = sorted(p["id"] for p in plan["processes"])
+          if sorted(verdicts) != expected_ids:
+              print(f"final coverage mismatch (multiset): {sorted(verdicts)} vs {expected_ids}")
+              sys.exit(1)
+          conflicts = []
+          if judgeable and os.path.exists("work/verdict-droid.json"):
+              droid = json.load(open("work/verdict-droid.json"))
+              for centry in droid.get("conflicts") or []:
+                  if isinstance(centry, dict) and centry.get("process") and centry.get("summary"):
+                      conflicts.append({"process": centry["process"],
+                                        "summary": centry["summary"],
+                                        "evidence": centry.get("evidence", "")})
+                  else:
+                      print("dropping malformed conflicts entry:", centry)
+
+          pytest_exit = manifest.get("pytest_exit", 1)
+          overall = "pass" if all(v["verdict"] == "pass" for v in verdicts.values()) and pytest_exit == 0 else "fail"
+          failed = [pid for pid, v in verdicts.items() if v["verdict"] != "pass"]
+          flips = []
+          if os.path.exists("round1/verdict.json"):
+              try:
+                  r1 = {p["id"]: p for p in json.load(open("round1/verdict.json")).get("processes", [])}
+              except Exception as exc:
+                  print(f"round-1 verdict unreadable ({exc}); flip accounting skipped")
+                  r1 = {}
+              for pid, v in verdicts.items():
+                  prev = r1.get(pid)
+                  if prev and prev.get("verdict") == "pass" and v["verdict"] != "pass":
+                      flips.append({"id": pid,
+                                    "round1_verdict": prev["verdict"],
+                                    "round1_reason": prev.get("reason", ""),
+                                    "round2_verdict": v["verdict"],
+                                    "round2_reason": v.get("reason", "")})
+          else:
+              print("round-1 verdict artifact not present; flip accounting skipped")
+          verdict = {"overall": overall, "pytest_exit": pytest_exit,
+                     "iteration": manifest.get("iteration", 2),
+                     "processes": [verdicts[p["id"]] for p in plan["processes"]],
+                     "conflicts": conflicts,
+                     "flips": flips}
+          json.dump(verdict, open("verdict.json", "w"), ensure_ascii=False, indent=2)
+
+          lines = []
+          if os.path.exists("work/verdict-droid.md"):
+              lines.append(open("work/verdict-droid.md").read())
+          lines += ["", "## 机器闸与缺料判定（脚本）", "",
+                    f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
+          for pid, missing in blocked.items():
+              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+          for fl in flips:
+              lines.append(f"⚠ 翻案：`{fl['id']}` 第 1 轮 pass → 第 2 轮 {fl['round2_verdict']}（一轮理由：{fl['round1_reason']}；二轮理由：{fl['round2_reason']}）")
+          if conflicts:
+              lines += ["", "## 工单层冲突（验收员升级记录）", ""]
+              for c in conflicts:
+                  lines.append(f"- `{c['process']}`：{c['summary']}（证据：{c.get('evidence', '')}）")
+          lines += ["", f"总判定：**{overall}**"]
+          open("verdict.md", "w").write("\n".join(lines))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"overall={overall}\n")
+              out.write("failed_processes=" + json.dumps(failed) + "\n")
+              out.write("flips=" + json.dumps(flips, ensure_ascii=False) + "\n")
+          print("revalidate merge done | overall:", overall, "| failed:", failed, "| flips:", [f["id"] for f in flips])
+          PY
+
+      - name: Adopt verdict into ForemanRun wall round 2 (P0-1, revalidate)
+        id: adopt2
+        if: always()
+        run: |
+          if [ ! -f foreman-run.json ]; then
+            if [ ! -f wall-in/foreman-run.json ]; then
+              echo "foreman-run missing before revalidate2 adopt"
+              exit 1
+            fi
+            cp wall-in/foreman-run.json foreman-run.json
+          fi
+          DROID_EXIT=-1
+          [ -f work/droid-exit.txt ] && DROID_EXIT=$(cat work/droid-exit.txt)
+          MERGE_FLAG=""
+          [ -f verdict.json ] && MERGE_FLAG="--merge-step-ran"
+          ROUND1=""
+          [ -f round1/verdict.json ] && ROUND1="--round1-verdict round1/verdict.json"
+          FOREMAN_RUN_PATCH=1 PYTHONPATH=scripts/team python3 scripts/team/run_adopt_step.py \
+            --wall foreman-run.json --work-dir work --droid-exit "$DROID_EXIT" \
+            --round 2 --github-output "$GITHUB_OUTPUT" $MERGE_FLAG $ROUND1
+        env:
+          PYTHONPATH: scripts/team
+
+      - name: Recompute replan gate from final verdict (52C, revalidate)
+        if: always()
+        id: replan_gate2
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/compute_replan_gate.py \
+            --wall foreman-run.json --round 2
+
+      - name: Derive validate2 job conclusion (W4, revalidate)
+        id: validate2_conclusion
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py \
+            --wall foreman-run.json --round 2 --github-output "$GITHUB_OUTPUT"
+
+      - name: Assert verdict round 2 artifact complete (B2, revalidate)
+        id: assert_verdict2
+        if: always()
+        run: |
+          PYTHONPATH=scripts/team python3 scripts/team/assert_artifact_complete.py \
+            --wall foreman-run.json \
+            --name team-verdict2-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
+
+      - name: Upload verdict round 2 artifact (revalidate)
+        if: steps.assert_verdict2.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-verdict2-issue-${{ github.event.issue.number }}-run-${{ github.run_id }}
+          path: |
+            verdict.json
+            verdict.md
+          overwrite: true
+
+      - name: Upload foreman-run wall artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: foreman-run-${{ github.run_id }}
+          path: foreman-run.json
+          overwrite: true
+
+      - name: Fail revalidate2 job when adoption failed (W6)
         if: always()
         run: |
           PYTHONPATH=scripts/team python3 scripts/team/compute_validate_conclusion.py --wall foreman-run.json --round 2
