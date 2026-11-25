@@ -1865,6 +1865,8 @@ jobs:
         run: |
           python3 - <<'PY'
           import hashlib, json, os, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from salvage_assemble import assemble_assembled_draft
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -1875,6 +1877,15 @@ jobs:
           judgeable = json.load(open("work/judgeable.json")) if os.path.exists("work/judgeable.json") else []
           blocked = json.load(open("work/blocked.json")) if os.path.exists("work/blocked.json") else {}
           merge_ran = bool(judgeable and os.path.exists("work/verdict-droid.json"))
+          # I-6, same as the validate inline merge: no live draft but a sealed
+          # full partial on disk -> the machine assembles the draft and the
+          # merge proceeds on it.
+          if judgeable and not merge_ran:
+              assembled = assemble_assembled_draft(__import__("pathlib").Path("work"), judgeable)
+              if assembled is not None:
+                  open("work/verdict-droid.json", "w").write(json.dumps(assembled, ensure_ascii=False, indent=2))
+                  merge_ran = True
+                  print("draft machine-assembled from sealed verdict-partial.json (full judgeable coverage)")
 
           for path, digest in manifest["sha256"].items():
               local = "work/" + path[len("evidence/"):] if path.startswith("evidence/") else path
@@ -1902,8 +1913,15 @@ jobs:
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
-              print(f"final coverage mismatch (multiset): {sorted(verdicts)} vs {expected_ids}")
-              sys.exit(1)
+              # I-6: a mismatch here means the validator never judged and
+              # never sealed a full partial — no merge artifacts to assemble.
+              # Do NOT exit the step: fill the missing processes as blocked
+              # and let the adopt library classify (draft_timeout ->
+              # revalidate, fail-closed).
+              print(f"final coverage mismatch (multiset): {sorted(verdicts)} vs {expected_ids}; routing through adopt classification")
+              for pid in sorted(set(expected_ids) - set(verdicts)):
+                  verdicts[pid] = {"id": pid, "verdict": "blocked",
+                                   "reason": "validator 会话未产出该工序判定（机器组装无源，走重验链）"}
           conflicts = []
           if judgeable and merge_ran:
               for centry in droid.get("conflicts") or []:
@@ -3938,6 +3956,8 @@ jobs:
         run: |
           python3 - <<'PY'
           import hashlib, json, os, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from salvage_assemble import assemble_assembled_draft
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -3947,6 +3967,16 @@ jobs:
           plan = json.load(open("work/plan.json"))
           judgeable = json.load(open("work/judgeable.json")) if os.path.exists("work/judgeable.json") else []
           blocked = json.load(open("work/blocked.json")) if os.path.exists("work/blocked.json") else {}
+          merge_ran = bool(judgeable and os.path.exists("work/verdict-droid.json"))
+          # I-6, same as the validate inline merge: no live draft but a sealed
+          # full partial on disk -> the machine assembles the draft and the
+          # merge proceeds on it.
+          if judgeable and not merge_ran:
+              assembled = assemble_assembled_draft(__import__("pathlib").Path("work"), judgeable)
+              if assembled is not None:
+                  open("work/verdict-droid.json", "w").write(json.dumps(assembled, ensure_ascii=False, indent=2))
+                  merge_ran = True
+                  print("draft machine-assembled from sealed verdict-partial.json (full judgeable coverage)")
 
           for path, digest in manifest["sha256"].items():
               local = "work/" + path[len("evidence/"):] if path.startswith("evidence/") else path
@@ -3974,8 +4004,15 @@ jobs:
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
-              print(f"final coverage mismatch (multiset): {sorted(verdicts)} vs {expected_ids}")
-              sys.exit(1)
+              # I-6: a mismatch here means the validator never judged and
+              # never sealed a full partial — no merge artifacts to assemble.
+              # Do NOT exit the step: fill the missing processes as blocked
+              # and let the adopt library classify (draft_timeout ->
+              # revalidate, fail-closed).
+              print(f"final coverage mismatch (multiset): {sorted(verdicts)} vs {expected_ids}; routing through adopt classification")
+              for pid in sorted(set(expected_ids) - set(verdicts)):
+                  verdicts[pid] = {"id": pid, "verdict": "blocked",
+                                   "reason": "validator 会话未产出该工序判定（机器组装无源，走重验链）"}
           conflicts = []
           if judgeable and os.path.exists("work/verdict-droid.json"):
               droid = json.load(open("work/verdict-droid.json"))

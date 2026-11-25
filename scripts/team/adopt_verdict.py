@@ -81,6 +81,76 @@ def conflicts_escalated(conflicts: list[dict] | None) -> bool:
     return bool(conflicts)
 
 
+# S-2: the validator HARD RULE ("a red mandated check is never a pass,
+# exit 127 recorded because pytest was unavailable excepted") is enforced
+# here on the adopt side, from the pack evidence itself — a pass verdict
+# riding over a red check-exit or a checks-failed.marker is machine-flipped,
+# no longer dependent on the model reporting its own violation.
+GATE_EXIT_UNREADABLE = "checks-exit.json 不可读或格式非法（按红处理）"
+GATE_MARKER = "checks-failed.marker 在包内（机器闸：worker 侧已判定检查失败）"
+
+
+def _gate_red_reason(pack_dir: Path) -> str | None:
+    """The pack's red-gate reason, or None when the pack reads green.
+
+    Fail-closed on an unreadable/shape-illegal checks-exit.json: an exit file
+    that cannot prove its entries green reads as red, not as a pass-through.
+    """
+    exit_path = pack_dir / "checks-exit.json"
+    if exit_path.exists():
+        try:
+            exits = json.loads(exit_path.read_text(encoding="utf-8"))
+            bad_shape = not isinstance(exits, list) or not all(
+                isinstance(e, dict) and isinstance(e.get("exit"), int) for e in exits
+            )
+            if bad_shape:
+                return GATE_EXIT_UNREADABLE
+            # exit 127 exception (kept from the prompt HARD RULE): 127 is
+            # recorded only when pytest was unavailable at prep — an
+            # environment failure judged via the pack/manifest, not a red
+            # mandated check.
+            red = next(
+                (e for e in exits if e["exit"] != 0 and e["exit"] != 127), None
+            )
+            if red is not None:
+                cmd = red.get("command", "?")
+                return (
+                    f"机器闸：checks-exit.json 记录非零退出码 {red['exit']}（{cmd}）"
+                )
+        except Exception:
+            return GATE_EXIT_UNREADABLE
+    if (pack_dir / "checks-failed.marker").exists():
+        return GATE_MARKER
+    return None
+
+
+def machine_gate_reds(work_dir: Path, judgeable: list[str]) -> dict[str, str]:
+    """Per-judgeable-process red-gate reason map (empty when all green)."""
+    reds: dict[str, str] = {}
+    for pid in judgeable:
+        reason = _gate_red_reason(work_dir / "packs" / pid)
+        if reason:
+            reds[pid] = reason
+    return reds
+
+
+def apply_machine_gates(
+    verdicts: dict[str, dict],
+    reds: dict[str, str],
+) -> None:
+    """Flip gated processes to fail in place; a fail verdict keeps fail but
+    its reason is replaced with the machine evidence (the gate outranks the
+    model's account of the same failure). Blocked entries stay blocked — a
+    pack with insufficient artifacts is never judged by the gates."""
+    for pid, reason in reds.items():
+        entry = verdicts.get(pid)
+        if entry is None or entry.get("verdict") not in ("pass", "fail"):
+            continue
+        entry["verdict"] = "fail"
+        entry["reason"] = reason
+        entry["machine_gate"] = True
+
+
 def _recover_salvage(
     work_dir: Path,
     plan: dict,
@@ -293,6 +363,11 @@ def adopt(
                     "verdict": "blocked",
                     "reason": "料不齐：缺 " + ", ".join(missing),
                 }
+            # S-2 machine gates: the pack evidence outranks every verdict on
+            # the judgeable set — this is the single choke point all adoption
+            # routes (live draft, machine-assembled partial) flow through.
+            reds = machine_gate_reds(work_dir, judgeable)
+            apply_machine_gates(verdicts, reds)
             if adoption_status == "ok":
                 expected_ids = sorted(p["id"] for p in plan["processes"])
                 if sorted(verdicts) != expected_ids:
@@ -306,9 +381,14 @@ def adopt(
                         if all(v["verdict"] == "pass" for v in verdicts.values())
                         and pytest_exit == 0
                         and not escalated
+                        and not reds
                         else "fail"
                     )
-                    failed = [pid for pid, v in verdicts.items() if v["verdict"] != "pass"]
+                    failed = [
+                        pid
+                        for pid, v in verdicts.items()
+                        if v["verdict"] != "pass"
+                    ]
                     failing_tests: list[str] = []
                     if overall == "fail" and not failed and not escalated:
                         raw = (work_dir / "pytest-output.txt").read_text(
@@ -350,6 +430,8 @@ def adopt(
                         verdict["flips"] = flips
                     if assembled_draft:
                         verdict["salvage_assembled"] = True
+                    if reds:
+                        verdict["machine_gates"] = reds
                     Path("verdict.json").write_text(
                         json.dumps(verdict, ensure_ascii=False, indent=2) + "\n",
                         encoding="utf-8",
@@ -360,6 +442,14 @@ def adopt(
                             "- 草稿由机器组装（verdict-partial.json 全盖 judgeable＋收口标记），"
                             "会话退出码不参与判定；机器闸照常适用"
                         )
+                        md_lines.append("")
+                    if reds:
+                        md_lines.append(
+                            "## 机器闸判定（S-2，包证据优先于模型判定）"
+                            ""
+                        )
+                        for pid, reason in reds.items():
+                            md_lines.append(f"- `{pid}`：{reason}")
                         md_lines.append("")
                     if (work_dir / "verdict-droid.md").exists():
                         md_lines.append((work_dir / "verdict-droid.md").read_text(encoding="utf-8"))
