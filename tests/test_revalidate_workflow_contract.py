@@ -58,11 +58,20 @@ def test_revalidate_jobs_gate_on_should_revalidate(yml):
 
 
 def test_revalidate_max_once(yml):
-    """The attempt marker lives on the wall: the job's guard refuses to re-run
-    when revalidate_attempted is already true."""
+    """The attempt marker lives on the wall under one name everywhere: the
+    job's guard refuses to re-run when revalidate_run_started is already true
+    (stamped when the first retry session actually started), and the guard is
+    NOT the job's first step — it must sit after Checkout and the wall
+    download (scrutiny PR1-1: a fresh runner has no wall before those)."""
     for key in ("revalidate", "revalidate2"):
         text = _job_text(yml, key)
-        assert "revalidate_attempted" in text, f"{key} must consume revalidate_attempted"
+        assert "revalidate_run_started" in text, f"{key} must consume the run-start marker"
+        guard_idx = text.find("- name: Refuse a second revalidate")
+        checkout_idx = text.find("- name: Checkout\n")
+        wall_idx = text.find("- name: Download ForemanRun wall")
+        assert 0 <= checkout_idx < wall_idx < guard_idx, (
+            f"{key}: guard must come after Checkout and the wall download"
+        )
 
 
 def test_revalidate_reuses_evidence_pack_and_same_sha(yml):
@@ -131,4 +140,36 @@ def test_worker_install_step_runs_before_byom_settings(yml):
 def test_schema_has_should_revalidate():
     schema = (ROOT / "schemas" / "foreman-run.v1.schema.json").read_text(encoding="utf-8")
     assert "should_revalidate" in schema
-    assert "revalidate_attempted" in schema
+    assert "revalidate_run_started" in schema
+
+
+# --- scrutiny PR1-6: downstream jobs must wait on the retry -----------------
+
+
+@pytest.mark.parametrize(
+    "job_key,extra_need",
+    [("replan", "revalidate"), ("prep2", "revalidate"), ("assemble", "revalidate2")],
+)
+def test_downstream_jobs_wait_on_revalidate(yml, job_key: str, extra_need: str):
+    """The retry's result must be able to influence the chain: the jobs that
+    consume the wall list the revalidate job in their needs (the retry being
+    skipped is tolerated by the job-level if conditions, not by missing
+    edges)."""
+    text = _job_text(yml, job_key)
+    m = re.search(r"needs:\s*\[([^\]]+)\]", text)
+    assert m, f"{job_key}: needs list expected"
+    needs = [n.strip() for n in m.group(1).split(",")]
+    assert extra_need in needs, f"{job_key} must wait on {extra_need}"
+
+
+@pytest.mark.parametrize(
+    "job_key,producer",
+    [("validate", "should_revalidate"), ("validate2", "should_revalidate")],
+)
+def test_revalidate_producers_declare_output(yml, job_key: str, producer: str):
+    """PR1-0: a job-level if reading needs.<job>.outputs.<name> is dead wiring
+    unless the producer job declares the output — pinned both directions."""
+    text = _job_text(yml, job_key)
+    m = re.search(r"outputs:\n((?:      [a-z_]+: .*\n)+)", text)
+    assert m, f"{job_key}: outputs block expected"
+    assert f"{producer}:" in m.group(1), f"{job_key} must declare output {producer}"

@@ -61,7 +61,8 @@ def compute(wall: dict, *, round_num: int = 1) -> dict:
     # I-5 revalidate chain: adopt_verdict requests the single validator-only
     # retry via should_revalidate; this recomputation carries the flag through
     # (never flips it off — only a successful adoption clears it) and mirrors
-    # the attempt marker so the workflow's guard and the wall stay one truth.
+    # the run-start marker the revalidate job's guard stamps, so the workflow
+    # guard and the wall stay one truth.
     should_revalidate = bool((wall.get("replan_gate") or {}).get("should_revalidate"))
     reasons = []
     if adoption_ok and overall != "pass":
@@ -75,8 +76,8 @@ def compute(wall: dict, *, round_num: int = 1) -> dict:
         "schema_version": "replan-gate.v1",
         "should_replan": should,
         "should_revalidate": should_revalidate,
-        "revalidate_attempted": bool(
-            (wall.get("replan_gate") or {}).get("revalidate_attempted")
+        "revalidate_run_started": bool(
+            (wall.get("replan_gate") or {}).get("revalidate_run_started")
         ),
         "reasons": reasons,
         "inputs_satisfied": {

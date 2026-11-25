@@ -166,19 +166,25 @@ def test_no_merge_step_exits_on_final_coverage_mismatch_alone(yml, job_key: str)
     """The A/C death line is defanged: the final-coverage-mismatch print no
     longer sits in an immediate `sys.exit(1)` branch — the merge step fills
     the missing processes as blocked and lets the adopt library classify
-    (revalidate path). Pin: the line's branch tail contains no bare exit.
-    All four judging jobs share the defused shape (PR-2 carry-over: the
-    revalidate jobs' inline copies were demoted from exit-1 to the same
-    classification routing)."""
+    (revalidate path). Pin: between the mismatch print and the end of its
+    handling, NO sys.exit/exec exit-1 appears before the routing statement
+    (scrutiny PR2-3a: the old tail-slice form was vacuous — a bare
+    sys.exit(1) re-inserted before the routing string left it green)."""
     text = _job_text(yml, job_key)
     assert "assemble_assembled_draft" in text, f"{job_key} must accept assembled drafts"
     idx = text.find("final coverage mismatch")
     assert idx != -1, f"{job_key}: mismatch handler expected"
-    tail = text[idx : idx + 500]
-    assert "sys.exit(1)" not in tail.split("#")[0] or "routing through adopt classification" in tail, (
-        f"{job_key}: the A/C death line must route through adopt classification, not exit"
+    routing_idx = text.find("routing through adopt classification", idx)
+    assert routing_idx != -1, f"{job_key}: mismatch must route through adopt classification"
+    handler = text[idx:routing_idx]
+    assert "sys.exit(1)" not in handler, (
+        f"{job_key}: a bare sys.exit(1) between the mismatch print and the "
+        "routing statement reinstates the A/C death line"
     )
-    assert "routing through adopt classification" in tail
+    assert not re.search(r"^\s*exit 1\b", handler, re.MULTILINE), (
+        f"{job_key}: an exit-1 shell line between the mismatch print and the "
+        "routing statement reinstates the A/C death line"
+    )
 
 
 def test_stream_upload_keeps_partial_file(yml):
