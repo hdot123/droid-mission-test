@@ -23,6 +23,13 @@ PYTHONPATH=scripts/team python -m turn_metrics <流工件或目录>
 
 ```bash
 pytest tests/ -q
+python3 scripts/team/lint_workflow_foreman.py
+python3 scripts/team/lint_workflow_wall_exits.py
+python3 scripts/team/lint_gh_project_parse.py
+python3 scripts/team/lint_workflow_budgets.py
+python3 scripts/team/lint_workflow_needs.py
 ```
 
-当前基线：137 passed, 1 skipped。
+以上即 CI（foreman-wall contract workflow）在 push/PR 时运行的全部检查：契约测试子集＋五个 lint 脚本（foreman 接线、墙退出、Projects 解析、预算参数、needs 悬空引用）。
+
+当前基线：314 passed, 2 skipped。

@@ -2061,9 +2061,15 @@ jobs:
   replan:
     name: replan (foreman revises plan or re-dispatches)
     needs: [lead, prep, validate, revalidate]
+    # R2-1: the retry is the only validate-state that can judge a real FAIL
+    # after a first timeout (validate's own gate is necessarily false there:
+    # requesting a revalidation implies adoption failed). When the retry ran
+    # and was adopted, its gate decides; when it never ran, round 1's gate
+    # decides. A failed/cancelled retry stays terminal (no arm matches).
     if: >-
-      ${{ !cancelled() && needs.validate.outputs.should_replan == 'true' &&
-      (needs.revalidate.result == 'success' || needs.revalidate.result == 'skipped') }}
+      ${{ !cancelled() &&
+      ((needs.revalidate.result == 'success' && needs.revalidate.outputs.should_replan == 'true') ||
+      (needs.revalidate.result == 'skipped' && needs.validate.outputs.should_replan == 'true')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
