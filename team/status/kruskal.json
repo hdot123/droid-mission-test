@@ -1,0 +1,21 @@
+{
+  "id": "kruskal",
+  "title": "kruskal.py Kruskal minimum spanning tree (difficulty H)",
+  "state": "done",
+  "files": [
+    "kruskal.py",
+    "tests/test_kruskal.py",
+    "team/handoffs/kruskal.md",
+    "team/status/kruskal.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_kruskal.py -q",
+      "result": "16 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "358 passed, 2 skipped in 21.39s"
+    }
+  ]
+}
