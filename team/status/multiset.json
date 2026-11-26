@@ -1,0 +1,19 @@
+{
+  "id": "multiset",
+  "title": "实现 multiset.py 多重集可变计数结构（含集合代数，含测试）",
+  "state": "done",
+  "files": [
+    "multiset.py",
+    "tests/test_multiset.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_multiset.py -q",
+      "result": "passed (27 passed in 0.04s)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (369 passed, 2 skipped in 19.50s)"
+    }
+  ]
+}
