@@ -1,0 +1,21 @@
+{
+  "id": "contfrac",
+  "title": "contfrac.py — 连分数展开与渐近分数（H）",
+  "state": "done",
+  "files": [
+    "contfrac.py",
+    "tests/test_contfrac.py",
+    "team/handoffs/contfrac.md",
+    "team/status/contfrac.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_contfrac.py -q",
+      "result": "14 passed in 0.06s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "356 passed, 2 skipped in 19.96s"
+    }
+  ]
+}
