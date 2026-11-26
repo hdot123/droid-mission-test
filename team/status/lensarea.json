@@ -1,0 +1,21 @@
+{
+  "id": "lensarea",
+  "title": "双圆交叠（透镜）面积计算",
+  "state": "done",
+  "files": [
+    "lensarea.py",
+    "tests/test_lensarea.py",
+    "team/handoffs/lensarea.md",
+    "team/status/lensarea.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_lensarea.py -q",
+      "result": "16 passed in 0.04s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "358 passed, 2 skipped in 17.82s (exit 0)"
+    }
+  ]
+}
