@@ -186,7 +186,7 @@
       ]
     }
   },
-  "human_stop": true,
+  "human_stop": false,
   "validation": {
     "schema_version": "validation-slice.v1",
     "round": 1,
@@ -200,10 +200,6 @@
     "conflicts_escalated": false,
     "pytest_exit": 0,
     "job_conclusion_derived": "success"
-  },
-  "closeout": {
-    "schema_version": "closeout-slice.v1",
-    "run_must_fail": true
   },
   "replan_gate": {
     "schema_version": "replan-gate.v1",

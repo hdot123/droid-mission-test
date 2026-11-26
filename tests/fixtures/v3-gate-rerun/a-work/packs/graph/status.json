@@ -1,0 +1,21 @@
+{
+  "id": "graph",
+  "title": "实现无权无向图邻接表 graph.py",
+  "state": "done",
+  "files": [
+    "graph.py",
+    "tests/test_graph.py",
+    "team/handoffs/graph.md",
+    "team/status/graph.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_graph.py -q",
+      "result": "pass: 17 passed in 0.03s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 204 passed, 2 skipped in 16.44s (exit 0)"
+    }
+  ]
+}

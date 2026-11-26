@@ -1,0 +1,10 @@
+[
+  {
+    "command": "python3 -m pytest tests/test_pluralize.py -q",
+    "exit": 0
+  },
+  {
+    "command": "python3 -m pytest tests/ -q",
+    "exit": 0
+  }
+]

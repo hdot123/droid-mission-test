@@ -1,0 +1,20 @@
+{
+  "processes": [
+    {
+      "id": "ellipse",
+      "verdict": "pass",
+      "reason": "No checks-failed.marker; checks-exit.json shows exit 0 for both card checks (python3 -m pytest tests/test_ellipse.py -q -> 27 passed; python3 -m pytest tests/ -q -> 256 passed, 2 skipped); diff.patch implements the pinned Ramanujan II formula and shared validation (bool rejected -> TypeError, <=0 -> ValueError) with a dedicated test for every acceptance item."
+    },
+    {
+      "id": "issn",
+      "verdict": "pass",
+      "reason": "No checks-failed.marker; checks-exit.json shows exit 0 for both card checks (python3 -m pytest tests/test_issn.py -q -> 7 passed; python3 -m pytest tests/ -q -> 256 passed, 2 skipped); diff.patch pins the weighted-sum algorithm and both validate forms; all six check-digit acceptance values hand-verified from the pinned formula; tests cover every acceptance item."
+    },
+    {
+      "id": "pluralize",
+      "verdict": "pass",
+      "reason": "No checks-failed.marker; checks-exit.json shows exit 0 for both card checks (python3 -m pytest tests/test_pluralize.py -q -> 35 passed; python3 -m pytest tests/ -q -> 256 passed, 2 skipped); diff.patch implements the pinned rule order verbatim (uncountable -> irregular -> f/fe -> o->es -> consonant+y -> sibilant -> default) with a dedicated test for every acceptance item."
+    }
+  ],
+  "conflicts": []
+}

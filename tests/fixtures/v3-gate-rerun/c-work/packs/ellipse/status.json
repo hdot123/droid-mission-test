@@ -1,0 +1,21 @@
+{
+  "id": "ellipse",
+  "title": "椭圆面积、周长与离心率（ellipse.py）",
+  "state": "done",
+  "files": [
+    "ellipse.py",
+    "tests/test_ellipse.py",
+    "team/handoffs/ellipse.md",
+    "team/status/ellipse.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_ellipse.py -q",
+      "result": "pass: 27 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 214 passed, 2 skipped"
+    }
+  ]
+}

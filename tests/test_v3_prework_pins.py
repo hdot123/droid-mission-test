@@ -5,8 +5,12 @@ rendered bytes and the documented flags must be pinned, not assumed.
 
 PR1-8: every inline render site in team.yml imports the template module the
 same way (REPO_ROOT path insertion) — a divergent GITHUB_WORKSPACE-only import
-KeyErrors in any runner where that variable is unset, and byte-drift between
-render sites is exactly the L-4 shape this template was extracted to kill.
+drifts between render sites, and byte-drift is exactly the L-4 shape this
+template was extracted to kill. M2-2: the import root must be an *exported*
+REPO_ROOT — bash never passes a plain shell assignment to a `python3 -` child,
+so an un-exported render site KeyErrors on CI while the suite (whose render
+tests inject the variable themselves) stays green;
+tests/test_render_step_execution.py executes the real step shell to catch it.
 
 PR1-9: the workflow-embeds-template tests execute the workflow's own render
 output (not a re-render through the module), so dropping the render call or
@@ -86,9 +90,14 @@ def test_render_site_imports_template_via_repo_root(yml, job_key, step_name, rou
     assert f"round_num={round_num}" in step, (
         f"{job_key}: round stamp must stay parametric (round_num={round_num})"
     )
-    # REPO_ROOT is the only import-root form used by render sites: it is set
-    # unconditionally at the top of every step, while GITHUB_WORKSPACE-only
-    # forms KeyError on runners where the variable is unset.
+    # REPO_ROOT must reach the python child's environment: a plain shell
+    # assignment is invisible to `python3 - <<'PY'` children (bash exports
+    # nothing to a child without `export`), so the render KeyErrors on CI —
+    # the exact runner-unset drift shape this pin exists to prevent.
+    assert "export REPO_ROOT=" in step, (
+        f"{job_key}/{step_name.strip()}: REPO_ROOT must be exported before the "
+        "template import resolves through it"
+    )
     assert 'os.environ["REPO_ROOT"]' in step, (
         f"{job_key}/{step_name.strip()}: template import must go through REPO_ROOT"
     )
@@ -207,3 +216,10 @@ def test_prompt_flags_match_recorded_cli_line(round_num: int):
         assert "--round 2" in lines[recorder_idx[0]]
     else:
         assert "--round" not in lines[recorder_idx[0]]
+    # M2-3: the re-validation price is scoped to the kill-with-unsealed-partial
+    # case — the normal paths (a complete draft on disk, or no partial) adopt
+    # without any revalidation, so the sentence must not promise a price the
+    # adopt chain never charges.
+    assert "killed after your last process is recorded" in prompt
+    assert "the round is re-validated" in prompt
+    assert "the whole round is re-validated" not in prompt

@@ -1,0 +1,10 @@
+V-3 gate session outputs (verbatim work dirs from /tmp/v3-gate/adopt-{a,c}/work):
+the exact inputs the committed docs/evidence/v3-gate-rerun/{a,c}/foreman-run.json
+must be reproducible from — one real droid validator session per pack (a: damm,
+easterorthodox, graph; c: ellipse, issn, pluralize), run 2026-11-26 at main
+7133f0f on the gate channel (glm-5.3-flash via node-01, user-authorized swap),
+droid exit 0 both sides, manifest sha eb7da7af… (a) / 5fcbcf1a… (c) matching
+tests/fixtures/validator-r54ac/. Copied verbatim, nothing trimmed.
+Used by test_v3_gate_evidence_walls.py to replay the adopt chain on a fresh
+wall (M2-4: committed walls carried stale human_stop=true from an earlier
+mis-shaped replay; a successful adopt never clears the flag).

@@ -1,0 +1,20 @@
+{
+  "processes": [
+    {
+      "id": "damm",
+      "verdict": "pass",
+      "reason": "diff.patch pins the quasi-group table exactly as specified (all 10 rows match), all 16 acceptance points have dedicated tests in tests/test_damm.py (18 tests total), both card checks exit 0 in checks-exit.json (18 passed; full suite 240 passed, 2 skipped), and no checks-failed.marker exists."
+    },
+    {
+      "id": "easterorthodox",
+      "verdict": "pass",
+      "reason": "diff.patch implements the pinned two-step computus verbatim (a/b/c/d/e formulas and the (year//100 - year//400 - 2) Gregorian offset); spot-verification reproduces the pinned dates (2024=(5,5), 2025=(4,20), 2016=(5,1), 2010=(4,4), 1900=(4,22), 2000=(4,30), 2100=(5,2)); all 17 acceptance points tested; both card checks exit 0 in checks-exit.json (18 passed; full suite 240 passed, 2 skipped); no checks-failed.marker."
+    },
+    {
+      "id": "graph",
+      "verdict": "pass",
+      "reason": "graph.py matches the spec API exactly (TypeError/ValueError rules, sorted orders, recursive-preorder DFS, enqueue-sorted-on-dequeue BFS, components ordered by minimum element); hand-verification of the reference graph G confirms the pinned orders (bfs(a)=[a,b,c,d,e], dfs(a)=[a,b,d,c,e], bfs(z)=[z]) and G2 dfs(m)=[m,n,p,o,q]; 17 tests cover every acceptance point; both card checks exit 0 in checks-exit.json (17 passed; full suite 240 passed, 2 skipped); no checks-failed.marker; team/ files listed in status.json are whitelisted protocol artifacts, not out-of-card files."
+    }
+  ],
+  "conflicts": []
+}

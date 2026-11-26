@@ -1,0 +1,16 @@
+{
+  "id": "graph",
+  "title": "实现无权无向图邻接表 graph.py",
+  "scope": "只拥有新增 graph.py 与 tests/test_graph.py；不拥有 easterorthodox.py、damm.py、任何存量文件或 team/ 路径。实现与测试只用标准库，不 import 另外两个组件。",
+  "files": [
+    "graph.py",
+    "tests/test_graph.py"
+  ],
+  "task": "在仓库根目录新增两个文件：graph.py 与 tests/test_graph.py（只新增，不改任何存量文件；标准库 only；不 import easterorthodox 或 damm）。逐字实现以下验收规格：\n\n二、graph.py —— 无权无向图（邻接表）\n\n- 类 `Graph`，节点名限定为 str。`Graph()` 建空图。\n- `add_node(v)`：v 非 str 抛 TypeError；已存在则无操作（幂等）。\n- `add_edge(u, v)`：任一端点非 str 抛 TypeError；u == v（自环）抛 ValueError；端点不存在时自动加入；重复边无操作。无向边双向登记。\n- `nodes() -> list`：全部节点名字典序升序列表。\n- `neighbors(v) -> list`：v 的邻居字典序升序列表；v 不在图中抛 ValueError。\n- `bfs(start) -> list`：广度优先访问序——从 start 出发，每次出队一个节点并把其未访问邻居按字典序升序依次入队；start 不在图中抛 ValueError；只含 start 所在连通分量。\n- `dfs(start) -> list`：深度优先先序，等价于递归定义——访问节点后，按字典序升序依次对每个未访问邻居递归深入；start 不在图中抛 ValueError；只含 start 所在连通分量。\n- `connected_components() -> list[list]`：每个分量为字典序升序列表；分量之间按各自最小元素升序排列。\n- `has_path(u, v) -> bool`：任一端点不在图中抛 ValueError；u == v 且在图中返回 True。\n- 验收要点（图 G 由边 (a,b)、(a,c)、(b,d)、(c,d)、(d,e) 与孤立节点 z 构成）：`G.nodes() == [\"a\", \"b\", \"c\", \"d\", \"e\", \"z\"]`；`G.neighbors(\"d\") == [\"b\", \"c\", \"e\"]`；`G.neighbors(\"z\") == []`；`G.bfs(\"a\") == [\"a\", \"b\", \"c\", \"d\", \"e\"]`；`G.dfs(\"a\") == [\"a\", \"b\", \"d\", \"c\", \"e\"]`；`G.bfs(\"z\") == [\"z\"]`；`G.connected_components() == [[\"a\", \"b\", \"c\", \"d\", \"e\"], [\"z\"]]`；`G.has_path(\"a\", \"e\") is True`；`G.has_path(\"a\", \"z\") is False`；`G.has_path(\"a\", \"a\") is True`；图 G2 由边 (m,n)、(m,o)、(n,p)、(o,p)、(p,q) 构成：`G2.bfs(\"m\") == [\"m\", \"n\", \"o\", \"p\", \"q\"]`、`G2.dfs(\"m\") == [\"m\", \"n\", \"p\", \"o\", \"q\"]`；空图 `Graph().nodes() == []`、`Graph().connected_components() == []`；`G.add_edge(\"a\", \"a\")`、`G.neighbors(\"q\")`、`G.bfs(\"q\")`、`G.has_path(\"a\", \"q\")` 抛 ValueError；`G.add_node(1)`、`G.add_edge(\"a\", 2)` 抛 TypeError；对 G 重复 `add_edge(\"a\", \"b\")` 后 `G.neighbors(\"a\") == [\"b\", \"c\"]`（重复边无操作）。\n- 每个验收要点都要有对应测试用例。checks（逐字）：`python3 -m pytest tests/test_graph.py -q`、`python3 -m pytest tests/ -q`",
+  "checks": [
+    "python3 -m pytest tests/test_graph.py -q",
+    "python3 -m pytest tests/ -q"
+  ],
+  "sub_issue_number": 819,
+  "sub_issue_linked": true
+}

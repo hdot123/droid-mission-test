@@ -1,0 +1,19 @@
+{
+  "id": "easterorthodox",
+  "title": "实现东正教复活节公历日期计算 easterorthodox.py",
+  "state": "done",
+  "files": [
+    "easterorthodox.py",
+    "tests/test_easterorthodox.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_easterorthodox.py -q",
+      "result": "18 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "205 passed, 2 skipped"
+    }
+  ]
+}

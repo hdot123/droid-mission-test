@@ -1,0 +1,149 @@
+diff --git a/easterorthodox.py b/easterorthodox.py
+new file mode 100644
+index 0000000..b4e1b17
+--- /dev/null
++++ b/easterorthodox.py
+@@ -0,0 +1,75 @@
++"""Orthodox (Julian computus) Easter date, expressed in the Gregorian calendar."""
++
++from __future__ import annotations
++
++__all__ = ["orthodox_easter"]
++
++_MIN_YEAR = 1583
++_MAX_YEAR = 9999
++
++# Month lengths used to convert a day-of-year (counted from March 1) back
++# into (month, day). Orthodox Easter falls in March..May on the Gregorian
++# calendar, so three months suffice.
++_MONTH_LENGTHS = (31, 30, 31)  # March, April, May
++
++
++def _is_int_like(year: object) -> bool:
++    """True for real ints, False for bool (bool is a subclass of int)."""
++    return isinstance(year, int) and not isinstance(year, bool)
++
++
++def _day_of_year_to_date(ordinal: int) -> tuple[int, int]:
++    """Convert a day-of-year counted from March 1 to (month, day)."""
++    remaining = ordinal
++    for length, month in zip(_MONTH_LENGTHS, (3, 4, 5)):
++        if remaining <= length:
++            return (month, remaining)
++        remaining -= length
++    raise AssertionError(f"ordinal {ordinal} out of range")  # pragma: no cover
++
++
++def orthodox_easter(year: int) -> tuple[int, int]:
++    """Return the Orthodox Easter date for ``year`` in the Gregorian calendar.
++
++    Two pinned steps:
++
++    1. Julian computus::
++
++        a = year % 4, b = year % 7, c = year % 19
++        d = (19c + 15) % 30
++        e = (2a + 4b - d + 34) % 7
++        julian_month = (d + e + 114) // 31
++        julian_day   = ((d + e + 114) % 31) + 1
++
++    2. Convert Julian to Gregorian by adding the offset
++       ``(year // 100 - year // 400 - 2)`` days.
++
++    Raises TypeError for non-int (bool rejected) and ValueError outside
++    ``1583 <= year <= 9999``.
++    """
++    if not _is_int_like(year):
++        raise TypeError(f"year must be int, not {type(year).__name__}")
++    if not (_MIN_YEAR <= year <= _MAX_YEAR):
++        raise ValueError(
++            f"year must satisfy {_MIN_YEAR} <= year <= {_MAX_YEAR}, got {year}"
++        )
++
++    # Step 1: Julian computus.
++    a = year % 4
++    b = year % 7
++    c = year % 19
++    d = (19 * c + 15) % 30
++    e = (2 * a + 4 * b - d + 34) % 7
++    julian_month = (d + e + 114) // 31
++    julian_day = ((d + e + 114) % 31) + 1
++
++    # Day-of-year for the Julian date (months before March are irrelevant).
++    julian_ordinal = julian_day
++    for month in range(3, julian_month):
++        julian_ordinal += 31 if month in (3, 5) else 30
++
++    # Step 2: Julian -> Gregorian offset.
++    offset = (year // 100) - (year // 400) - 2
++    gregorian_ordinal = julian_ordinal + offset
++
++    return _day_of_year_to_date(gregorian_ordinal)
+diff --git a/tests/test_easterorthodox.py b/tests/test_easterorthodox.py
+new file mode 100644
+index 0000000..88156d3
+--- /dev/null
++++ b/tests/test_easterorthodox.py
+@@ -0,0 +1,62 @@
++"""Tests for easterorthodox.orthodox_easter (acceptance points, verbatim)."""
++
++import pytest
++
++from easterorthodox import orthodox_easter
++
++
++# --- acceptance dates ------------------------------------------------------
++@pytest.mark.parametrize(
++    "year, expected",
++    [
++        (2010, (4, 4)),
++        (2016, (5, 1)),
++        (2020, (4, 19)),
++        (2021, (5, 2)),
++        (2022, (4, 24)),
++        (2023, (4, 16)),
++        (2024, (5, 5)),
++        (2025, (4, 20)),
++        (2026, (4, 12)),
++        (2000, (4, 30)),
++        (1900, (4, 22)),
++        (2100, (5, 2)),
++    ],
++)
++def test_orthodox_easter_dates(year, expected):
++    assert orthodox_easter(year) == expected
++
++
++# --- boundary years --------------------------------------------------------
++def test_1582_raises_value_error():
++    with pytest.raises(ValueError):
++        orthodox_easter(1582)
++
++
++def test_10000_raises_value_error():
++    with pytest.raises(ValueError):
++        orthodox_easter(10000)
++
++
++# --- type errors -----------------------------------------------------------
++def test_float_rejected():
++    with pytest.raises(TypeError):
++        orthodox_easter(2024.0)
++
++
++def test_string_rejected():
++    with pytest.raises(TypeError):
++        orthodox_easter("2024")
++
++
++def test_bool_rejected():
++    with pytest.raises(TypeError):
++        orthodox_easter(True)
++
++
++# --- return type -----------------------------------------------------------
++def test_returns_int_tuple():
++    result = orthodox_easter(2024)
++    assert isinstance(result, tuple)
++    assert len(result) == 2
++    assert all(isinstance(part, int) for part in result)
