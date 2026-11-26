@@ -83,6 +83,8 @@ W-16 本体（worker 阶段恢复畅通）在 adversarial 目录与仓内 docs �
 
 V-3 门本轮未过：`custom:DeepSeek-V4.1-Flash-Go`（CI live 同通道模型）上游 403「Model access is disabled」，A 包会话未启动即终止，C 包未执行。**禁止上线新 prompt 至 live**；修复与重跑路径见 `docs/V-3-gate-上线门报告.md`。前置三件（PR1-8/PR1-10/PR2-6）已合入（PR #840），门可随时重跑。
 
+**当日复探（收尾轮，2026-11-26）**：上游 403 未解除（对照 glm-5.3-flash 200）；真 CI 通道（droid-test.lumivane.dpdns.org）鉴权走 GitHub secret `GO_GITHUB_RUN_TOKEN`，worker 侧无从旁路证实。重跑就绪件复核完毕：prompt 渲染件与 main 单源模板逐字节一致、判定脚本口径在位——通道恢复后 ~15 分钟内可重跑。复核同步确认：333 passed 2 skipped＋五 lint 绿＋预算冻结 0 字节，收档数据全部继续有效。
+
 ## 七、给大哥的 live 验收清单（U-9 最终口径；V-3 过门后、发单时按此收档）
 
 **总判定**：连续 2 轮（8 单）live 全绿才算治好；「过了几单」不作为治好依据。V-3 门永久保留为发版前置。
