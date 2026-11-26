@@ -6,9 +6,12 @@ worker-stream.jsonl — and the wall's workers slice must carry those facts
 as optional, backward-compatible fields:
 
 - job cancelled (25m wall)                          -> job_wall_cancelled
-- droid exit 124 (900s wall) or stream tail is the
-  "Tool execution was interrupted" tool_error       -> wall_killed
-- session self-ended                                -> ok
+- exit 124 / exit 137 (GNU timeout TERM / --kill-after SIGKILL)
+  or stream tail is the "Tool execution was interrupted"
+  tool_error or (non-zero exit outside {0, 1} with no
+  completion event anywhere in the stream)          -> wall_killed
+- droid self-crash (exit 1 or negative, no completion) -> ok
+- session self-ended (exit 0 or completion event)   -> ok
 
 Three wall slices exercise the schema: legacy (no new fields) validates,
 the new fields validate, an illegal outcome enum is rejected.
@@ -48,6 +51,16 @@ HEALTHY_TAIL_EVENT = json.dumps(
         "type": "message",
         "role": "assistant",
         "text": "done",
+    }
+)
+# Real corpus shape: healthy droid sessions end the stream with a
+# completion event (54/97 real streams end with type "completion").
+COMPLETION_TAIL_EVENT = json.dumps(
+    {
+        "type": "completion",
+        "finalText": "Process card complete.",
+        "numTurns": 14,
+        "durationMs": 311439,
     }
 )
 
@@ -121,11 +134,95 @@ def test_classify_wall_killed_interrupted_tail_with_zero_exit():
     assert marker is True
 
 
+def test_classify_wall_killed_exit_137_no_cancel(tmp_path=None):
+    """GNU timeout --kill-after SIGKILL path: a process that ignores TERM
+    exits 137, not 124. Same wall family, same verdict."""
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=137,
+        job_cancelled=False,
+        stream_tail=HEALTHY_TAIL_EVENT + "\n",
+    )
+    assert outcome == "wall_killed"
+    assert marker is False
+
+
+@pytest.mark.parametrize("exit_code", [2, 3, 15, 255])
+def test_classify_wall_killed_nonzero_exit_without_completion_event(exit_code):
+    """A non-zero session exit whose stream never carried a completion
+    event is an abnormal termination of the same machine-provable family
+    as a wall kill (a self-ended session always emits completion)."""
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=exit_code,
+        job_cancelled=False,
+        stream_tail=HEALTHY_TAIL_EVENT + "\n",
+    )
+    assert outcome == "wall_killed"
+    assert marker is False
+
+
+def test_classify_wall_killed_nonzero_exit_missing_stream():
+    """Missing/unreadable stream cannot show a completion event, so a
+    non-zero exit over it stays in the wall_killed family."""
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=2,
+        job_cancelled=False,
+        stream_tail=None,
+    )
+    assert outcome == "wall_killed"
+    assert marker is False
+
+
+def test_classify_exit_1_without_completion_is_droid_self_crash_ok():
+    """Exit 1 with no completion is the droid self-crash death family, not
+    a wall kill: the coarse enum keeps it ok and droid_exit_code carries
+    the detail; the salvage guard reads the exit code directly."""
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=1,
+        job_cancelled=False,
+        stream_tail=HEALTHY_TAIL_EVENT + "\n",
+    )
+    assert outcome == "ok"
+    assert marker is False
+
+
+def test_classify_negative_exit_without_completion_is_droid_self_crash_ok():
+    """Negative exit codes (128+signal shell conventions, e.g. -15 from a
+    direct kill) are process deaths outside the GNU timeout wall family:
+    same carve-out as exit 1, never wall_killed."""
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=-15,
+        job_cancelled=False,
+        stream_tail=None,
+    )
+    assert outcome == "ok"
+    assert marker is False
+
+
+def test_classify_exit_1_with_completion_event_is_ok():
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=1,
+        job_cancelled=False,
+        stream_tail=COMPLETION_TAIL_EVENT + "\n",
+    )
+    assert outcome == "ok"
+    assert marker is False
+
+
 def test_classify_ok_healthy_tail_zero_exit():
     outcome, marker = write_worker_delta.classify_session_outcome(
         droid_exit_code=0,
         job_cancelled=False,
         stream_tail=HEALTHY_TAIL_EVENT + "\n",
+    )
+    assert outcome == "ok"
+    assert marker is False
+
+
+def test_classify_zero_exit_with_completion_event_is_ok():
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=0,
+        job_cancelled=False,
+        stream_tail=COMPLETION_TAIL_EVENT + "\n",
     )
     assert outcome == "ok"
     assert marker is False
@@ -154,10 +251,11 @@ def test_classify_wall_killed_exit_124_with_empty_stream():
 
 
 def test_classify_droid_self_exit_clean_tail_is_ok():
-    """Non-124 droid exit with a clean tail is a self-ended session: the
-    coarse enum has no crash slot, and droid_exit_code carries the detail."""
+    """Exit 1 (droid self-crash) with a clean tail is not a wall death: the
+    coarse enum keeps it ok and droid_exit_code carries the detail — the
+    salvage guard reads the exit code directly for this family."""
     outcome, marker = write_worker_delta.classify_session_outcome(
-        droid_exit_code=2,
+        droid_exit_code=1,
         job_cancelled=False,
         stream_tail=HEALTHY_TAIL_EVENT + "\n",
     )
@@ -285,6 +383,46 @@ def test_delta_cli_replays_control_ok_tail(
     assert payload["droid_exit_code"] == 0
     assert payload["stream_tail_marker"] is False
     assert payload["result"] == "failure"
+
+
+def test_delta_cli_r58_stream_with_completion_end_is_ok_at_any_self_exit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The same r58 stream with a completion event appended at the end
+    models a session that finished on its own: ok at exit 0 and at a
+    self-exit exit 1 — the completion event clears the abnormal-termination
+    clause for every exit outside the wall family."""
+    stream = (FIXTURE_ROOT / "worker-stream.jsonl").read_text(encoding="utf-8")
+    for exit_code in (0, 1):
+        payload = _run_delta_cli(
+            tmp_path,
+            monkeypatch,
+            result="failure",
+            droid_exit_code=exit_code,
+            stream_text=stream + COMPLETION_TAIL_EVENT + "\n",
+        )
+        assert payload["session_outcome"] == "ok", exit_code
+        assert payload["droid_exit_code"] == exit_code
+        assert payload["stream_tail_marker"] is False
+
+
+def test_delta_cli_r58_stream_nonzero_exit_without_completion_is_wall_killed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """The r58 stream ends interrupted with no completion event anywhere:
+    replayed at a non-wall-family non-zero exit it is still an abnormal
+    termination -> wall_killed (the completion-absence clause)."""
+    stream = (FIXTURE_ROOT / "worker-stream.jsonl").read_text(encoding="utf-8")
+    payload = _run_delta_cli(
+        tmp_path,
+        monkeypatch,
+        result="failure",
+        droid_exit_code=2,
+        stream_text=stream,
+    )
+    assert payload["session_outcome"] == "wall_killed"
+    assert payload["droid_exit_code"] == 2
+    assert payload["stream_tail_marker"] is True
 
 
 # --- delta merge into the wall slice ----------------------------------------

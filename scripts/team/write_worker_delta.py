@@ -6,7 +6,8 @@ F1 (worker-delta structured session outcome): beyond the job-level
 and the salvage guard need — all classified from machine evidence only:
 
 - ``session_outcome``: ok | wall_killed | job_wall_cancelled
-- ``droid_exit_code``: the session step's own exit code (124 = 900s wall)
+- ``droid_exit_code``: the session step's own exit code (124 = 900s wall,
+  137 = its SIGKILL path, 1 = droid self-crash, a different death family)
 - ``stream_tail_marker``: worker-stream.jsonl ends on the interrupted
   tool_error (session killed mid-action, never reached its own end)
 
@@ -23,6 +24,18 @@ from pathlib import Path
 
 STREAM_INTERRUPT_MARKER = "Error: Tool execution was interrupted"
 
+# GNU timeout --signal=TERM --kill-after returns 124 when the process
+# honours TERM and 137 when only the --kill-after SIGKILL lands; both are
+# the same machine-proven wall kill. Any other non-zero exit whose stream
+# never carried a completion event is the same abnormal-termination family
+# (a self-ended session always emits completion). Exit 1 (and negative
+# codes, 128+signal shell convention) with no completion is the droid
+# self-crash death family — a different death, kept ok: the salvage guard
+# reads droid_exit_code directly for that family.
+# Exits that belong to the session itself, never to a wall: 0 self-ended,
+# 1 self-crash. Only these (plus negatives) keep ok with no completion.
+SELF_EXIT_CODES = (0, 1)
+
 
 def classify_session_outcome(
     *,
@@ -30,17 +43,28 @@ def classify_session_outcome(
     job_cancelled: bool,
     stream_tail: str | None,
 ) -> tuple[str, bool]:
-    """(session_outcome, stream_tail_marker) from exit code + stream tail.
+    """(session_outcome, stream_tail_marker) from exit code + stream shape.
 
     stream_tail is the text of the stream's last line (or None when the
-    stream is missing/unreadable). The kill is proven by either signal
-    independently: exit 124 (GNU timeout) or an interrupted tool_error as
-    the final stream event.
+    stream is missing/unreadable). The kill is proven by any signal
+    independently: exit 124/137 (GNU timeout TERM / --kill-after SIGKILL),
+    an interrupted tool_error as the final stream event, or a non-zero
+    exit outside the self-crash codes over a stream that carries no
+    completion event (a self-ended session always emits completion).
     """
     marker = bool(stream_tail) and _is_interrupt_event(stream_tail)
     if job_cancelled:
         return "job_wall_cancelled", marker
     if droid_exit_code == 124 or marker:
+        return "wall_killed", marker
+    if droid_exit_code == 137:
+        return "wall_killed", marker
+    if (
+        droid_exit_code is not None
+        and droid_exit_code not in SELF_EXIT_CODES
+        and droid_exit_code > 0
+        and not _stream_has_completion_event(stream_tail)
+    ):
         return "wall_killed", marker
     return "ok", marker
 
@@ -63,6 +87,24 @@ def _is_interrupt_event(tail_text: str) -> bool:
     if not isinstance(event, dict):
         return False
     return (event.get("error") or {}).get("message") == STREAM_INTERRUPT_MARKER
+
+
+def _stream_has_completion_event(stream_tail: str | None) -> bool:
+    """True when any event in the stream text is a completion event
+    ({"type": "completion", ...} — the healthy terminal event droid emits
+    when a session ends on its own)."""
+    if not stream_tail:
+        return False
+    for line in stream_tail.splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict) and event.get("type") == "completion":
+            return True
+    return False
 
 
 def main() -> int:
