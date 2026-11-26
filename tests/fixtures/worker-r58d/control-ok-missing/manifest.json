@@ -1,0 +1,33 @@
+{
+  "issue": "929",
+  "run_id": "45812793849",
+  "iteration": 1,
+  "candidate_branch": "team/issue-929/candidate-45812793849",
+  "pytest_exit": 0,
+  "pytest_note": "",
+  "packs": {
+    "hslconv": {
+      "branch": "team/issue-929/run-45812793849/hslconv",
+      "branch_present": true,
+      "merged": true,
+      "merge_conflict": false,
+      "out_of_bounds": [],
+      "checks_failed_marker": false,
+      "pack": {
+        "process_card": true,
+        "handoff": false,
+        "status": false,
+        "diff": false,
+        "checks_output": true
+      },
+      "complete": false
+    }
+  },
+  "note": "Synthetic contrast fixture: normal session completion while the pack is missing handoff/status; modeled on the same run as the verbatim fixture (see ../PROVENANCE.txt). Every field mirrors the verbatim run shape except the deliberately narrowed scope and the (synthetic) healthy session outcome.",
+  "sha256": {
+    "worker-delta.json": "be34b7fe32a941f179dac378c37aba510ba35257d59e1cf89000dcba864fd45d",
+    "worker-stream-tail.jsonl": "a41bc1aa43d7c105d4148e706e59534fc8cd8653264d93429bc36ffe73f3dfec",
+    "evidence/packs/hslconv/checks-exit.json": "8765a23ea9d3296b8db8ba5d8577ff11c0efc0155c27ed0188ffa56734c9e201",
+    "evidence/packs/hslconv/checks-output.txt": "dfacff569a6640ec2bd26cf032111633414d41b12bc1dda1918df8043b8c0dcc"
+  }
+}

@@ -5,7 +5,7 @@ Round-55 root cause: a test followed an attested sha256 record out of the
 repo (a machine-local evidence tree) and turned the whole suite red in any
 clean environment. This guard pins the manifest lifecycle so that pattern
 cannot quietly return: for every ``sha256`` key in the ``validator-r*``
-fixture manifests,
+and ``worker-r*`` fixture manifests,
 
 - entity vendored in-repo -> bytes must still match the attested digest
   (any single-byte drift fails here);
@@ -15,7 +15,8 @@ fixture manifests,
 
 The glob is recursive because the r54A/C manifests live one level below
 their fixture roots (``validator-r54ac/{a,c}/manifest.json``), unlike the
-flat r52b/r53c layouts.
+flat r52b/r53c layouts; the worker-r58d manifest follows the flat root
+layout and its control-ok-missing sibling is nested two levels down.
 """
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ import pytest
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 MANIFESTS = sorted(
-    FIXTURES.glob("validator-r*/**/manifest*.json"), key=lambda p: p.as_posix()
+    FIXTURES.glob("*-r*/**/manifest*.json"), key=lambda p: p.as_posix()
 )
 
 
@@ -52,7 +53,7 @@ def test_manifest_sha256_keys_stay_inside_the_repo():
             debt += 1
             continue
         vendored.append((manifest_path, key, digest, entity))
-    assert MANIFESTS, "no validator-r* manifests found under tests/fixtures/"
+    assert MANIFESTS, "no validator-r*/worker-r* manifests found under tests/fixtures/"
     if not vendored:
         pytest.skip(
             "r53c-style historical debt: manifests record sha256 digests but "
@@ -60,6 +61,7 @@ def test_manifest_sha256_keys_stay_inside_the_repo():
             "skipped, nothing read outside the repo, clean environment "
             "stays green"
         )
+    vendored_worker_fixtures = 0
     for manifest_path, key, digest, entity in vendored:
         actual = hashlib.sha256(entity.read_bytes()).hexdigest()
         assert actual == digest, (
@@ -67,3 +69,11 @@ def test_manifest_sha256_keys_stay_inside_the_repo():
             f"diverge from {manifest_path.relative_to(FIXTURES).as_posix()} "
             f"sha256[{key!r}] attestation (expected {digest}, got {actual})"
         )
+        if "worker-r" in manifest_path.as_posix():
+            vendored_worker_fixtures += 1
+    # the worker-r58d manifests must actually exercise the vendored path,
+    # not silently join the debt bucket
+    assert vendored_worker_fixtures >= 2, (
+        "expected the worker-r58d manifest pair (verbatim + control) to "
+        f"contribute vendored entities, found {vendored_worker_fixtures}"
+    )

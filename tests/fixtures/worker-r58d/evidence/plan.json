@@ -1,0 +1,55 @@
+{
+  "summary": "三件独立小组件（uuencode 编解码、LSD 基数排序、RGB↔HSL 换算）的并发实现与验收测试拆分计划。",
+  "processes": [
+    {
+      "id": "hslconv",
+      "title": "RGB ↔ HSL 颜色换算组件与测试",
+      "scope": "Owns hslconv.py and tests/test_hslconv.py only. Implements RGB→HSL and HSL→RGB conversion (h,s,l tuple order, half-up rounding) per the acceptance section below. Does not own uuencode.py, radixsort.py, or any other existing file; must not modify any existing file; may only use the standard library.",
+      "files": [
+        "hslconv.py",
+        "tests/test_hslconv.py"
+      ],
+      "task": "Implement the HSL conversion module exactly to the acceptance criteria below (逐字为准), creating only two new files: hslconv.py and tests/test_hslconv.py. Do not modify any existing file. Standard library only (colorsys may be used in tests for cross-checking). Every acceptance item below must have a corresponding test case in tests/test_hslconv.py.\n\nSPEC:\n- `rgb_to_hsl(r, g, b) -> tuple[float, float, float]`: inputs are int in [0, 255]; returns (h, s, l) with h in [0, 360), s in [0, 1], l in [0, 1]; achromatic (r == g == b) yields h = 0.0 and s = 0.0 by convention.\n- `hsl_to_rgb(h, s, l) -> tuple[int, int, int]`: h in [0, 360) (**360 excluded**), s in [0, 1], l in [0, 1] (numeric); channel values rounded **half-up** (floor(x·255 + 0.5) convention) to int.\n- Input contract: out-of-range values raise ValueError; wrong types (rgb non-int / hsl non-numeric, including bool) raise TypeError.\n- Note: the returned tuple order is (h, s, l), NOT the stdlib colorsys (h, l, s) order — returning colorsys's HLS order will fail acceptance; this is color-model conversion, distinct from hex color parsing (colorhex/hexcolor); rounding must be half-up, not banker's rounding (round).\n\nACCEPTANCE (all must be covered by tests):\n- `rgb_to_hsl(255, 0, 0) == (0.0, 1.0, 0.5)`\n- `rgb_to_hsl(0, 255, 0)` has h ≈ 120.0, s ≈ 1.0, l ≈ 0.5\n- `rgb_to_hsl(0, 0, 255)` has h ≈ 240.0\n- `rgb_to_hsl(255, 255, 0)` has h ≈ 60.0\n- `rgb_to_hsl(0, 0, 0) == (0.0, 0.0, 0.0)`\n- `rgb_to_hsl(255, 255, 255) == (0.0, 0.0, 1.0)`\n- `rgb_to_hsl(128, 128, 128)` has s ≈ 0.0, l ≈ 128/255\n- `hsl_to_rgb(0, 1, 0.5) == (255, 0, 0)`\n- `hsl_to_rgb(240, 1, 0.5) == (0, 0, 255)`\n- `hsl_to_rgb(120, 1, 0.25) == (0, 128, 0)`\n- `hsl_to_rgb(0, 0, 0) == (0, 0, 0)`\n- `hsl_to_rgb(0, 0, 1) == (255, 255, 255)`\n- Property: random RGB values match the stdlib colorsys (rgb_to_hls / hls_to_rgb, note its order is HLS) component-by-component (hue compared by circular distance).\n- Property: `hsl_to_rgb(*rgb_to_hsl(r, g, b))` differs from the original by at most 1 per channel.\n- `rgb_to_hsl(256, 0, 0)`, `rgb_to_hsl(0, -1, 0)`, `hsl_to_rgb(360, 1, 0.5)`, `hsl_to_rgb(-1, 1, 0.5)`, `hsl_to_rgb(0, 1.5, 0.5)`, `hsl_to_rgb(0, 1, -0.1)` raise ValueError.\n- `rgb_to_hsl(1.5, 0, 0)`, `rgb_to_hsl(True, 0, 0)`, `hsl_to_rgb(\"0\", 1, 0.5)` raise TypeError.\n\nCHECKS (run from repository root, verbatim):\n- python3 -m pytest tests/test_hslconv.py -q\n- python3 -m pytest tests/ -q",
+      "checks": [
+        "python3 -m pytest tests/test_hslconv.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 939,
+      "sub_issue_linked": true
+    },
+    {
+      "id": "radixsort",
+      "title": "LSD 基数排序组件与测试",
+      "scope": "Owns radixsort.py and tests/test_radixsort.py only. Implements LSD radix sort (with negatives, new list, input untouched) per the acceptance section below. Does not own uuencode.py, hslconv.py, or any other existing file; must not modify any existing file; may only use the standard library.",
+      "files": [
+        "radixsort.py",
+        "tests/test_radixsort.py"
+      ],
+      "task": "Implement the radix sort module exactly to the acceptance criteria below (逐字为准), creating only two new files: radixsort.py and tests/test_radixsort.py. Do not modify any existing file. Standard library only. Every acceptance item below must have a corresponding test case in tests/test_radixsort.py.\n\nSPEC:\n- `radix_sort(values) -> list[int]`: LSD radix sort, returns a new ascending **list**; input is a list or tuple with int elements; **supports negative numbers**; **does not modify the input**.\n- Input contract: non-int elements (including bool and float) raise TypeError; non-list-form input raises TypeError.\n- Note: this is the sorting itself (distinct from inversions' inversion-pair counting); negatives must land correctly — sorting only the non-negatives, or dropping/misplacing negatives, will fail acceptance; returning a new list and modifying the input in place will fail acceptance.\n\nACCEPTANCE (all must be covered by tests):\n- `radix_sort([]) == []`\n- `radix_sort([5]) == [5]`\n- `radix_sort([3, 1, 2]) == [1, 2, 3]`\n- `radix_sort([-5, 3, -1, 0]) == [-5, -1, 0, 3]`\n- `radix_sort([170, 45, 75, 90, 802, 24, 2, 66]) == [2, 24, 45, 66, 75, 90, 170, 802]`\n- `radix_sort([2, 2, 1]) == [1, 2, 2]`\n- `radix_sort([10**18, 1, 10**12]) == [1, 10**12, 10**18]` (large integers)\n- `radix_sort((3, 1, 2)) == [1, 2, 3]` (tuple input)\n- Property: after the call, the input list is item-for-item identical to before the call (input not modified).\n- Property: random integer sequences (length 0–30, values −10^6..10^6, with duplicates) match sorted() element-for-element.\n- `radix_sort(\"321\")`, `radix_sort([1, 2.0])`, `radix_sort([1, True])`, `radix_sort(123)` raise TypeError.\n\nCHECKS (run from repository root, verbatim):\n- python3 -m pytest tests/test_radixsort.py -q\n- python3 -m pytest tests/ -q",
+      "checks": [
+        "python3 -m pytest tests/test_radixsort.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 940,
+      "sub_issue_linked": true
+    },
+    {
+      "id": "uuencode",
+      "title": "uuencode 经典编解码组件与测试",
+      "scope": "Owns uuencode.py and tests/test_uuencode.py only. Implements classic uuencode encoding/decoding per the acceptance section below. Does not own radixsort.py, hslconv.py, or any other existing file; must not modify any existing file; may only use the standard library.",
+      "files": [
+        "uuencode.py",
+        "tests/test_uuencode.py"
+      ],
+      "task": "Implement the uuencode module exactly to the acceptance criteria below (逐字为准), creating only two new files: uuencode.py and tests/test_uuencode.py. Do not modify any existing file. Standard library only. Every acceptance item below must have a corresponding test case in tests/test_uuencode.py.\n\nSPEC:\n- `uuencode(data: bytes) -> str`: classic uuencode body: data split into lines of **45 bytes each**; each line starts with a **length character = number of bytes in that line + 32**; within a line every 3 bytes become 4 characters (four 6-bit groups each + 32, **a zero value is written as a backtick ` instead of a space**); after all lines, terminate with a **single backtick line**; lines joined with \"\\n\", **no trailing newline**; no begin/end header/footer lines. Empty input returns a single backtick character.\n- `uudecode(text: str) -> bytes`: inverse: restore byte counts line by line from length characters; **decoding tolerates a space as a zero value**; malformed format (empty text, missing terminator line, body length inconsistent with the length character, terminator line not on the last line, containing an empty line) raises ValueError.\n- Input contract: `uuencode` raises TypeError on non-bytes input; `uudecode` raises TypeError on non-str input.\n- Note: this is a line-length-prefixed format, structurally unlike the continuous-stream family (ascii85/base45 etc.); the encoder must write backticks for zero values (writing a space will fail acceptance; tolerating spaces is decoder-side leniency only); for a full 45-byte line the length character is \"M\" (45+32).\n\nACCEPTANCE (all must be covered by tests):\n- `uuencode(b\"Cat\")` returns \"#0V%T\\n\" plus a single backtick terminator (i.e. first line \"#0V%T\", second line a single backtick).\n- `uuencode(b\"\")` returns a single backtick character.\n- `uuencode(b\"\\x00\\x00\\x00\")` returns first line \"#\" plus four backticks, second line a single backtick (all zeros as backticks).\n- `uudecode(uuencode(b\"Cat\"))` returns b\"Cat\"; `uudecode` of a single backtick returns b\"\".\n- `uuencode(b\"A\" * 46)` has 3 lines (45-byte line + 1-byte line + terminator line) and the first character of the first line == \"M\".\n- Property: for arbitrary random byte strings (length 0–100): `uudecode(uuencode(x)) == x`, and byte-for-byte identical to an independent implementation extracting 24-bit integers.\n- `uuencode(\"Cat\")` raises TypeError; `uudecode` receiving bytes input (e.g. the bytes encoding of `uuencode(b\"Cat\")`) raises TypeError.\n- `uudecode(\"\")`, `uudecode(\"#0V%T\")` (missing terminator line), `uudecode(\"#0V%\\n\" + single backtick)` (body length inconsistent), `uudecode(\"#0V%T\\n\" + single backtick + \"\\n\")` (trailing newline) all raise ValueError.\n\nCHECKS (run from repository root, verbatim):\n- python3 -m pytest tests/test_uuencode.py -q\n- python3 -m pytest tests/ -q",
+      "checks": [
+        "python3 -m pytest tests/test_uuencode.py -q",
+        "python3 -m pytest tests/ -q"
+      ],
+      "sub_issue_number": 941,
+      "sub_issue_linked": true
+    }
+  ],
+  "plan_version": 1,
+  "iteration": 1
+}

@@ -1,0 +1,16 @@
+{
+  "id": "hslconv",
+  "title": "RGB ↔ HSL 颜色换算组件与测试",
+  "scope": "Owns hslconv.py and tests/test_hslconv.py only. Implements RGB→HSL and HSL→RGB conversion (h,s,l tuple order, half-up rounding) per the acceptance section below. Does not own uuencode.py, radixsort.py, or any other existing file; must not modify any existing file; may only use the standard library.",
+  "files": [
+    "hslconv.py",
+    "tests/test_hslconv.py"
+  ],
+  "task": "Implement the HSL conversion module exactly to the acceptance criteria below (逐字为准), creating only two new files: hslconv.py and tests/test_hslconv.py. Do not modify any existing file. Standard library only (colorsys may be used in tests for cross-checking). Every acceptance item below must have a corresponding test case in tests/test_hslconv.py.\n\nSPEC:\n- `rgb_to_hsl(r, g, b) -> tuple[float, float, float]`: inputs are int in [0, 255]; returns (h, s, l) with h in [0, 360), s in [0, 1], l in [0, 1]; achromatic (r == g == b) yields h = 0.0 and s = 0.0 by convention.\n- `hsl_to_rgb(h, s, l) -> tuple[int, int, int]`: h in [0, 360) (**360 excluded**), s in [0, 1], l in [0, 1] (numeric); channel values rounded **half-up** (floor(x·255 + 0.5) convention) to int.\n- Input contract: out-of-range values raise ValueError; wrong types (rgb non-int / hsl non-numeric, including bool) raise TypeError.\n- Note: the returned tuple order is (h, s, l), NOT the stdlib colorsys (h, l, s) order — returning colorsys's HLS order will fail acceptance; this is color-model conversion, distinct from hex color parsing (colorhex/hexcolor); rounding must be half-up, not banker's rounding (round).\n\nACCEPTANCE (all must be covered by tests):\n- `rgb_to_hsl(255, 0, 0) == (0.0, 1.0, 0.5)`\n- `rgb_to_hsl(0, 255, 0)` has h ≈ 120.0, s ≈ 1.0, l ≈ 0.5\n- `rgb_to_hsl(0, 0, 255)` has h ≈ 240.0\n- `rgb_to_hsl(255, 255, 0)` has h ≈ 60.0\n- `rgb_to_hsl(0, 0, 0) == (0.0, 0.0, 0.0)`\n- `rgb_to_hsl(255, 255, 255) == (0.0, 0.0, 1.0)`\n- `rgb_to_hsl(128, 128, 128)` has s ≈ 0.0, l ≈ 128/255\n- `hsl_to_rgb(0, 1, 0.5) == (255, 0, 0)`\n- `hsl_to_rgb(240, 1, 0.5) == (0, 0, 255)`\n- `hsl_to_rgb(120, 1, 0.25) == (0, 128, 0)`\n- `hsl_to_rgb(0, 0, 0) == (0, 0, 0)`\n- `hsl_to_rgb(0, 0, 1) == (255, 255, 255)`\n- Property: random RGB values match the stdlib colorsys (rgb_to_hls / hls_to_rgb, note its order is HLS) component-by-component (hue compared by circular distance).\n- Property: `hsl_to_rgb(*rgb_to_hsl(r, g, b))` differs from the original by at most 1 per channel.\n- `rgb_to_hsl(256, 0, 0)`, `rgb_to_hsl(0, -1, 0)`, `hsl_to_rgb(360, 1, 0.5)`, `hsl_to_rgb(-1, 1, 0.5)`, `hsl_to_rgb(0, 1.5, 0.5)`, `hsl_to_rgb(0, 1, -0.1)` raise ValueError.\n- `rgb_to_hsl(1.5, 0, 0)`, `rgb_to_hsl(True, 0, 0)`, `hsl_to_rgb(\"0\", 1, 0.5)` raise TypeError.\n\nCHECKS (run from repository root, verbatim):\n- python3 -m pytest tests/test_hslconv.py -q\n- python3 -m pytest tests/ -q",
+  "checks": [
+    "python3 -m pytest tests/test_hslconv.py -q",
+    "python3 -m pytest tests/ -q"
+  ],
+  "sub_issue_number": 939,
+  "sub_issue_linked": true
+}
