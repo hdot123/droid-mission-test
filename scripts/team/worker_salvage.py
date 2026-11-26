@@ -170,6 +170,7 @@ def evaluate_salvage_guard(
                 "compliance failure, not salvageable"
             )
     ok_conditions = [
+        bool(info.get("branch_present")),
         bool(info.get("merged")),
         not bool(oob),
         green,
@@ -233,11 +234,20 @@ def _death_cause_narrative(workers: dict, pid: str, exit_part: str) -> str:
         "会话异常终结）\n全部由机器判定为真后方才补卷。"
     )
     if outcome == "wall_killed":
-        return (
-            f"墙面记录 session_outcome=wall_killed（droid exit {exit_part}）：工人会话在落盘之前"
-            "被 900s 进程墙杀死\n（末事件为被中断的 tool_error，会话异常终结）。"
-            f"{structural}"
-        )
+        opening = f"墙面记录 session_outcome=wall_killed（droid exit {exit_part}）：工人会话在落盘之前"
+        if exit_code in (124, 137):
+            # 124/137 are the GNU timeout TERM / --kill-after SIGKILL
+            # signature — the machine-proven 900s wall kill family.
+            opening += "被 900s 进程墙杀死"
+        else:
+            # Any other exit has no machine-proven wall-kill family: assert
+            # the exit code and say so, never the 900s arithmetic.
+            opening += f"以退出码 {exit_code} 异常终结——死族非机器判定，本件不宣称墙杀族。"
+        if tail_marker is True:
+            opening += "\n（末事件为被中断的 tool_error，会话异常终结）。"
+        else:
+            opening += "\n（墙面上无中断尾事件记录，会话异常终结）。"
+        return f"{opening}{structural}"
     if outcome == "job_wall_cancelled":
         return (
             f"墙面记录 session_outcome=job_wall_cancelled（droid exit {exit_part}）："

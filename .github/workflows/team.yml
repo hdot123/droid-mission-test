@@ -571,33 +571,25 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           set -o pipefail
+          # Single-source prompt (M3): the round-1/round-2 prompts were
+          # byte-identical heredoc copies; both rounds now render from
+          # scripts/team/worker_prompt_template.py (validator-face
+          # precedent). The heredoc seeds its own import path from
+          # GITHUB_WORKSPACE (CI-fidelity: no PYTHONPATH in the runner
+          # shell), like the validator render steps.
           python3 - <<'PY'
-          import json, os
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from worker_prompt_template import build_worker_prompt
           proc = json.loads(os.environ["PROCESS_JSON"])
           ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
           issue = ev.get("issue") or {}
-          retry = proc.get("retry_note") or ""
-          retry_block = f"\n          Retry context (this card was re-dispatched after validation):\n          {retry}\n" if retry else ""
-          prompt = f"""You are a WORKER on a development team under the foreman pattern. Execute exactly one process card (your sub-issue #{proc.get('sub_issue_number', '?')}). Do not do any other process. Do not expand scope.
-
-          Work order: #{os.environ['ISSUE_NUMBER']} {issue.get('title','')}
-          Work order body:
-          {issue.get('body') or ''}
-
-          Your process card:
-          {json.dumps(proc, ensure_ascii=False, indent=2)}
-          {retry_block}
-          Instructions:
-          - Create or edit only these files: {', '.join(proc['files'])}
-          - Also write exactly these two team files:
-            1. team/handoffs/{proc['id']}.md — a self-contained handoff with: what was requested, what you did, what you did not do, checks you ran and their results, and anything the validator must pay attention to.
-            2. team/status/{proc['id']}.json — valid JSON with keys: id, title, state ("done"), files (array), checks (array of objects with command and result).
-          - Run your process checks before finishing: {'; '.join(proc['checks'])}
-          - Checks may run tests across the whole repo. Files like verdict.json or verdict.md that appear in the repo root because of those checks are pipeline by-products of the test suite, not your deliverables. They are outside your card, so delete them before finishing (e.g. rm -f verdict.json verdict.md).
-          - Do not commit or push; the workflow will do that.
-          - Do not modify files owned by other processes.
-          - Be efficient: at most 20 tool calls.
-          """
+          prompt = build_worker_prompt(
+              proc,
+              issue_number=os.environ["ISSUE_NUMBER"],
+              issue_title=issue.get("title", ""),
+              issue_body=issue.get("body") or "",
+          )
           open("worker-prompt.txt", "w").write(prompt)
           PY
           # F1: capture the session's own exit code (GNU timeout exit 124 =
@@ -618,6 +610,13 @@ jobs:
           if-no-files-found: warn
 
       - name: Verify process checks and handoff
+        # r58 (M3): this step had no if guard, so a wall-killed session step
+        # (exit 124) skipped it entirely — the job's machine re-check
+        # channel never executed and produced zero evidence lines. always()
+        # keeps it running after the session step failed; its own v2.6.3
+        # semantics (record problems in the marker, never fail here) are
+        # unchanged, and the commit step below still gates on !cancelled().
+        if: always()
         env:
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
         run: |
@@ -2743,33 +2742,21 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           set -o pipefail
+          # Single-source prompt (M3): same module as round 1 — the two
+          # heredocs were byte-identical, so the rounds share one template.
           python3 - <<'PY'
-          import json, os
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from worker_prompt_template import build_worker_prompt
           proc = json.loads(os.environ["PROCESS_JSON"])
           ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
           issue = ev.get("issue") or {}
-          retry = proc.get("retry_note") or ""
-          retry_block = f"\n          Retry context (this card was re-dispatched after validation):\n          {retry}\n" if retry else ""
-          prompt = f"""You are a WORKER on a development team under the foreman pattern. Execute exactly one process card (your sub-issue #{proc.get('sub_issue_number', '?')}). Do not do any other process. Do not expand scope.
-
-          Work order: #{os.environ['ISSUE_NUMBER']} {issue.get('title','')}
-          Work order body:
-          {issue.get('body') or ''}
-
-          Your process card:
-          {json.dumps(proc, ensure_ascii=False, indent=2)}
-          {retry_block}
-          Instructions:
-          - Create or edit only these files: {', '.join(proc['files'])}
-          - Also write exactly these two team files:
-            1. team/handoffs/{proc['id']}.md — a self-contained handoff with: what was requested, what you did, what you did not do, checks you ran and their results, and anything the validator must pay attention to.
-            2. team/status/{proc['id']}.json — valid JSON with keys: id, title, state ("done"), files (array), checks (array of objects with command and result).
-          - Run your process checks before finishing: {'; '.join(proc['checks'])}
-          - Checks may run tests across the whole repo. Files like verdict.json or verdict.md that appear in the repo root because of those checks are pipeline by-products of the test suite, not your deliverables. They are outside your card, so delete them before finishing (e.g. rm -f verdict.json verdict.md).
-          - Do not commit or push; the workflow will do that.
-          - Do not modify files owned by other processes.
-          - Be efficient: at most 20 tool calls.
-          """
+          prompt = build_worker_prompt(
+              proc,
+              issue_number=os.environ["ISSUE_NUMBER"],
+              issue_title=issue.get("title", ""),
+              issue_body=issue.get("body") or "",
+          )
           open("worker-prompt.txt", "w").write(prompt)
           PY
           # F1: capture the session's own exit code (GNU timeout exit 124 =
@@ -2790,6 +2777,13 @@ jobs:
           if-no-files-found: warn
 
       - name: Verify process checks and handoff
+        # r58 (M3): this step had no if guard, so a wall-killed session step
+        # (exit 124) skipped it entirely — the job's machine re-check
+        # channel never executed and produced zero evidence lines. always()
+        # keeps it running after the session step failed; its own v2.6.3
+        # semantics (record problems in the marker, never fail here) are
+        # unchanged, and the commit step below still gates on !cancelled().
+        if: always()
         env:
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
         run: |

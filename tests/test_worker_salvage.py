@@ -214,6 +214,27 @@ def test_guard_rejects_branch_not_present(tmp_path):
     assert allowed is False
 
 
+def test_guard_rejects_branch_present_false_even_when_merged(tmp_path):
+    """UT-M2-002-A defensive hardening: branch_present and merged are flipped
+    together by the workflow, so branch_present=false + merged=true is not
+    reachable from team.yml — but the guard must not silently allow it if a
+    future caller reports one flag without the other. Unpresent branches are
+    never salvaged, whatever merged says."""
+    ws = stage_replay_dir(tmp_path)
+    manifest_path = ws / "evidence" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["packs"][PID]["branch_present"] = False  # merged stays true
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+    wall = json.loads(salvaged_wall(tmp_path).read_text())
+    allowed, reasons = guard_for(ws, wall=wall)
+    assert allowed is False
+    assert any("branch_present" in r for r in reasons)
+    entry = next(r for r in apply_salvage(ws, wall) if r["pid"] == PID)
+    assert entry["salvaged"] is False
+    assert not (ws / "evidence" / "packs" / PID / "status.json").exists()
+    assert not (ws / "evidence" / "packs" / PID / "handoff.md").exists()
+
+
 # --- scrutiny round-1 guidance: termination evidence equivalences ------------
 
 
@@ -509,6 +530,88 @@ def test_handoff_wall_killed_keeps_900s_text():
     assert "900s" in section
     assert "wall_killed" in section
     assert "124" in section
+
+
+def test_handoff_wall_killed_marker_false_never_claims_interrupted_tail():
+    """UT-M2-004-A first form: an ordinary wall kill (the live-experienced
+    exit 124/137 + healthy-tail shape the classifier records wall_killed
+    with marker=false) must not assert an interrupted tail event — that
+    sentence is derived from stream_tail_marker, not from the outcome."""
+    wall = {
+        "workers": {
+            "session_outcome_by_pid": {PID: "wall_killed"},
+            "droid_exit_code_by_pid": {PID: 124},
+            "stream_tail_marker_by_pid": {PID: False},
+        }
+    }
+    text = build_handoff(
+        pid=PID,
+        card={"id": PID, "title": "T", "files": []},
+        checks_exit=[{"command": "pytest -q", "exit": 0}],
+        checks_output="$ pytest -q\n1 passed\n",
+        branch="team/x",
+        workers=wall.get("workers") or {},
+        missing_files=(HANDOFF_NAME, STATUS_NAME),
+    )
+    section = _death_cause_section(text)
+    assert "900s" in section
+    assert "wall_killed" in section
+    assert "124" in section
+    # neither an affirmative nor a quoted interrupt claim
+    assert "被中断" not in section
+    assert "Tool execution was interrupted" not in section
+    assert "末事件" not in section
+
+
+@pytest.mark.parametrize("exit_code", [2, 143, 246])
+def test_handoff_wall_killed_catchall_exit_states_exit_code_not_900s_claim(exit_code):
+    """UT-M2-004-A second form: wall_killed with an exit code outside
+    {124, 137} has NO machine-proven wall-kill family — the 900s wall-kill
+    sentence (its timeout arithmetic is the 124/137 signature) must not be
+    asserted; the narrative states the exit code and that the death family
+    is not machine-determined, while the outcome verdict itself stands."""
+    wall = {
+        "workers": {
+            "session_outcome_by_pid": {PID: "wall_killed"},
+            "droid_exit_code_by_pid": {PID: exit_code},
+            "stream_tail_marker_by_pid": {PID: False},
+        }
+    }
+    text = build_handoff(
+        pid=PID,
+        card={"id": PID, "title": "T", "files": []},
+        checks_exit=[{"command": "pytest -q", "exit": 0}],
+        checks_output="$ pytest -q\n1 passed\n",
+        branch="team/x",
+        workers=wall.get("workers") or {},
+        missing_files=(HANDOFF_NAME, STATUS_NAME),
+    )
+    section = _death_cause_section(text)
+    assert "wall_killed" in section
+    assert f"droid exit {exit_code}" in section
+    assert "900s" not in section
+    assert "进程墙" not in section
+    assert "死族" in section
+    header = text.split("## ")[0]
+    assert "900s" not in header
+    assert f"droid exit {exit_code}" in header
+
+
+def test_handoff_wall_killed_marker_false_end_to_end_real_salvage(tmp_path):
+    """The marker=false wall_killed shape through the real salvage path: the
+    死因 section keeps the 900s wall-kill text but never the interrupted-tail
+    clause (it is derived from the wall's stream_tail_marker only)."""
+    delta = {"pid": PID, "result": "failure", "session_outcome": "wall_killed",
+             "droid_exit_code": 124, "stream_tail_marker": False}
+    ws = stage_replay_dir(tmp_path)
+    wall = json.loads(write_wall(tmp_path, [delta]).read_text())
+    apply_salvage(ws, wall)
+    text = (ws / "evidence" / "packs" / PID / "handoff.md").read_text(encoding="utf-8")
+    section = _death_cause_section(text)
+    assert "session_outcome=wall_killed" in section
+    assert "900s" in section
+    assert "被中断" not in section
+    assert "Tool execution was interrupted" not in section
 
 
 def test_handoff_tail_marker_only_states_interrupted_tool_error():
