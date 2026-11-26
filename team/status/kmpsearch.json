@@ -1,0 +1,21 @@
+{
+  "id": "kmpsearch",
+  "title": "KMP 子串搜索（全部出现位置，含重叠）",
+  "state": "done",
+  "files": [
+    "kmpsearch.py",
+    "tests/test_kmpsearch.py",
+    "team/handoffs/kmpsearch.md",
+    "team/status/kmpsearch.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_kmpsearch.py -q",
+      "result": "16 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "358 passed, 2 skipped in 19.27s"
+    }
+  ]
+}

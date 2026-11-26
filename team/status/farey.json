@@ -1,0 +1,19 @@
+{
+  "id": "farey",
+  "title": "Farey 数列枚举（n 阶，约分元组升序）",
+  "state": "done",
+  "files": [
+    "farey.py",
+    "tests/test_farey.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_farey.py -q",
+      "result": "10 passed (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "352 passed, 2 skipped (exit 0)"
+    }
+  ]
+}
