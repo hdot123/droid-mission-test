@@ -1,0 +1,21 @@
+{
+  "id": "divisorsum",
+  "title": "divisorsum.py 约数和与盈亏分类",
+  "state": "done",
+  "files": [
+    "divisorsum.py",
+    "tests/test_divisorsum.py",
+    "team/handoffs/divisorsum.md",
+    "team/status/divisorsum.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_divisorsum.py -q",
+      "result": "8 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "1 failed, 348 passed, 2 skipped — the single failure (tests/test_check_summary_focused_counts.py, FileNotFoundError on /tmp/r54-audit/...) is pre-existing: reproduced identically with all my files stashed (clean baseline); unrelated to divisorsum"
+    }
+  ]
+}
