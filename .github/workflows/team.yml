@@ -1505,6 +1505,7 @@ jobs:
           import hashlib, json, os, re, sys
           sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
           from salvage_assemble import assemble_assembled_draft
+          from attribution_reason import blocked_reason, blocked_report_line
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -1546,9 +1547,16 @@ jobs:
                       sys.exit(1)
                   verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
                                    "reason": entry.get("reason", "")}
+          # F1b: the wall carries the worker-delta outcome facts — read it
+          # (workdir copy first, r58 shape, else the wall-in artifact) so
+          # the blocked-reason template branches on machine-recorded death
+          # facts (neutral attribution when wall-killed, current wording
+          # otherwise, fail-closed).
+          wall = json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else (json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else {})
+
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+                               "reason": blocked_reason(pid, missing, wall=wall)}
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
@@ -1624,7 +1632,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+              lines.append(blocked_report_line(pid, missing, wall=wall))
           if unattributed_failure:
               trunc_note = "（已截断至 50 条）" if failing_tests_truncated else ""
               lines.append(f"无主失败：逐工序全 pass 但合并 pytest 退出码 {pytest_exit}，失败测试见 verdict.json 的 failing_tests（共 {len(failing_tests)} 条{trunc_note}）。")
@@ -1902,6 +1910,7 @@ jobs:
           import hashlib, json, os, sys
           sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
           from salvage_assemble import assemble_assembled_draft
+          from attribution_reason import blocked_reason, blocked_report_line
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -1942,9 +1951,16 @@ jobs:
                       sys.exit(1)
                   verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
                                    "reason": entry.get("reason", "")}
+          # F1b: the wall carries the worker-delta outcome facts — read it
+          # (workdir copy first, r58 shape, else the wall-in artifact) so
+          # the blocked-reason template branches on machine-recorded death
+          # facts (neutral attribution when wall-killed, current wording
+          # otherwise, fail-closed).
+          wall = json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else (json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else {})
+
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+                               "reason": blocked_reason(pid, missing, wall=wall)}
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
@@ -1986,7 +2002,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+              lines.append(blocked_report_line(pid, missing, wall=wall))
           if unattributed_failure:
               lines.append("无主失败：逐工序全 pass 但合并 pytest 退出码非 0（见 verdict.json）。")
           if conflicts:
@@ -2217,6 +2233,31 @@ jobs:
               except Exception as exc:
                   print("could not derive blocked causes from manifest:", exc)
           blocked_cause_line = ""
+          # F1b: surface the worker-delta outcome facts from the wall in the
+          # replan input panel. The foreman's redispatch/revise call stays
+          # its own, but its evidence base now includes the machine-recorded
+          # session outcome (a wall-killed worker is no longer invisible at
+          # the attribution step — the r58 death shape).
+          wall = json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else (json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else {})
+          workers = wall.get("workers") or {}
+          so_map = workers.get("session_outcome_by_pid") or {}
+          ec_map = workers.get("droid_exit_code_by_pid") or {}
+          outcome_facts_lines = ""
+          if not so_map and not ec_map:
+              outcome_facts_lines = "Worker session outcome facts (machine-recorded, from the ForemanRun wall): none — no session outcome facts recorded on the wall (pre-delta run)."
+          else:
+              from attribution_reason import neutral_attribution
+              outcome_facts_lines = (
+                  "Worker session outcome facts (machine-recorded, from the ForemanRun wall):\n"
+                  + "\n".join(
+                      "- " + neutral_attribution(pid=pid, exit_code=ec_map.get(pid))
+                      if so_map.get(pid) == "wall_killed"
+                      else "- process `" + pid + "`: session_outcome: " + str(so_map.get(pid)) + ", droid_exit_code: " + str(ec_map.get(pid)) + "."
+                      for pid in sorted(set(so_map) | set(ec_map))
+                  )
+              )
+              if attribution_mode:
+                  outcome_facts_lines += "\nAttribution note: these outcome facts are part of your evidence base — a wall_killed outcome means the worker session was machine-killed, not that the worker ignored its protocol."
           if blocked_by_pid:
               blocked_cause_line = " ".join(
                   f"For process `{pid}`: {cause}." for pid, cause in sorted(blocked_by_pid.items())
@@ -2265,6 +2306,10 @@ jobs:
           - stage/verdict.json (the validator verdict per process)
           - stage/manifest.json and stage/packs/<id>/ (evidence packs, including failed ones)
           - stage/pytest-output.txt (full test evidence)
+          - wall-in/foreman-run.json (the ForemanRun wall: worker session
+            outcome facts below are machine-recorded there, not judged)
+
+          {outcome_facts_lines}
 
           {failed_line}{conflicts_line}{blocked_cause_line}
 
@@ -3644,6 +3689,7 @@ jobs:
           import hashlib, json, os, sys
           sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
           from salvage_assemble import assemble_assembled_draft
+          from attribution_reason import blocked_reason, blocked_report_line
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -3682,9 +3728,16 @@ jobs:
                       sys.exit(1)
                   verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
                                    "reason": entry.get("reason", "")}
+          # F1b: the wall carries the worker-delta outcome facts — read it
+          # (workdir copy first, r58 shape, else the wall-in artifact) so
+          # the blocked-reason template branches on machine-recorded death
+          # facts (neutral attribution when wall-killed, current wording
+          # otherwise, fail-closed).
+          wall = json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else (json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else {})
+
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+                               "reason": blocked_reason(pid, missing, wall=wall)}
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
@@ -3752,7 +3805,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+              lines.append(blocked_report_line(pid, missing, wall=wall))
           for fl in flips:
               lines.append(f"⚠ 翻案：`{fl['id']}` 第 1 轮 pass → 第 2 轮 {fl['round2_verdict']}（一轮理由：{fl['round1_reason']}；二轮理由：{fl['round2_reason']}）")
           if conflicts:
@@ -4035,6 +4088,7 @@ jobs:
           import hashlib, json, os, sys
           sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
           from salvage_assemble import assemble_assembled_draft
+          from attribution_reason import blocked_reason, blocked_report_line
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -4075,9 +4129,16 @@ jobs:
                       sys.exit(1)
                   verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
                                    "reason": entry.get("reason", "")}
+          # F1b: the wall carries the worker-delta outcome facts — read it
+          # (workdir copy first, r58 shape, else the wall-in artifact) so
+          # the blocked-reason template branches on machine-recorded death
+          # facts (neutral attribution when wall-killed, current wording
+          # otherwise, fail-closed).
+          wall = json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else (json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else {})
+
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+                               "reason": blocked_reason(pid, missing, wall=wall)}
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
@@ -4134,7 +4195,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+              lines.append(blocked_report_line(pid, missing, wall=wall))
           for fl in flips:
               lines.append(f"⚠ 翻案：`{fl['id']}` 第 1 轮 pass → 第 2 轮 {fl['round2_verdict']}（一轮理由：{fl['round1_reason']}；二轮理由：{fl['round2_reason']}）")
           if conflicts:
