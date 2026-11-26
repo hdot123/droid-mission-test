@@ -1,0 +1,21 @@
+{
+  "id": "asciitable",
+  "title": "实现 ASCII 表格渲染 asciitable.py 及其测试",
+  "state": "done",
+  "files": [
+    "asciitable.py",
+    "tests/test_asciitable.py",
+    "team/handoffs/asciitable.md",
+    "team/status/asciitable.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_asciitable.py -q",
+      "result": "14 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "356 passed, 2 skipped"
+    }
+  ]
+}
