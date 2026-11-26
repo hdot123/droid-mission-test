@@ -1,0 +1,19 @@
+{
+  "id": "line2d",
+  "title": "Implement line2d.py (2D line equations, distance, intersection) with tests",
+  "state": "done",
+  "files": [
+    "line2d.py",
+    "tests/test_line2d.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_line2d.py -q",
+      "result": "passed (19 passed in 0.02s)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (361 passed, 2 skipped in 18.34s)"
+    }
+  ]
+}
