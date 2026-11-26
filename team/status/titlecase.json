@@ -1,0 +1,17 @@
+{
+  "id": "titlecase",
+  "title": "titlecase.py 标题式大小写转换",
+  "state": "done",
+  "files": [
+    "titlecase.py",
+    "tests/test_titlecase.py",
+    "team/handoffs/titlecase.md",
+    "team/status/titlecase.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_titlecase.py -q",
+      "result": "exit 0 — 20 passed in 0.02s"
+    }
+  ]
+}
