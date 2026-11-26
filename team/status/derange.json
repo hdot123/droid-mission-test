@@ -1,0 +1,21 @@
+{
+  "id": "derange",
+  "title": "实现错排数（子阶乘）derange.py 及其测试",
+  "state": "done",
+  "files": [
+    "derange.py",
+    "tests/test_derange.py",
+    "team/handoffs/derange.md",
+    "team/status/derange.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_derange.py -q",
+      "result": "15 passed in 0.03s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "1 failed, 355 passed, 2 skipped (exit 1) — the single failure is pre-existing and environment-dependent: tests/test_check_summary_focused_counts.py reads fixture evidence from /tmp/r54-audit/... which does not exist here; confirmed identical failure with derange's files removed"
+    }
+  ]
+}
