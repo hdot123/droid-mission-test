@@ -1,0 +1,21 @@
+{
+  "id": "htmlescape",
+  "title": "HTML 转义与反转义 htmlescape.py",
+  "state": "done",
+  "files": [
+    "htmlescape.py",
+    "tests/test_htmlescape.py",
+    "team/handoffs/htmlescape.md",
+    "team/status/htmlescape.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_htmlescape.py -q",
+      "result": "passed: 10 passed in 0.01s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 352 passed, 2 skipped in 17.59s"
+    }
+  ]
+}
