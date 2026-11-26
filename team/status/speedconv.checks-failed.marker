@@ -1,0 +1,4 @@
+process: speedconv
+check exit 0: python3 -m pytest tests/test_speedconv.py -q
+check exit 1: python3 -m pytest tests/ -q
+problem: check failed (exit 1): python3 -m pytest tests/ -q
