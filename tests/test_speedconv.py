@@ -1,83 +1,101 @@
-"""tests/test_speedconv.py: speedconv.convert_speed 验收测试。"""
+"""speedconv 的验收测试（第五十五轮并发 C 单，逐字覆盖验收要点）。
+
+所有 approx 断言统一使用相对误差 1e-9。
+"""
 
 import math
 
 import pytest
 
-from speedconv import convert_speed
+import speedconv
 
-UNITS = ["m/s", "km/h", "mph", "kn", "ft/s"]
 REL_TOL = 1e-9
 
-
-def approx(actual, expected, rel=REL_TOL):
-    assert math.isclose(actual, expected, rel_tol=rel, abs_tol=0.0), (
-        "%r !~= %r (rel_tol=%g)" % (actual, expected, rel)
-    )
+ALL_UNITS = ["m/s", "km/h", "mph", "kn", "ft/s"]
 
 
-def test_zero_converts_exactly():
-    assert convert_speed(0, "m/s", "mph") == 0.0
+def convert(value, from_unit, to_unit):
+    return speedconv.convert_speed(value, from_unit, to_unit)
 
 
-def test_ms_to_kmh():
-    approx(convert_speed(1, "m/s", "km/h"), 3.6)
+def approx(expected):
+    return pytest.approx(expected, rel=REL_TOL)
 
 
-def test_kmh_to_ms():
-    approx(convert_speed(100, "km/h", "m/s"), 27.777777777777779)
+class TestAcceptanceExamples:
+    def test_zero_conversion_exact(self):
+        assert convert(0, "m/s", "mph") == 0.0
+
+    def test_ms_to_kmh(self):
+        assert convert(1, "m/s", "km/h") == approx(3.6)
+
+    def test_kmh_to_ms(self):
+        assert convert(100, "km/h", "m/s") == approx(27.777777777777779)
+
+    def test_mph_to_kmh(self):
+        assert convert(60, "mph", "km/h") == approx(96.56064)
+
+    def test_kn_to_ms(self):
+        assert convert(1, "kn", "m/s") == approx(0.5144444444444445)
+
+    def test_ms_to_kn(self):
+        assert convert(1, "m/s", "kn") == approx(1.9438444924406048)
+
+    def test_ms_to_mph(self):
+        assert convert(1, "m/s", "mph") == approx(2.2369362920544025)
+
+    def test_ms_to_fts(self):
+        assert convert(1, "m/s", "ft/s") == approx(3.280839895013123)
+
+    def test_fts_to_ms(self):
+        assert convert(10, "ft/s", "m/s") == approx(3.048)
+
+    def test_negative_value(self):
+        assert convert(-5, "m/s", "km/h") == approx(-18.0)
+
+    def test_mph_to_fts(self):
+        assert convert(88, "mph", "ft/s") == approx(129.06666666666668)
 
 
-def test_mph_to_kmh():
-    approx(convert_speed(60, "mph", "km/h"), 96.56064)
+class TestRoundTripAllPairs:
+    @pytest.mark.parametrize("u1", ALL_UNITS)
+    @pytest.mark.parametrize("u2", ALL_UNITS)
+    def test_round_trip_restores_37_5(self, u1, u2):
+        there = convert(37.5, u1, u2)
+        back = convert(there, u2, u1)
+        assert back == approx(37.5)
 
 
-def test_kn_to_ms():
-    approx(convert_speed(1, "kn", "m/s"), 0.5144444444444445)
+class TestUnknownUnits:
+    def test_fps_rejected(self):
+        with pytest.raises(ValueError):
+            convert(1, "m/s", "fps")
+
+    def test_knots_rejected(self):
+        with pytest.raises(ValueError):
+            convert(1, "knots", "m/s")
+
+    def test_case_mismatch_rejected(self):
+        with pytest.raises(ValueError):
+            convert(1, "MS", "m/s")
+
+    def test_unknown_target_unit_rejected(self):
+        with pytest.raises(ValueError):
+            convert(1, "m/s", "knots")
 
 
-def test_ms_to_kn():
-    approx(convert_speed(1, "m/s", "kn"), 1.9438444924406048)
+class TestCoefficientPinning:
+    @pytest.mark.parametrize("unit", ALL_UNITS)
+    def test_unit_to_itself_is_identity(self, unit):
+        for value in (0.0, 1.0, -5.0, 37.5, 123.456):
+            assert convert(value, unit, unit) == approx(value)
 
+    def test_coefficients_match_spec(self):
+        for unit in ALL_UNITS:
+            assert convert(1, unit, "m/s") == approx(
+                speedconv._TO_METERS_PER_SECOND[unit]
+            )
 
-def test_ms_to_mph():
-    approx(convert_speed(1, "m/s", "mph"), 2.2369362920544025)
-
-
-def test_ms_to_fts():
-    approx(convert_speed(1, "m/s", "ft/s"), 3.280839895013123)
-
-
-def test_fts_to_ms():
-    approx(convert_speed(10, "ft/s", "m/s"), 3.048)
-
-
-def test_negative_value():
-    approx(convert_speed(-5, "m/s", "km/h"), -18.0)
-
-
-def test_mph_to_fts():
-    approx(convert_speed(88, "mph", "ft/s"), 129.06666666666668)
-
-
-def test_roundtrip_all_unit_pairs():
-    for u1 in UNITS:
-        for u2 in UNITS:
-            forth = convert_speed(37.5, u1, u2)
-            back = convert_speed(forth, u2, u1)
-            approx(back, 37.5)
-
-
-def test_unknown_unit_fps():
-    with pytest.raises(ValueError):
-        convert_speed(1, "m/s", "fps")
-
-
-def test_unknown_unit_knots():
-    with pytest.raises(ValueError):
-        convert_speed(1, "knots", "m/s")
-
-
-def test_case_mismatch_MS():
-    with pytest.raises(ValueError):
-        convert_speed(1, "MS", "m/s")
+    def test_relative_error_within_1e9(self):
+        result = convert(1, "m/s", "km/h")
+        assert math.isclose(result, 3.6, rel_tol=REL_TOL)
