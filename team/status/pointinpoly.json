@@ -1,0 +1,19 @@
+{
+  "id": "pointinpoly",
+  "title": "点在多边形内三态判定组件与测试",
+  "state": "done",
+  "files": [
+    "pointinpoly.py",
+    "tests/test_pointinpoly.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_pointinpoly.py -q",
+      "result": "8 passed in 0.01s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "348 passed, 2 skipped, 1 failed; the single failure is tests/test_check_summary_focused_counts.py (FileNotFoundError on /tmp/r54-audit/... external artifact), verified pre-existing on a clean tree with this card's files stashed; unrelated to pointinpoly"
+    }
+  ]
+}
