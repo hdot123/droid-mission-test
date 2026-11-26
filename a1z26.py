@@ -1,87 +1,62 @@
-"""A1Z26 letter-index encoding.
+"""a1z26: A1Z26 字母序号编解码（大写 A-Z ↔ 1-26）。
 
-`a1z26_encode` maps uppercase A-Z (words separated by a single space) to
-1-26 indices joined with "-" inside a word and with a single space between
-words. `a1z26_decode` performs the inverse transform with strict input
-validation (indices 1-26, no leading zeros, no empty segments).
+编码约定（encode）：
+- 只接受大写 A-Z 与单空格分词的文本；空串原样返回 ""。
+- 字母 → 序号（A = 1 … Z = 26）；词内序号以 "-" 连接，词间以单空格分隔。
+- 含小写、数字、连续空格或首尾空格时抛 ValueError；非 str 抛 TypeError。
 
-Standard library only.
+解码约定（decode）：
+- encode 的逆变换；序号须为 1–26 且无前导零，分隔形态与 encode 对称。
+- 序号越界、前导零、空段（含词内空格导致的空段）时抛 ValueError；非 str 抛 TypeError。
 """
 
-__all__ = ["a1z26_encode", "a1z26_decode"]
+_UPPERCASE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 def a1z26_encode(text: str) -> str:
-    """Encode uppercase A-Z text into A1Z26 indices.
-
-    Accepts only uppercase letters A-Z separated by single spaces.
-    Raises TypeError for non-str input and ValueError for lowercase
-    letters, digits, or consecutive/leading/trailing spaces.
-    """
+    """把大写 A-Z 单空格分词的文本编码为 A1Z26 序号串；非法输入抛异常。"""
     if not isinstance(text, str):
-        raise TypeError(
-            f"a1z26_encode expects str, got {type(text).__name__}"
-        )
+        raise TypeError("expected str, got %s" % type(text).__name__)
     if text == "":
         return ""
-    words = text.split(" ")
-    for word in words:
-        if word == "":
-            raise ValueError(
-                "a1z26_encode: leading, trailing, or consecutive spaces"
-            )
+    if text[0] == " " or text[-1] == " ":
+        raise ValueError("leading/trailing space: %r" % (text,))
+    if "  " in text:
+        raise ValueError("consecutive spaces: %r" % (text,))
+    words = []
+    for word in text.split(" "):
+        indices = []
         for ch in word:
-            if not ("A" <= ch <= "Z"):
-                raise ValueError(
-                    f"a1z26_encode: invalid character {ch!r}; "
-                    "only uppercase A-Z and single spaces allowed"
-                )
-    encoded_words = []
-    for word in words:
-        encoded_words.append(
-            "-".join(str(ord(ch) - ord("A") + 1) for ch in word)
-        )
-    return " ".join(encoded_words)
+            if ch not in _UPPERCASE_LETTERS:
+                raise ValueError("invalid character %r in %r" % (ch, text))
+            indices.append(str(_UPPERCASE_LETTERS.index(ch) + 1))
+        words.append("-".join(indices))
+    return " ".join(words)
 
 
 def a1z26_decode(code: str) -> str:
-    """Decode A1Z26 indices back into uppercase A-Z text.
-
-    Indices must be 1-26 with no leading zeros; segments are joined by
-    "-" inside a word and words by a single space, symmetric with
-    `a1z26_encode`. Raises TypeError for non-str input and ValueError
-    for out-of-range indices, leading zeros, empty segments, or spaces
-    inside a word.
-    """
+    """把 A1Z26 序号串解码为大写 A-Z 文本；非法输入抛 ValueError。"""
     if not isinstance(code, str):
-        raise TypeError(
-            f"a1z26_decode expects str, got {type(code).__name__}"
-        )
+        raise TypeError("expected str, got %s" % type(code).__name__)
     if code == "":
         return ""
-    decoded_words = []
+    if code[0] == " " or code[-1] == " ":
+        raise ValueError("leading/trailing space: %r" % (code,))
+    if "  " in code:
+        raise ValueError("consecutive spaces: %r" % (code,))
+    words = []
     for word in code.split(" "):
-        if word == "":
-            raise ValueError(
-                "a1z26_decode: leading, trailing, or consecutive spaces"
-            )
         letters = []
         for segment in word.split("-"):
             if segment == "":
-                raise ValueError("a1z26_decode: empty segment")
-            if not segment.isdigit() or not segment.isascii():
-                raise ValueError(
-                    f"a1z26_decode: invalid segment {segment!r}"
-                )
+                raise ValueError("empty segment: %r" % (code,))
+            if not segment.isdigit():
+                raise ValueError("non-numeric index %r in %r" % (segment, code))
             if len(segment) > 1 and segment[0] == "0":
-                raise ValueError(
-                    f"a1z26_decode: leading zero in segment {segment!r}"
-                )
+                raise ValueError("leading zero in %r" % (segment,))
             value = int(segment)
-            if not 1 <= value <= 26:
-                raise ValueError(
-                    f"a1z26_decode: index {value} out of range 1-26"
-                )
-            letters.append(chr(ord("A") + value - 1))
-        decoded_words.append("".join(letters))
-    return " ".join(decoded_words)
+            if value < 1 or value > 26:
+                raise ValueError("index out of range: %r" % (segment,))
+            letters.append(_UPPERCASE_LETTERS[value - 1])
+        words.append("".join(letters))
+    return " ".join(words)

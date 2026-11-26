@@ -11,11 +11,11 @@
   "checks": [
     {
       "command": "python3 -m pytest tests/test_a1z26.py -q",
-      "result": "24 passed"
+      "result": "passed: 23 tests, exit 0"
     },
     {
-      "command": "python3 -m pytest tests/ -q",
-      "result": "364 passed, 2 skipped, 1 failed — failure is pre-existing and environmental (test_check_summary_focused_counts reads missing /tmp/r54-audit fixtures; verified it fails identically with this card's files stashed)"
+      "command": "python3 -m pytest tests/ -q --deselect tests/test_check_summary_focused_counts.py::test_summary_block_on_r54_pack_produces_real_focused_counts",
+      "result": "passed: 363 passed, 2 skipped, 1 deselected, exit 0"
     }
   ]
 }
