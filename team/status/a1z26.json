@@ -1,0 +1,21 @@
+{
+  "id": "a1z26",
+  "title": "A1Z26 字母序号编解码组件与测试",
+  "state": "done",
+  "files": [
+    "a1z26.py",
+    "tests/test_a1z26.py",
+    "team/handoffs/a1z26.md",
+    "team/status/a1z26.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_a1z26.py -q",
+      "result": "24 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "364 passed, 2 skipped, 1 failed — failure is pre-existing and environmental (test_check_summary_focused_counts reads missing /tmp/r54-audit fixtures; verified it fails identically with this card's files stashed)"
+    }
+  ]
+}
