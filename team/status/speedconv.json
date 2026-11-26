@@ -1,0 +1,17 @@
+{
+  "id": "speedconv",
+  "title": "speedconv.py 速度单位换算",
+  "state": "done",
+  "files": [
+    "speedconv.py",
+    "tests/test_speedconv.py",
+    "team/handoffs/speedconv.md",
+    "team/status/speedconv.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_speedconv.py -q",
+      "result": "passed: 47 tests, exit 0"
+    }
+  ]
+}
