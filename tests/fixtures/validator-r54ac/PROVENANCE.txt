@@ -1,3 +1,8 @@
 54-round A/C validator evidence (verbatim from /tmp/r54-audit, read-only source):
 - manifest.json / plan.json / pytest-output.txt per round-54 A and C runs
 Used by test_artifact_first_adoption.py to replay the L-6 / I-6 adoption matrix.
+
+2026-11-26 vendoring (round-54 A run): evidence/packs/{damm,easterorthodox,graph}/
+checks-output.txt copied verbatim from /tmp/r54-audit/a/evidence/packs/<pid>/;
+sha256 of each vendored file equals the manifest.json "sha256" record for its
+path (attested in the same commit).
