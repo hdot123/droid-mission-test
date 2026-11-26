@@ -1,0 +1,19 @@
+{
+  "id": "monthgrid",
+  "title": "实现 monthgrid 月历网格生成",
+  "state": "done",
+  "files": [
+    "monthgrid.py",
+    "tests/test_monthgrid.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_monthgrid.py -q",
+      "result": "9 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "349 passed, 2 skipped, 1 failed — 唯一失败为存量 tests/test_check_summary_focused_counts.py（缺环境外部 fixture /tmp/r54-audit），stash 本单文件后同样失败，与 monthgrid 无关"
+    }
+  ]
+}
