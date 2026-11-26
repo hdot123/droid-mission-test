@@ -1,0 +1,19 @@
+{
+  "id": "deque",
+  "title": "实现 deque 双端队列",
+  "state": "done",
+  "files": [
+    "deque.py",
+    "tests/test_deque.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_deque.py -q",
+      "result": "PASS: 13 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "353 passed, 2 skipped, 1 failed; the single failure is pre-existing test_check_summary_focused_counts.py reading a missing external fixture /tmp/r54-audit/... (environment issue unrelated to this card)"
+    }
+  ]
+}
