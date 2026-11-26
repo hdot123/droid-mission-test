@@ -1,0 +1,21 @@
+{
+  "id": "stirling2",
+  "title": "第二类 Stirling 数 stirling2.py",
+  "state": "done",
+  "files": [
+    "stirling2.py",
+    "tests/test_stirling2.py",
+    "team/handoffs/stirling2.md",
+    "team/status/stirling2.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_stirling2.py -q",
+      "result": "passed: 27 passed in 0.04s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 369 passed, 2 skipped in 21.85s (exit 0)"
+    }
+  ]
+}
