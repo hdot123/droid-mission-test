@@ -1,0 +1,21 @@
+{
+  "id": "a1z26",
+  "title": "A1Z26 字母序号编解码组件与测试",
+  "state": "done",
+  "files": [
+    "a1z26.py",
+    "tests/test_a1z26.py",
+    "team/handoffs/a1z26.md",
+    "team/status/a1z26.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_a1z26.py -q",
+      "result": "passed: 23 tests, exit 0"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q --deselect tests/test_check_summary_focused_counts.py::test_summary_block_on_r54_pack_produces_real_focused_counts",
+      "result": "passed: 363 passed, 2 skipped, 1 deselected, exit 0"
+    }
+  ]
+}
