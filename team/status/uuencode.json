@@ -1,0 +1,21 @@
+{
+  "id": "uuencode",
+  "title": "uuencode 经典编解码组件与测试",
+  "state": "done",
+  "files": [
+    "uuencode.py",
+    "tests/test_uuencode.py",
+    "team/handoffs/uuencode.md",
+    "team/status/uuencode.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_uuencode.py -q",
+      "result": "10 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "352 passed, 2 skipped"
+    }
+  ]
+}
