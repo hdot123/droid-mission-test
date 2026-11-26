@@ -1,0 +1,24 @@
+{
+  "salvage_schema_version": "validator-partial.v1",
+  "round": 1,
+  "final": true,
+  "analyzed_count": 3,
+  "processes": [
+    {
+      "id": "damm",
+      "verdict": "pass",
+      "reason": "diff.patch table matches spec rows exactly, all 16 acceptance points have dedicated tests in tests/test_damm.py, both card checks exit 0 in checks-exit.json (18 passed; suite 240 passed 2 skipped), no checks-failed.marker"
+    },
+    {
+      "id": "easterorthodox",
+      "verdict": "pass",
+      "reason": "diff implements the pinned two-step computus verbatim (spot-verified 2024=(5,5), 2025=(4,20), 2016=(5,1), 1900/2000/2100 correct), all 17 acceptance points tested, both card checks exit 0 in checks-exit.json, no checks-failed.marker"
+    },
+    {
+      "id": "graph",
+      "verdict": "pass",
+      "reason": "graph.py matches the spec API exactly and hand-verified pinned traversals are correct (bfs a=[a,b,c,d,e], dfs a=[a,b,d,c,e], dfs G2 m=[m,n,p,o,q]), 17 tests cover every acceptance point, both card checks exit 0 in checks-exit.json, no checks-failed.marker; team/ files in status are whitelisted protocol artifacts"
+    }
+  ],
+  "conflicts": []
+}

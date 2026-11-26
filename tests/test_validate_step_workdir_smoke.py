@@ -21,7 +21,7 @@ from workflow_paths import repo_root, team_pythonpath_env, team_scripts_dir  # n
 
 YML_PYTHONPATH_EXPORT = 'export PYTHONPATH="${REPO_ROOT}/scripts/team"'
 YML_TEAM_PY = 'TEAM_PY="${REPO_ROOT}/scripts/team"'
-YML_REPO_ROOT = 'REPO_ROOT="${GITHUB_WORKSPACE}"'
+YML_REPO_ROOT = 'export REPO_ROOT="${GITHUB_WORKSPACE}"'
 
 _BUDGET_HEREDOC_RE = re.compile(
     r"python3 -\s+<<'PY'\s+>>\s*\"\$GITHUB_ENV\"\s*\n([\s\S]*?)\n\s*PY",

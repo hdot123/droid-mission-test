@@ -1,0 +1,16 @@
+{
+  "id": "easterorthodox",
+  "title": "实现东正教复活节公历日期计算 easterorthodox.py",
+  "scope": "只拥有新增 easterorthodox.py 与 tests/test_easterorthodox.py；不拥有 graph.py、damm.py、任何存量文件或 team/ 路径。实现与测试只用标准库，不 import 另外两个组件。",
+  "files": [
+    "easterorthodox.py",
+    "tests/test_easterorthodox.py"
+  ],
+  "task": "在仓库根目录新增两个文件：easterorthodox.py 与 tests/test_easterorthodox.py（只新增，不改任何存量文件；标准库 only；不 import graph 或 damm）。逐字实现以下验收规格：\n\n一、easterorthodox.py —— 东正教复活节（公历日期）\n\n- `orthodox_easter(year) -> tuple[int, int]`：返回该年东正教复活节在**公历**下的 (month, day)。算法钉死两步：① Julian computus——a = year % 4、b = year % 7、c = year % 19、d = (19c + 15) % 30、e = (2a + 4b − d + 34) % 7、儒略历月 = (d + e + 114) // 31、儒略历日 = ((d + e + 114) % 31) + 1；② 换公历——把儒略历日期加上偏移量 (year // 100 − year // 400 − 2) 天，得公历日期，取其 (month, day) 返回。\n- year 须为 int（bool 拒），非 int 抛 TypeError；year 不在 1583 ≤ year ≤ 9999 抛 ValueError。\n- 验收要点：`orthodox_easter(2010) == (4, 4)`；`orthodox_easter(2016) == (5, 1)`；`orthodox_easter(2020) == (4, 19)`；`orthodox_easter(2021) == (5, 2)`；`orthodox_easter(2022) == (4, 24)`；`orthodox_easter(2023) == (4, 16)`；`orthodox_easter(2024) == (5, 5)`；`orthodox_easter(2025) == (4, 20)`；`orthodox_easter(2026) == (4, 12)`；`orthodox_easter(2000) == (4, 30)`；`orthodox_easter(1900) == (4, 22)`；`orthodox_easter(2100) == (5, 2)`；`orthodox_easter(1582)`、`orthodox_easter(10000)` 抛 ValueError；`orthodox_easter(2024.0)`、`orthodox_easter(\"2024\")`、`orthodox_easter(True)` 抛 TypeError。\n- 每个验收要点都要有对应测试用例。checks（逐字）：`python3 -m pytest tests/test_easterorthodox.py -q`、`python3 -m pytest tests/ -q`",
+  "checks": [
+    "python3 -m pytest tests/test_easterorthodox.py -q",
+    "python3 -m pytest tests/ -q"
+  ],
+  "sub_issue_number": 818,
+  "sub_issue_linked": true
+}

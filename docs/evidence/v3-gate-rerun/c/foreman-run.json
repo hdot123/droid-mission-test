@@ -1,7 +1,7 @@
 {
   "schema_version": "foreman-run.v1",
-  "run_id": "45195771256",
-  "issue_number": 814,
+  "run_id": "45195635939",
+  "issue_number": 812,
   "plan_issue_number": null,
   "foreman_mode": "test",
   "env": {
@@ -151,7 +151,7 @@
     }
   },
   "artifacts": {
-    "team-verdict-issue-814-run-45195771256": {
+    "team-verdict-issue-812-run-45195635939": {
       "complete": true,
       "missing": [],
       "required_members": [
@@ -162,7 +162,7 @@
         "work/validator-stream.jsonl"
       ]
     },
-    "team-verdict2-issue-814-run-45195771256": {
+    "team-verdict2-issue-812-run-45195635939": {
       "complete": false,
       "missing": [
         "verdict.json",
@@ -176,7 +176,7 @@
         "work/validator-stream.jsonl"
       ]
     },
-    "foreman-run-45195771256": {
+    "foreman-run-45195635939": {
       "complete": false,
       "missing": [
         "foreman-run.json"
@@ -186,7 +186,7 @@
       ]
     }
   },
-  "human_stop": true,
+  "human_stop": false,
   "validation": {
     "schema_version": "validation-slice.v1",
     "round": 1,
@@ -200,10 +200,6 @@
     "conflicts_escalated": false,
     "pytest_exit": 0,
     "job_conclusion_derived": "success"
-  },
-  "closeout": {
-    "schema_version": "closeout-slice.v1",
-    "run_must_fail": true
   },
   "replan_gate": {
     "schema_version": "replan-gate.v1",

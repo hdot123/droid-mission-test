@@ -1,0 +1,214 @@
+diff --git a/pluralize.py b/pluralize.py
+new file mode 100644
+index 0000000..5b870a6
+--- /dev/null
++++ b/pluralize.py
+@@ -0,0 +1,53 @@
++"""pluralize: 英文名词复数规则小组件。"""
++
++_UNCOUNTABLE = {"sheep", "fish", "deer", "species", "series", "aircraft"}
++
++_IRREGULAR = {
++    "child": "children",
++    "person": "people",
++    "man": "men",
++    "woman": "women",
++    "mouse": "mice",
++    "goose": "geese",
++    "tooth": "teeth",
++    "foot": "feet",
++    "ox": "oxen",
++    "die": "dice",
++    "quiz": "quizzes",
++}
++
++_F_FE = {"leaf", "life", "knife", "wife", "wolf", "loaf", "thief", "shelf", "half", "calf"}
++
++_O_ES = {"hero", "potato", "tomato", "echo", "torpedo", "veto"}
++
++_VOWELS = set("aeiou")
++
++
++def pluralize(word):
++    """按钉死顺序套用英文名词复数规则，返回复数形式。"""
++    if not isinstance(word, str):
++        raise TypeError("word must be str, got %r" % type(word).__name__)
++    if not word:
++        raise ValueError("word must be non-empty")
++    if any(ch < "a" or ch > "z" for ch in word):
++        raise ValueError("word must contain only lowercase a-z: %r" % (word,))
++
++    if word in _UNCOUNTABLE:
++        return word
++    if word in _IRREGULAR:
++        return _IRREGULAR[word]
++    if word in _F_FE:
++        if word.endswith("fe"):
++            return word[:-2] + "ves"
++        return word[:-1] + "ves"
++    if word in _O_ES:
++        return word + "es"
++    if (
++        len(word) >= 2
++        and word.endswith("y")
++        and word[-2] not in _VOWELS
++    ):
++        return word[:-1] + "ies"
++    if word.endswith(("s", "x", "z", "ch", "sh")):
++        return word + "es"
++    return word + "s"
+diff --git a/tests/test_pluralize.py b/tests/test_pluralize.py
+new file mode 100644
+index 0000000..9f3faaf
+--- /dev/null
++++ b/tests/test_pluralize.py
+@@ -0,0 +1,149 @@
++"""tests for pluralize."""
++import pytest
++
++from pluralize import pluralize
++
++
++def test_cat():
++    assert pluralize("cat") == "cats"
++
++
++def test_dog():
++    assert pluralize("dog") == "dogs"
++
++
++def test_city():
++    assert pluralize("city") == "cities"
++
++
++def test_baby():
++    assert pluralize("baby") == "babies"
++
++
++def test_day():
++    assert pluralize("day") == "days"
++
++
++def test_boy():
++    assert pluralize("boy") == "boys"
++
++
++def test_box():
++    assert pluralize("box") == "boxes"
++
++
++def test_class():
++    assert pluralize("class") == "classes"
++
++
++def test_watch():
++    assert pluralize("watch") == "watches"
++
++
++def test_wish():
++    assert pluralize("wish") == "wishes"
++
++
++def test_child():
++    assert pluralize("child") == "children"
++
++
++def test_person():
++    assert pluralize("person") == "people"
++
++
++def test_mouse():
++    assert pluralize("mouse") == "mice"
++
++
++def test_sheep():
++    assert pluralize("sheep") == "sheep"
++
++
++def test_fish():
++    assert pluralize("fish") == "fish"
++
++
++def test_leaf():
++    assert pluralize("leaf") == "leaves"
++
++
++def test_knife():
++    assert pluralize("knife") == "knives"
++
++
++def test_life():
++    assert pluralize("life") == "lives"
++
++
++def test_wolf():
++    assert pluralize("wolf") == "wolves"
++
++
++def test_roof():
++    assert pluralize("roof") == "roofs"
++
++
++def test_hero():
++    assert pluralize("hero") == "heroes"
++
++
++def test_potato():
++    assert pluralize("potato") == "potatoes"
++
++
++def test_photo():
++    assert pluralize("photo") == "photos"
++
++
++def test_piano():
++    assert pluralize("piano") == "pianos"
++
++
++def test_echo():
++    assert pluralize("echo") == "echoes"
++
++
++def test_quiz():
++    assert pluralize("quiz") == "quizzes"
++
++
++def test_church():
++    assert pluralize("church") == "churches"
++
++
++def test_bus():
++    assert pluralize("bus") == "buses"
++
++
++def test_toy():
++    assert pluralize("toy") == "toys"
++
++
++def test_key():
++    assert pluralize("key") == "keys"
++
++
++def test_empty_raises():
++    with pytest.raises(ValueError):
++        pluralize("")
++
++
++def test_uppercase_raises():
++    with pytest.raises(ValueError):
++        pluralize("Cat")
++
++
++def test_non_ascii_raises():
++    with pytest.raises(ValueError):
++        pluralize("cat!")
++
++
++def test_none_raises_type():
++    with pytest.raises(TypeError):
++        pluralize(None)
++
++
++def test_int_raises_type():
++    with pytest.raises(TypeError):
++        pluralize(3)

@@ -1,0 +1,19 @@
+{
+  "id": "damm",
+  "title": "实现 Damm 算法校验位 damm.py",
+  "state": "done",
+  "files": [
+    "damm.py",
+    "tests/test_damm.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_damm.py -q",
+      "result": "18 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "205 passed, 2 skipped"
+    }
+  ]
+}

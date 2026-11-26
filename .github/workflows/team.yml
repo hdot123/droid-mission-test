@@ -1443,7 +1443,7 @@ jobs:
         working-directory: work
         run: |
           set -o pipefail
-          REPO_ROOT="${GITHUB_WORKSPACE}"
+          export REPO_ROOT="${GITHUB_WORKSPACE}"
           export PYTHONPATH="${REPO_ROOT}/scripts/team"
           TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'
@@ -1850,7 +1850,7 @@ jobs:
         working-directory: work
         run: |
           set -o pipefail
-          REPO_ROOT="${GITHUB_WORKSPACE}"
+          export REPO_ROOT="${GITHUB_WORKSPACE}"
           export PYTHONPATH="${REPO_ROOT}/scripts/team"
           TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'
@@ -3572,7 +3572,7 @@ jobs:
         working-directory: work
         run: |
           set -o pipefail
-          REPO_ROOT="${GITHUB_WORKSPACE}"
+          export REPO_ROOT="${GITHUB_WORKSPACE}"
           export PYTHONPATH="${REPO_ROOT}/scripts/team"
           TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'
@@ -3973,7 +3973,7 @@ jobs:
         working-directory: work
         run: |
           set -o pipefail
-          REPO_ROOT="${GITHUB_WORKSPACE}"
+          export REPO_ROOT="${GITHUB_WORKSPACE}"
           export PYTHONPATH="${REPO_ROOT}/scripts/team"
           TEAM_PY="${REPO_ROOT}/scripts/team"
           python3 - <<'PY'

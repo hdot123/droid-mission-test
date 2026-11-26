@@ -1,0 +1,16 @@
+{
+  "id": "pluralize",
+  "title": "英文名词复数（pluralize.py）",
+  "scope": "Owns only pluralize.py and tests/test_pluralize.py: the pluralize function with its pinned rule order plus tests. Does not own ellipse.py, issn.py, any existing file, or team/** paths.",
+  "files": [
+    "pluralize.py",
+    "tests/test_pluralize.py"
+  ],
+  "task": "Create pluralize.py (new file only; do not modify any existing file) implementing pluralize(word) -> str. Standard library only; do not import ellipse or issn.\n\nValidation: word not a str raises TypeError; empty string, or any character outside lowercase a-z, raises ValueError.\n\nRules are applied in this pinned order, first match wins (order is part of the spec):\n1. Uncountable set {sheep, fish, deer, species, series, aircraft}: return the word unchanged.\n2. Irregular table: child->children, person->people, man->men, woman->women, mouse->mice, goose->geese, tooth->teeth, foot->feet, ox->oxen, die->dice, quiz->quizzes.\n3. f/fe -> ves list {leaf, life, knife, wife, wolf, loaf, thief, shelf, half, calf}: ending in fe -> drop fe and add ves; ending only in f -> drop f and add ves.\n4. o -> es list {hero, potato, tomato, echo, torpedo, veto}: add es.\n5. Ends in consonant + y (the character before y is not a/e/i/o/u): drop y and add ies; vowel + y does not take this rule.\n6. Ends in s, x, z, ch, sh: add es.\n7. Otherwise: add s.\n\nWrite tests/test_pluralize.py with a case for EVERY acceptance item below:\n- pluralize(\"cat\") == \"cats\"; pluralize(\"dog\") == \"dogs\"\n- pluralize(\"city\") == \"cities\"; pluralize(\"baby\") == \"babies\"\n- pluralize(\"day\") == \"days\"; pluralize(\"boy\") == \"boys\"\n- pluralize(\"box\") == \"boxes\"; pluralize(\"class\") == \"classes\"\n- pluralize(\"watch\") == \"watches\"; pluralize(\"wish\") == \"wishes\"\n- pluralize(\"child\") == \"children\"; pluralize(\"person\") == \"people\"; pluralize(\"mouse\") == \"mice\"\n- pluralize(\"sheep\") == \"sheep\"; pluralize(\"fish\") == \"fish\"\n- pluralize(\"leaf\") == \"leaves\"; pluralize(\"knife\") == \"knives\"; pluralize(\"life\") == \"lives\"; pluralize(\"wolf\") == \"wolves\"; pluralize(\"roof\") == \"roofs\"\n- pluralize(\"hero\") == \"heroes\"; pluralize(\"potato\") == \"potatoes\"; pluralize(\"photo\") == \"photos\"; pluralize(\"piano\") == \"pianos\"; pluralize(\"echo\") == \"echoes\"\n- pluralize(\"quiz\") == \"quizzes\"; pluralize(\"church\") == \"churches\"; pluralize(\"bus\") == \"buses\"\n- pluralize(\"toy\") == \"toys\"; pluralize(\"key\") == \"keys\"\n- pluralize(\"\") raises ValueError; pluralize(\"Cat\") raises ValueError; pluralize(\"cat!\") raises ValueError\n- pluralize(None) raises TypeError; pluralize(3) raises TypeError\n\nChecks (verbatim): python3 -m pytest tests/test_pluralize.py -q ; python3 -m pytest tests/ -q",
+  "checks": [
+    "python3 -m pytest tests/test_pluralize.py -q",
+    "python3 -m pytest tests/ -q"
+  ],
+  "sub_issue_number": 827,
+  "sub_issue_linked": true
+}
