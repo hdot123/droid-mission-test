@@ -1,0 +1,21 @@
+{
+  "id": "ngrams",
+  "title": "实现 n-gram 切分 ngrams.py 及其测试",
+  "state": "done",
+  "files": [
+    "ngrams.py",
+    "tests/test_ngrams.py",
+    "team/handoffs/ngrams.md",
+    "team/status/ngrams.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_ngrams.py -q",
+      "result": "19 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "361 passed, 2 skipped in 20.37s (exit 0)"
+    }
+  ]
+}
