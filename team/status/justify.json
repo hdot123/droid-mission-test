@@ -1,0 +1,21 @@
+{
+  "id": "justify",
+  "title": "justify.py — 文本两端对齐",
+  "state": "done",
+  "files": [
+    "justify.py",
+    "tests/test_justify.py",
+    "team/handoffs/justify.md",
+    "team/status/justify.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_justify.py -q",
+      "result": "passed: 16 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 358 passed, 2 skipped"
+    }
+  ]
+}
