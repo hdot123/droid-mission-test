@@ -1,0 +1,21 @@
+{
+  "id": "joaat",
+  "title": "joaat — Jenkins one-at-a-time 32-bit hash (L)",
+  "state": "done",
+  "files": [
+    "joaat.py",
+    "tests/test_joaat.py",
+    "team/handoffs/joaat.md",
+    "team/status/joaat.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_joaat.py -q",
+      "result": "13 passed in 0.04s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "355 passed, 2 skipped in 21.72s"
+    }
+  ]
+}
