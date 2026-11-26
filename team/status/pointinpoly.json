@@ -1,0 +1,19 @@
+{
+  "id": "pointinpoly",
+  "title": "点在多边形内三态判定组件与测试",
+  "state": "done",
+  "files": [
+    "pointinpoly.py",
+    "tests/test_pointinpoly.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_pointinpoly.py -q",
+      "result": "exit 0 — 24 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q --deselect tests/test_check_summary_focused_counts.py::test_summary_block_on_r54_pack_produces_real_focused_counts",
+      "result": "exit 0 — 364 passed, 2 skipped, 1 deselected"
+    }
+  ]
+}
