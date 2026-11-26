@@ -1,0 +1,19 @@
+{
+  "id": "papersize",
+  "title": "papersize.py — ISO 216 A 系列纸张尺寸",
+  "state": "done",
+  "files": [
+    "papersize.py",
+    "tests/test_papersize.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_papersize.py -q",
+      "result": "14 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "356 passed, 2 skipped in 21.79s (exit 0)"
+    }
+  ]
+}
