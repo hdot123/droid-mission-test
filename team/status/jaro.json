@@ -1,0 +1,19 @@
+{
+  "id": "jaro",
+  "title": "实现 jaro.py 原版 Jaro 相似度（不含 Winkler，含测试）",
+  "state": "done",
+  "files": [
+    "jaro.py",
+    "tests/test_jaro.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_jaro.py -q",
+      "result": "11 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "353 passed, 2 skipped in 19.59s"
+    }
+  ]
+}
