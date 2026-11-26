@@ -1,0 +1,14 @@
+{
+  "evidence_pack": "/tmp/r54-audit/a/evidence/",
+  "judgeable": [
+    "damm",
+    "easterorthodox",
+    "graph"
+  ],
+  "blocked": {},
+  "manifest_sha256": "eb7da7af5a865e135fe57b6c19fa2cd83e4b736304a39f309f61801b8a23bb83",
+  "droid_exit": 0,
+  "model_id_arg": "custom:DeepSeek-V4.1-Flash-Go",
+  "settings_model": "glm-5.3-flash (CI-id remap per boss ruling 2026-11-26)",
+  "wall_sec": 480
+}
