@@ -1,57 +1,41 @@
-# Handoff: titlecase (sub-issue #863)
+# Handoff: titlecase (sub-issue #870, round 55 concurrent C card)
 
 ## What was requested
 
-Work order #850 · concurrent card C · process card `titlecase`: create exactly two new files,
-`titlecase.py` and `tests/test_titlecase.py`, implementing `title_case(text: str) -> str`
-per the verbatim spec in #850/#863 (whitespace normalization, per-word capitalization with
-leading symbols preserved, small-word list applied only to non-first/non-last words,
-hyphenated compounds processed segment by segment, abbreviations lowercased NASA → Nasa,
-non-str raises TypeError). No existing file may be modified; standard library only; no
-imports from sibling modules (speedconv, divisorsum).
+Implement `titlecase.py` exposing `title_case(text: str) -> str` with the rules pinned verbatim in the work order (#850) and process card #870 (r2 retry), plus a new test file `tests/test_titlecase.py` covering every acceptance example. Card rules (r2 revision):
+
+- Only two deliverable code files may be created: `titlecase.py`, `tests/test_titlecase.py`. No existing file modified. Standard library only; no import of `speedconv` or `divisorsum`.
+- Plus exactly two team files: this handoff and `team/status/titlecase.json`.
+- The ONLY mandated check: `python3 -m pytest tests/test_titlecase.py -q`, must exit 0. The full-suite run `python3 -m pytest tests/ -q` is deliberately NOT a card check (see below).
 
 ## What I did
 
-- Created `titlecase.py` with `title_case(text)`:
-  - `str.split()` tokenizes on any whitespace run and strips edges; empty/whitespace-only input returns `""`.
-  - `_capitalize()` uppercases the first alphabetic character of a token, lowercases the rest,
-    and passes non-alphabetic characters through unchanged (covers `"(the) end"`, `"123 go"`, `"don't look back"`).
-  - `_alpha_core()` extracts the alphabetic core lowercased for small-word membership tests
-    (so `"(the)"` counts as `the`).
-  - Small words (the 24-word list from the spec) stay all-lowercase only when the word is
-    neither first nor last; first/last are capitalized normally (`"in the"` → `"In The"`).
-  - Hyphenated words are split on `-`: first segment always capitalized, later segments
-    lowercased when they are small words, otherwise capitalized (`"jack-of-all-trades"` →
-    `"Jack-of-All-Trades"`, `"mother-in-law"` → `"Mother-in-Law"`).
-  - Whole-word small-word check happens after segment handling so a small word keeps its
-    lowercase form in non-terminal positions.
-  - Raises `TypeError` for any non-`str` input (including `None`).
-- Created `tests/test_titlecase.py` with one test function per acceptance bullet: all 19
-  string examples plus `title_case(None)` and a non-str (`42`) TypeError case (21 tests).
+- Created `titlecase.py`:
+  - `title_case` splits on whitespace (normalization: runs collapse, strips ends; empty string -> `""`).
+  - Per word: first alphabetic char uppercased, remaining letters lowercased; non-letter characters (symbols, digits, apostrophes) preserved as-is.
+  - Small-word list (a, an, the, and, but, or, nor, for, so, yet, at, by, in, into, of, off, on, onto, per, to, up, via, as) implemented as a module-level frozenset; lowercase only when the word is neither first nor last.
+  - Hyphenated compounds: segments processed individually; first segment always capitalized, later segments lowercase when they are small words (so `jack-of-all-trades` -> `Jack-of-All-Trades`, `e-mail` -> `E-Mail`).
+  - Abbreviations not preserved as all-caps (`NASA and ESA` -> `Nasa and Esa`).
+  - Non-`str` input (incl. `None`) raises `TypeError`.
+- Created `tests/test_titlecase.py` with one test per acceptance example — all 20 examples from the work order, each as its own named test.
 
-## What I did not do
+## What I did NOT do
 
-- Did not touch any existing file (only the two new module/test files plus this handoff
-  and `team/status/titlecase.json` were created).
-- Did not implement `speedconv.py` or `divisorsum.py` (owned by concurrent cards).
-- Did not import anything outside the standard library (module imports nothing at all).
-- Did not commit or push.
+- Did not modify or delete any existing file. Only added the two code files and the two team files.
+- Did not implement `speedconv.py` or `divisorsum.py` (other cards own those).
+- Did not touch `tests/test_check_summary_focused_counts.py` — the full suite exits 1 from a pre-existing `FileNotFoundError` under `/tmp/r54-audit/`. Per the card this is known out-of-scope context: I did not fix, seed, skip, or run it as a card gate.
 
-## Checks run and results
+## Checks run
 
-- `python3 -m pytest tests/test_titlecase.py -q` → **21 passed** (all acceptance bullets).
-- `python3 -m pytest tests/ -q` → **1 failed, 361 passed, 2 skipped**.
+| Command | Result |
+| --- | --- |
+| `python3 -m pytest tests/test_titlecase.py -q` | exit 0 — `20 passed in 0.02s` |
 
-## What the validator must pay attention to
+Known out-of-scope context (not a card check): `python3 -m pytest tests/ -q` exits 1 solely because of the pre-existing `/tmp/r54-audit/` FileNotFoundError in `tests/test_check_summary_focused_counts.py`, which belongs to no process on this plan.
 
-- The single full-suite failure is `tests/test_check_summary_focused_counts.py::
-  test_summary_block_on_r54_pack_produces_real_focused_counts`, which fails with
-  `FileNotFoundError: /tmp/r54-audit/a/evidence/packs/damm/checks-output.txt`. It reads
-  external evidence files under `/tmp/r54-audit` that do not exist in this environment
-  (verified: `/tmp/r54-audit` is absent). It fails identically when run in isolation and is
-  entirely unrelated to this card (it exercises workflow summary-parsing code, not
-  `titlecase`). It is a pre-existing environmental failure, not a regression from this change;
-  it needs `/tmp/r54-audit` seeded or a skip guard, which is outside this card's scope.
-- No `verdict.json` / `verdict.md` by-products were produced; repo root checked clean of them.
-- A stray `42` non-str TypeError test was added alongside the required `None` case; both
-  satisfy the "non str raises TypeError" contract.
+## Validator attention points
+
+- Small-word check uses the letters-only view of the word (leading symbols stripped) so `(the)` still matches `the` while preserving the parens — this is what makes `title_case("(the) end") == "(The) End"` pass (first word, capitalized).
+- Single-word inputs are always capitalized regardless of being in the small-word list (`"the"` -> `"The"`, `"in the"` -> `"In The"`).
+- First segment of any hyphenated compound is always capitalized even mid-sentence; later segments use the small-word rule (`of` in `jack-of-all-trades` stays lowercase).
+- Verdict files (`verdict.json` / `verdict.md`) appearing in the repo root are pipeline by-products of the test suite, not deliverables; none were present/kept from my runs.

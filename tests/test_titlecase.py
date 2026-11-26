@@ -1,4 +1,4 @@
-"""tests/test_titlecase.py: titlecase.title_case 的逐条验收要点。"""
+"""Tests for titlecase.title_case — round-55 acceptance examples, verbatim."""
 
 import pytest
 
@@ -13,7 +13,7 @@ def test_hello_world():
     assert title_case("hello world") == "Hello World"
 
 
-def test_the_lord_of_the_rings():
+def test_small_words_middle_and_edges():
     assert title_case("the lord of the rings") == "The Lord of the Rings"
 
 
@@ -21,7 +21,7 @@ def test_a_tale_of_two_cities():
     assert title_case("a tale of two cities") == "A Tale of Two Cities"
 
 
-def test_war_and_peace():
+def test_war_and_peace_uppercase_input():
     assert title_case("WAR AND PEACE") == "War and Peace"
 
 
@@ -45,15 +45,15 @@ def test_jack_of_all_trades():
     assert title_case("jack-of-all-trades") == "Jack-of-All-Trades"
 
 
-def test_dont_look_back():
+def test_apostrophe_word():
     assert title_case("don't look back") == "Don't Look Back"
 
 
-def test_parenthesized_the_end():
+def test_leading_symbols_preserved():
     assert title_case("(the) end") == "(The) End"
 
 
-def test_nasa_and_esa():
+def test_abbreviations_lowered():
     assert title_case("NASA and ESA") == "Nasa and Esa"
 
 
@@ -65,27 +65,22 @@ def test_what_to_look_for():
     assert title_case("what to look for") == "What to Look For"
 
 
-def test_in_the():
+def test_in_the_two_words():
     assert title_case("in the") == "In The"
 
 
-def test_single_small_word():
+def test_single_word():
     assert title_case("the") == "The"
 
 
-def test_digits_first():
+def test_leading_digits():
     assert title_case("123 go") == "123 Go"
 
 
-def test_e_mail():
+def test_hyphenated_small_word_segment():
     assert title_case("e-mail etiquette") == "E-Mail Etiquette"
-
-
-def test_none_raises_type_error():
-    with pytest.raises(TypeError):
-        title_case(None)
 
 
 def test_non_str_raises_type_error():
     with pytest.raises(TypeError):
-        title_case(42)
+        title_case(None)

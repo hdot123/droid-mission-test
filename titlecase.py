@@ -1,15 +1,20 @@
-"""titlecase: 标题式大小写转换（第五十五轮并发 C 单 · R51 题池）。
+"""Title-style capitalization.
 
-规则钉死（与验收规格逐字对应）：
-- 空白归一化：任意空白串折叠为单空格并去首尾（按空白切词）；空串返回 ""。
-- 每词首字母大写、其余字母小写；「首字母」指词内首个字母字符，前导符号保留原样。
-- 小词表中的词，非首词非尾词时全小写；位于首位或末位时仍按普通词大写。
-- 连字符复合词逐段处理：首段恒大写、后续段若为小词仍小写。
-- 缩略词不保留全大写（NASA -> Nasa）。
-- 非 str 入参抛 TypeError。
+``title_case`` converts arbitrary text to title case with the exact rules
+pinned by the round-55 acceptance spec:
+
+* whitespace runs collapse to single spaces; leading/trailing stripped;
+* each word: first alphabetic char uppercased, remaining letters lowercased,
+  leading symbols preserved as-is;
+* small words (a, an, the, ...) stay lowercase only when the word is neither
+  first nor last;
+* hyphenated compounds are handled segment by segment: first segment always
+  capitalized, later segments lowercase when they are small words;
+* abbreviations are not preserved as all-caps (NASA -> Nasa);
+* non-str input raises TypeError.
 """
 
-_SMALL_WORDS = frozenset(
+SMALL_WORDS = frozenset(
     {
         "a",
         "an",
@@ -38,59 +43,75 @@ _SMALL_WORDS = frozenset(
 )
 
 
-def _alpha_core(token):
-    """词的字母核：去掉非字母字符后的小写形式，用于小词判定。"""
-    return "".join(ch for ch in token if ch.isalpha()).lower()
+def _letters(word):
+    return "".join(ch for ch in word if ch.isalpha())
 
 
-def _capitalize(token):
-    """词内首个字母字符大写，其余字母小写；非字母字符原样保留。"""
+def _capitalize(word):
+    """Uppercase the first letter, lowercase all other letters.
+
+    Non-letter characters (leading symbols, digits, apostrophes) are kept
+    as-is. A word with no letters at all is returned unchanged.
+    """
     out = []
-    first_seen = False
-    for ch in token:
-        if ch.isalpha():
-            if first_seen:
-                out.append(ch.lower())
-            else:
-                out.append(ch.upper())
-                first_seen = True
-        else:
+    seen_letter = False
+    for ch in word:
+        if not ch.isalpha():
             out.append(ch)
+        elif not seen_letter:
+            out.append(ch.upper())
+            seen_letter = True
+        else:
+            out.append(ch.lower())
     return "".join(out)
 
 
-def _lowercase(token):
-    """词内所有字母小写，非字母字符原样保留。"""
-    return "".join(ch.lower() if ch.isalpha() else ch for ch in token)
+def _lowercase(word):
+    return "".join(ch.lower() if ch.isalpha() else ch for ch in word)
 
 
-def _title_word(word, position, count):
-    """对单个空白切出的词做标题化（含连字符分段规则）。"""
-    segments = word.split("-")
-    out = []
-    for index, segment in enumerate(segments):
-        if index == 0:
-            # 首段恒大写。
-            out.append(_capitalize(segment))
-        elif _alpha_core(segment) in _SMALL_WORDS:
-            # 后续段若为小词仍小写。
-            out.append(_lowercase(segment))
-        else:
-            out.append(_capitalize(segment))
-    # 整词级小词规则：非首词非尾词时全小写（按词内全部字母）。
-    if position != 0 and position != count - 1 and _alpha_core(word) in _SMALL_WORDS:
-        return _lowercase(word)
-    return "-".join(out)
+def _format_segment(segment, force_capitalize=False):
+    if force_capitalize:
+        return _capitalize(segment)
+    if _letters(segment).lower() in SMALL_WORDS:
+        return _lowercase(segment)
+    return _capitalize(segment)
 
 
-def title_case(text):
-    """标题式大小写转换；非 str 抛 TypeError。"""
+def title_case(text: str) -> str:
+    """Return ``text`` in title case according to the pinned rules."""
     if not isinstance(text, str):
-        raise TypeError("title_case() expected str, got %r" % type(text).__name__)
+        raise TypeError(
+            "title_case() expected str, got %s" % type(text).__name__
+        )
     words = text.split()
     if not words:
         return ""
-    count = len(words)
-    return " ".join(
-        _title_word(word, index, count) for index, word in enumerate(words)
-    )
+    last = len(words) - 1
+    formatted = []
+    for index, word in enumerate(words):
+        segments = word.split("-")
+        out_segments = []
+        for seg_index, segment in enumerate(segments):
+            if len(segments) == 1:
+                # Plain word: small words lowercase only when neither first
+                # nor last; first or last word is capitalized like normal.
+                if index == 0 or index == last:
+                    out_segments.append(_capitalize(segment))
+                else:
+                    out_segments.append(_format_segment(segment))
+            elif seg_index == 0:
+                # Hyphenated compound: first segment always capitalized.
+                out_segments.append(_capitalize(segment))
+            else:
+                # Later segments: still lowercase if they are small words.
+                out_segments.append(_format_segment(segment))
+        formatted.append("-".join(out_segments))
+    return " ".join(formatted)
+
+
+if __name__ == "__main__":
+    import sys
+
+    for arg in sys.argv[1:]:
+        print(title_case(arg))
