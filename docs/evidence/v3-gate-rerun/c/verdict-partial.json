@@ -1,0 +1,24 @@
+{
+  "salvage_schema_version": "validator-partial.v1",
+  "round": 1,
+  "final": true,
+  "analyzed_count": 3,
+  "processes": [
+    {
+      "id": "ellipse",
+      "verdict": "pass",
+      "reason": "No checks-failed.marker; both card checks exit 0 (27 passed; 256 passed, 2 skipped); diff implements pinned Ramanujan II and shared validation, tests cover every acceptance item."
+    },
+    {
+      "id": "issn",
+      "verdict": "pass",
+      "reason": "No checks-failed.marker; both card checks exit 0 (7 passed; 256 passed, 2 skipped); diff pins the weighted-sum algorithm and both validate forms, tests cover every acceptance item; known check-digit values hand-verified."
+    },
+    {
+      "id": "pluralize",
+      "verdict": "pass",
+      "reason": "No checks-failed.marker; both card checks exit 0 (35 passed; 256 passed, 2 skipped); diff implements the pinned rule order verbatim, tests cover every acceptance item."
+    }
+  ],
+  "conflicts": []
+}

@@ -1,0 +1,224 @@
+{
+  "schema_version": "foreman-run.v1",
+  "run_id": "45195635939",
+  "issue_number": 812,
+  "plan_issue_number": null,
+  "foreman_mode": "test",
+  "env": {
+    "schema_version": "env-slice.v1",
+    "ok": true,
+    "hard_fail_count": 0,
+    "hard_fails": [],
+    "soft_warns": [],
+    "project_readable": true,
+    "actions_can_create_pr": true,
+    "secrets_required": {
+      "FACTORY_API_KEY": false,
+      "WORKER_CI_KEY": false,
+      "PROJECTS_STATE_PAT": false
+    }
+  },
+  "budgets": {
+    "schema_version": "budget-slice.v1",
+    "roles": {
+      "lead": {
+        "droid_wall_sec": 600,
+        "job_wall_min": 15,
+        "output_contract": "plan_json"
+      },
+      "validator": {
+        "droid_wall_sec": 480,
+        "adopt_reserve_sec": 120,
+        "job_wall_min": 12,
+        "output_contract": "verdict_draft"
+      },
+      "replan": {
+        "droid_wall_sec": 480,
+        "job_wall_min": 15,
+        "output_contract": "plan_v2_json"
+      },
+      "worker": {
+        "droid_wall_sec": 900,
+        "job_wall_min": 25,
+        "output_contract": "handoff_bundle"
+      }
+    },
+    "session_outcome": {
+      "role": "validator",
+      "completion_status": "ok",
+      "exit_code": 0
+    }
+  },
+  "chain": {
+    "lead": {
+      "result": "unknown",
+      "started": false,
+      "produced_required_artifact": false,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "not_started",
+        "detail": "",
+        "forbidden_phrases": []
+      }
+    },
+    "worker": {
+      "result": "unknown",
+      "started": false,
+      "produced_required_artifact": false,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "not_started",
+        "detail": "",
+        "forbidden_phrases": []
+      }
+    },
+    "prep": {
+      "result": "unknown",
+      "started": false,
+      "produced_required_artifact": false,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "not_started",
+        "detail": "",
+        "forbidden_phrases": []
+      }
+    },
+    "validate": {
+      "result": "unknown",
+      "started": false,
+      "produced_required_artifact": false,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "not_started",
+        "detail": "",
+        "forbidden_phrases": []
+      }
+    },
+    "replan": {
+      "result": "unknown",
+      "started": false,
+      "produced_required_artifact": false,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "not_started",
+        "detail": "",
+        "forbidden_phrases": []
+      }
+    },
+    "worker2": {
+      "result": "unknown",
+      "started": false,
+      "produced_required_artifact": false,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "not_started",
+        "detail": "",
+        "forbidden_phrases": []
+      }
+    },
+    "prep2": {
+      "result": "unknown",
+      "started": false,
+      "produced_required_artifact": false,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "not_started",
+        "detail": "",
+        "forbidden_phrases": []
+      }
+    },
+    "validate2": {
+      "result": "unknown",
+      "started": false,
+      "produced_required_artifact": false,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "not_started",
+        "detail": "",
+        "forbidden_phrases": []
+      }
+    },
+    "assemble": {
+      "result": "unknown",
+      "started": false,
+      "produced_required_artifact": false,
+      "downstream_blocker": null,
+      "chain_facts": {
+        "summary_code": "not_started",
+        "detail": "",
+        "forbidden_phrases": []
+      }
+    }
+  },
+  "artifacts": {
+    "team-verdict-issue-812-run-45195635939": {
+      "complete": true,
+      "missing": [],
+      "required_members": [
+        "verdict.json",
+        "verdict.md"
+      ],
+      "forbidden_partial": [
+        "work/validator-stream.jsonl"
+      ]
+    },
+    "team-verdict2-issue-812-run-45195635939": {
+      "complete": false,
+      "missing": [
+        "verdict.json",
+        "verdict.md"
+      ],
+      "required_members": [
+        "verdict.json",
+        "verdict.md"
+      ],
+      "forbidden_partial": [
+        "work/validator-stream.jsonl"
+      ]
+    },
+    "foreman-run-45195635939": {
+      "complete": false,
+      "missing": [
+        "foreman-run.json"
+      ],
+      "required_members": [
+        "foreman-run.json"
+      ]
+    }
+  },
+  "human_stop": true,
+  "validation": {
+    "schema_version": "validation-slice.v1",
+    "round": 1,
+    "draft_path": "work/verdict-droid.json",
+    "verdict_path": "verdict.json",
+    "adoption_status": "ok",
+    "adoption_error": null,
+    "overall": "pass",
+    "failed_process_ids": [],
+    "unattributed_failure": false,
+    "conflicts_escalated": false,
+    "pytest_exit": 0,
+    "job_conclusion_derived": "success"
+  },
+  "closeout": {
+    "schema_version": "closeout-slice.v1",
+    "run_must_fail": true
+  },
+  "replan_gate": {
+    "schema_version": "replan-gate.v1",
+    "should_replan": false,
+    "should_revalidate": false,
+    "revalidate_run_started": false,
+    "reasons": [],
+    "inputs_satisfied": {
+      "adoption_status_ok": true,
+      "verdict_artifact_complete": true,
+      "not_cancelled": true
+    },
+    "forbidden_legacy": {
+      "validate_job_success_only": false,
+      "string_compare_failed_processes": false
+    }
+  }
+}

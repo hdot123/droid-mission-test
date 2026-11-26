@@ -79,11 +79,13 @@ W-16 本体（worker 阶段恢复畅通）在 adversarial 目录与仓内 docs �
 
 触发前的必报数据链：每轮收档的「首次被杀数」自动接入本条件（见第七节 live 清单）。
 
-## 六、V-3 上线门状态（指针）
+## 六、V-3 上线门状态（2026-11-26 重跑轮更新：已过门）
 
-V-3 门本轮未过：`custom:DeepSeek-V4.1-Flash-Go`（CI live 同通道模型）上游 403「Model access is disabled」，A 包会话未启动即终止，C 包未执行。**禁止上线新 prompt 至 live**；修复与重跑路径见 `docs/V-3-gate-上线门报告.md`。前置三件（PR1-8/PR1-10/PR2-6）已合入（PR #840），门可随时重跑。
+**门已过**：大哥当日裁决上游为路由模式、返回 200 的模型即视为可用通道后，用 `glm-5.3-flash`（CI 模型 id `custom:DeepSeek-V4.1-Flash-Go` 会话级映射）对 A/C 证据包各跑一次真会话——recorder tool_call A=4 / C=3（均 ≥1），逐件落盘＋`--final` 收口全被服从，会话正常完成（exit 0，无停滞回合）；产物经真采认链三步重放 overall=pass、validate_job_conclusion=success。证据：`docs/evidence/v3-gate-rerun/{a,c}/`；判定细节与首跑阻塞留档见 `docs/V-3-gate-上线门报告.md`。新 prompt 具备上线资格；live 发单前置见第七节。
 
-**当日复探（收尾轮，2026-11-26）**：上游 403 未解除（对照 glm-5.3-flash 200）；真 CI 通道（droid-test.lumivane.dpdns.org）鉴权走 GitHub secret `GO_GITHUB_RUN_TOKEN`，worker 侧无从旁路证实。重跑就绪件复核完毕：prompt 渲染件与 main 单源模板逐字节一致、判定脚本口径在位——通道恢复后 ~15 分钟内可重跑。复核同步确认：333 passed 2 skipped＋五 lint 绿＋预算冻结 0 字节，收档数据全部继续有效。
+前置三件已合入（PR #840，mergeCommit 06e519a5）：渲染位点统一、revalidate sha 门逐位点 pin、prompt `--final`+`--conflict` 说明；新增 `tests/test_v3_prework_pins.py` 15 测试。
+
+重跑后当日复核：333 passed 2 skipped＋五 lint 绿＋预算冻结 0 字节继续成立（收档数据全部有效）。
 
 ## 七、给大哥的 live 验收清单（U-9 最终口径；V-3 过门后、发单时按此收档）
 
@@ -108,8 +110,8 @@ V-3 门本轮未过：`custom:DeepSeek-V4.1-Flash-Go`（CI live 同通道模型�
 12. V-6 关键词计数（`12 tool`/`tool call`/`call budget` 与「Hmm＋计数词」共现）——措辞类指标易被绕过，降为观测。
 
 发单前置检查（大哥操作）：
-- V-3 门已过（A/C 各 ≥1 次 recorder tool_call，流文件路径入档）
-- CI 四个 BYOM 步的模型通道恢复可用（本轮 403 阻塞已解除）
+- V-3 门已过（2026-11-26 重跑：A=4 / C=3 次 recorder tool_call，证据 `docs/evidence/v3-gate-rerun/{a,c}/`）
+- CI 四个 BYOM 步的模型通道按当日裁决口径可用（路由模式，200 模型即有效通道；deepseek-v4.1-flash 403 期间可换 glm-5.3-flash 等 200 模型）
 - 第 54 轮四单工单（#812/#813/#814/#815）处置完毕，不与本轮混算
 
 ## 八、验证记录（VAL-CROSS 三条，2026-11-26 实测）
@@ -125,6 +127,11 @@ V-3 门本轮未过：`custom:DeepSeek-V4.1-Flash-Go`（CI live 同通道模型�
 ## 九、本轮产物清单
 
 - PR #840（mergeCommit 06e519a5）：V-3 前置三件（渲染位点统一 / revalidate sha 门逐位点 pin / prompt `--final`+`--conflict` 说明 / 双连字符 bullet 修正）；新增 `tests/test_v3_prework_pins.py` 15 测试
-- `docs/V-3-gate-上线门报告.md`：门未过定性 + 通道阻塞证据 + 重跑就绪件
+- `docs/V-3-gate-上线门报告.md`：门未过定性 + 通道阻塞证据 + 重跑就绪件（后经重跑轮更新为已过门）
 - 本文档：收档四件 + live 验收清单
 - mission handoff：EndFeatureRun 回填（含 V-3 阻塞上报）
+
+**重跑轮追加（2026-11-26，V-3 过门后）**：
+
+- `docs/evidence/v3-gate-rerun/{a,c}/`：pruned 流、verdict-partial/verdict-droid、session-meta、墙账、采认链 verdict.json 与 --github-output
+- `docs/V-3-gate-上线门报告.md` 更新为「门已过」＋本文档第六/七节同步更新

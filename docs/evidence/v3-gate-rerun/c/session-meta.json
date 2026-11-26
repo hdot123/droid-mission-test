@@ -1,0 +1,14 @@
+{
+  "evidence_pack": "/tmp/r54-audit/c/evidence/",
+  "judgeable": [
+    "ellipse",
+    "issn",
+    "pluralize"
+  ],
+  "blocked": {},
+  "manifest_sha256": "5fcbcf1a292e2994ef36f89b444888543af30ad25310bd41fc4c0de76d6a5080",
+  "droid_exit": 0,
+  "model_id_arg": "custom:DeepSeek-V4.1-Flash-Go",
+  "settings_model": "glm-5.3-flash (CI-id remap per boss ruling 2026-11-26)",
+  "wall_sec": 480
+}
