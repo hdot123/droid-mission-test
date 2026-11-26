@@ -1,0 +1,21 @@
+{
+  "id": "circle",
+  "title": "实现圆、扇形与弓形 circle.py 及其测试",
+  "state": "done",
+  "files": [
+    "circle.py",
+    "tests/test_circle.py",
+    "team/handoffs/circle.md",
+    "team/status/circle.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_circle.py -q",
+      "result": "17 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "359 passed, 2 skipped in 21.69s"
+    }
+  ]
+}
