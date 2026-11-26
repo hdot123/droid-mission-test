@@ -1,0 +1,21 @@
+{
+  "id": "lfucache",
+  "title": "实现 LFU 缓存 lfucache.py 及其测试",
+  "state": "done",
+  "files": [
+    "lfucache.py",
+    "tests/test_lfucache.py",
+    "team/handoffs/lfucache.md",
+    "team/status/lfucache.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_lfucache.py -q",
+      "result": "8 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "350 passed, 2 skipped in 22.13s (exit 0)"
+    }
+  ]
+}
