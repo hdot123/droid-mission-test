@@ -1,0 +1,21 @@
+{
+  "id": "hslconv",
+  "title": "RGB ↔ HSL 颜色换算组件与测试",
+  "state": "done",
+  "files": [
+    "hslconv.py",
+    "tests/test_hslconv.py",
+    "team/handoffs/hslconv.md",
+    "team/status/hslconv.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_hslconv.py -q",
+      "result": "28 passed (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "370 passed, 2 skipped (pytest exit 0)"
+    }
+  ]
+}

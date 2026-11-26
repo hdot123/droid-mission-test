@@ -1,118 +1,115 @@
-"""hslconv: RGB ↔ HSL 颜色换算组件（第五十八轮 D 单）。
+"""RGB <-> HSL color conversion.
 
-- ``rgb_to_hsl(r, g, b)`` 返回 ``(h, s, l)``：h ∈ [0, 360)，s ∈ [0, 1]，
-  l ∈ [0, 1]；无色（r == g == b）时按约定 h = 0.0、s = 0.0。
-- ``hsl_to_rgb(h, s, l)`` 返回 ``(r, g, b)`` 整数通道；h ∈ [0, 360)
-  （不含 360），s、l ∈ [0, 1]；通道值按四舍五入半上
-  （``floor(x * 255 + 0.5)`` 口径）取整，不用银行家舍入（``round``）。
+Public API:
+    rgb_to_hsl(r, g, b) -> (h, s, l)
+    hsl_to_rgb(h, s, l) -> (r, g, b)
 
-注意：返回元组顺序是 ``(h, s, l)``，与标准库 ``colorsys`` 的
-``(h, l, s)``（HLS 序）不同。入参越界抛 ``ValueError``；
-类型不合（rgb 非 int、hsl 非数值，含 bool）抛 ``TypeError``。
-仅依赖标准库。
+Note the returned tuple order is (h, s, l); this deliberately differs from
+the stdlib ``colorsys`` order of (h, l, s).
 """
+
+from __future__ import annotations
 
 import math
 
 __all__ = ["rgb_to_hsl", "hsl_to_rgb"]
 
 
-def _require_int(value, name):
-    """rgb 分量必须是 int（bool 不算）。"""
+def _check_rgb_int(name: str, value: object) -> int:
+    # bool is an int subclass, but it is not an acceptable channel value here.
     if isinstance(value, bool) or not isinstance(value, int):
-        raise TypeError("%s must be int, got %s" % (name, type(value).__name__))
+        raise TypeError(f"{name} must be int, got {type(value).__name__}")
+    if value < 0 or value > 255:
+        raise ValueError(f"{name} must be in [0, 255], got {value}")
+    return value
 
 
-def _require_number(value, name):
-    """hsl 分量必须是数值（int/float，bool 不算）。"""
+def _check_hsl_number(name: str, value: object) -> float:
+    # bool is an int subclass, but it is not an acceptable numeric parameter.
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise TypeError(
-            "%s must be a real number, got %s" % (name, type(value).__name__)
-        )
+        raise TypeError(f"{name} must be a number, got {type(value).__name__}")
+    if not math.isfinite(value):
+        raise ValueError(f"{name} must be finite, got {value}")
+    return float(value)
 
 
-def _hue_to_rgb(p, q, t):
-    """把单个色相分量从 [0, 1] 区间换算回 RGB 分量（float）。"""
-    if t < 0.0:
-        t += 1.0
-    if t > 1.0:
-        t -= 1.0
-    if t < 1.0 / 6.0:
-        return p + (q - p) * 6.0 * t
-    if t < 1.0 / 2.0:
-        return q
-    if t < 2.0 / 3.0:
-        return p + (q - p) * (2.0 / 3.0 - t) * 6.0
-    return p
+def rgb_to_hsl(r: int, g: int, b: int) -> tuple[float, float, float]:
+    """Convert an RGB color (each channel 0..255) to (h, s, l).
 
-
-def rgb_to_hsl(r, g, b):
-    """把 RGB 整数通道（各 ∈ [0, 255]）换算成 (h, s, l)。
-
-    无色（r == g == b）时返回 h = 0.0、s = 0.0；h 落在 [0, 360)。
+    h is in [0, 360), s and l are in [0, 1].  Achromatic colors get h = 0.0
+    and s = 0.0 by convention.
     """
-    _require_int(r, "r")
-    _require_int(g, "g")
-    _require_int(b, "b")
-    for value, name in ((r, "r"), (g, "g"), (b, "b")):
-        if not 0 <= value <= 255:
-            raise ValueError("%s out of range [0, 255]: %r" % (name, value))
+    r = _check_rgb_int("r", r)
+    g = _check_rgb_int("g", g)
+    b = _check_rgb_int("b", b)
+
     rf = r / 255.0
     gf = g / 255.0
     bf = b / 255.0
+
     mx = max(rf, gf, bf)
     mn = min(rf, gf, bf)
     lightness = (mx + mn) / 2.0
+
     if mx == mn:
-        # 无色：按约定 h = 0.0、s = 0.0。
+        # Achromatic: hue and saturation are 0 by convention.
         return 0.0, 0.0, lightness
+
     delta = mx - mn
-    if lightness > 0.5:
-        saturation = delta / (2.0 - mx - mn)
-    else:
-        saturation = delta / (mx + mn)
+    saturation = delta / (2.0 - mx - mn) if lightness > 0.5 else delta / (mx + mn)
+
     if mx == rf:
-        hue = (gf - bf) / delta
-        if gf < bf:
-            hue += 6.0
+        hue = (gf - bf) / delta + (6.0 if gf < bf else 0.0)
     elif mx == gf:
         hue = (bf - rf) / delta + 2.0
     else:
         hue = (rf - gf) / delta + 4.0
+
     hue *= 60.0
-    hue %= 360.0
-    return hue, saturation, lightness
+    if hue >= 360.0:
+        hue -= 360.0
+    if hue < 0.0:
+        hue += 360.0
+
+    return float(hue), float(saturation), float(lightness)
 
 
-def hsl_to_rgb(h, s, l):
-    """把 (h, s, l) 换算回 (r, g, b) 整数通道。
+def hsl_to_rgb(h: float, s: float, l: float) -> tuple[int, int, int]:
+    """Convert an HSL color to (r, g, b) with channels 0..255.
 
-    h ∈ [0, 360)（不含 360），s、l ∈ [0, 1]；
-    通道值按四舍五入半上 floor(x * 255 + 0.5) 取整。
+    h must be in [0, 360) (360 excluded); s and l must be in [0, 1].
+    Channel values are rounded half-up: floor(x * 255 + 0.5).
     """
-    _require_number(h, "h")
-    _require_number(s, "s")
-    _require_number(l, "l")
-    if not 0 <= h < 360:
-        raise ValueError("h out of range [0, 360): %r" % (h,))
-    if not 0 <= s <= 1:
-        raise ValueError("s out of range [0, 1]: %r" % (s,))
-    if not 0 <= l <= 1:
-        raise ValueError("l out of range [0, 1]: %r" % (l,))
-    if s == 0:
-        gray = math.floor(l * 255.0 + 0.5)
-        return (gray, gray, gray)
-    if l < 0.5:
-        q = l * (1.0 + s)
+    h = _check_hsl_number("h", h)
+    s = _check_hsl_number("s", s)
+    l = _check_hsl_number("l", l)
+
+    if not (0.0 <= h < 360.0):
+        raise ValueError(f"h must be in [0, 360), got {h}")
+    if not (0.0 <= s <= 1.0):
+        raise ValueError(f"s must be in [0, 1], got {s}")
+    if not (0.0 <= l <= 1.0):
+        raise ValueError(f"l must be in [0, 1], got {l}")
+
+    c = (1.0 - abs(2.0 * l - 1.0)) * s
+    hp = h / 60.0
+    x = c * (1.0 - abs(hp % 2.0 - 1.0))
+    m = l - c / 2.0
+
+    if 0.0 <= hp < 1.0:
+        rp, gp, bp = c, x, 0.0
+    elif 1.0 <= hp < 2.0:
+        rp, gp, bp = x, c, 0.0
+    elif 2.0 <= hp < 3.0:
+        rp, gp, bp = 0.0, c, x
+    elif 3.0 <= hp < 4.0:
+        rp, gp, bp = 0.0, x, c
+    elif 4.0 <= hp < 5.0:
+        rp, gp, bp = x, 0.0, c
     else:
-        q = l + s - l * s
-    p = 2.0 * l - q
-    hue = h / 360.0
-    red = _hue_to_rgb(p, q, hue + 1.0 / 3.0)
-    green = _hue_to_rgb(p, q, hue)
-    blue = _hue_to_rgb(p, q, hue - 1.0 / 3.0)
-    return (
-        math.floor(red * 255.0 + 0.5),
-        math.floor(green * 255.0 + 0.5),
-        math.floor(blue * 255.0 + 0.5),
-    )
+        rp, gp, bp = c, 0.0, x
+
+    def to_int(v: float) -> int:
+        return int(math.floor(v * 255.0 + 0.5))
+
+    return (to_int(rp + m), to_int(gp + m), to_int(bp + m))

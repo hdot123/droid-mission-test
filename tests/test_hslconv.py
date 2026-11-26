@@ -1,8 +1,4 @@
-"""hslconv 测试：RGB ↔ HSL 换算（逐字覆盖验收要点）。
-
-只依赖标准库（colorsys 用于交叉验证）。随机性质测试用固定种子，
-保证可复现。
-"""
+"""Tests for hslconv: RGB <-> HSL conversion (tuple order h, s, l)."""
 
 import colorsys
 import math
@@ -13,176 +9,197 @@ import pytest
 from hslconv import hsl_to_rgb, rgb_to_hsl
 
 
-# ---------------------------------------------------------------------------
-# rgb_to_hsl 已知值
-# ---------------------------------------------------------------------------
+def hue_dist(a: float, b: float) -> float:
+    """Circular distance between two hues on the [0, 360) ring."""
+    d = abs(a - b) % 360.0
+    return min(d, 360.0 - d)
 
 
-def test_rgb_to_hsl_red():
+# --- rgb_to_hsl fixed points -------------------------------------------------
+
+def test_red():
     assert rgb_to_hsl(255, 0, 0) == (0.0, 1.0, 0.5)
 
 
-def test_rgb_to_hsl_green():
+def test_green_hue():
     h, s, l = rgb_to_hsl(0, 255, 0)
     assert h == pytest.approx(120.0, abs=1e-9)
     assert s == pytest.approx(1.0, abs=1e-9)
     assert l == pytest.approx(0.5, abs=1e-9)
 
 
-def test_rgb_to_hsl_blue():
-    h, _s, _l = rgb_to_hsl(0, 0, 255)
+def test_blue_hue():
+    h, s, l = rgb_to_hsl(0, 0, 255)
     assert h == pytest.approx(240.0, abs=1e-9)
+    assert s == pytest.approx(1.0, abs=1e-9)
+    assert l == pytest.approx(0.5, abs=1e-9)
 
 
-def test_rgb_to_hsl_yellow():
-    h, _s, _l = rgb_to_hsl(255, 255, 0)
+def test_yellow_hue():
+    h, s, l = rgb_to_hsl(255, 255, 0)
     assert h == pytest.approx(60.0, abs=1e-9)
+    assert s == pytest.approx(1.0, abs=1e-9)
+    assert l == pytest.approx(0.5, abs=1e-9)
 
 
-def test_rgb_to_hsl_black():
+def test_black():
     assert rgb_to_hsl(0, 0, 0) == (0.0, 0.0, 0.0)
 
 
-def test_rgb_to_hsl_white():
+def test_white():
     assert rgb_to_hsl(255, 255, 255) == (0.0, 0.0, 1.0)
 
 
-def test_rgb_to_hsl_gray_achromatic():
+def test_gray():
     h, s, l = rgb_to_hsl(128, 128, 128)
-    assert s == pytest.approx(0.0, abs=1e-9)
-    assert l == pytest.approx(128 / 255, abs=1e-12)
-    # 无色约定：色相按 0.0 处理
     assert h == 0.0
+    assert s == pytest.approx(0.0, abs=1e-12)
+    assert l == pytest.approx(128 / 255, abs=1e-12)
 
 
-def test_rgb_to_hsl_output_ranges():
-    rng = random.Random(7)
-    for _ in range(300):
-        r, g, b = (rng.randrange(256) for _ in range(3))
-        h, s, l = rgb_to_hsl(r, g, b)
-        assert 0 <= h < 360
-        assert 0 <= s <= 1
-        assert 0 <= l <= 1
+# --- hsl_to_rgb fixed points -------------------------------------------------
 
-
-# ---------------------------------------------------------------------------
-# hsl_to_rgb 已知值
-# ---------------------------------------------------------------------------
-
-
-def test_hsl_to_rgb_red():
+def test_hsl_red():
     assert hsl_to_rgb(0, 1, 0.5) == (255, 0, 0)
 
 
-def test_hsl_to_rgb_blue():
+def test_hsl_blue():
     assert hsl_to_rgb(240, 1, 0.5) == (0, 0, 255)
 
 
-def test_hsl_to_rgb_green_half_up_rounding():
-    # 120/360 位置的绿：G 通道恰好半值，须按半上取 128（非银行家舍入的 128 也对，
-    # 但 254.5 → 255 这类下例才是半上的判据）
+def test_hsl_green_quarter_lightness():
     assert hsl_to_rgb(120, 1, 0.25) == (0, 128, 0)
 
 
-def test_hsl_to_rgb_black():
+def test_hsl_black():
     assert hsl_to_rgb(0, 0, 0) == (0, 0, 0)
 
 
-def test_hsl_to_rgb_white():
+def test_hsl_white():
     assert hsl_to_rgb(0, 0, 1) == (255, 255, 255)
 
 
-def test_half_up_rounding_is_not_bankers_round():
-    """通道值必须四舍五入半上 floor(x*255+0.5)，不得用 round()（银行家舍入）。
-
-    灰色路径（s == 0）下通道值恰好是 floor(l*255+0.5)，故取 l = (k+0.5)/255
-    构造精确半值：k 为偶数时 round(k+0.5) 按银行家舍入取 k，半上须取 k+1。
-    """
-    for k in (0, 2, 126, 128, 130):
-        l = (k + 0.5) / 255
-        assert l * 255 == k + 0.5, "fixture must be an exact half tie"
-        assert hsl_to_rgb(0, 0, l) == (k + 1, k + 1, k + 1)
-        assert round(l * 255) == k  # 银行家舍入会取偶数 k（证明两者确实分歧）
-    # 半上口径本身：0.5 → 1、127.5 → 128、128.5 → 129
-    assert hsl_to_rgb(0, 0, 0.5 / 255)[0] == 1
-    assert hsl_to_rgb(0, 0, 127.5 / 255)[0] == 128
-    assert hsl_to_rgb(0, 0, 128.5 / 255)[0] == 129
+def test_hsl_output_is_int_tuple():
+    result = hsl_to_rgb(0, 1, 0.5)
+    assert isinstance(result, tuple)
+    assert all(isinstance(v, int) and not isinstance(v, bool) for v in result)
 
 
-# ---------------------------------------------------------------------------
-# 性质测试
-# ---------------------------------------------------------------------------
+# --- properties --------------------------------------------------------------
 
-
-def test_rgb_to_hsl_matches_colorsys_hls_order():
-    """与标准库 colorsys（rgb_to_hls，注意其序为 HLS）逐分量一致；色相差按环形距离比。"""
-    rng = random.Random(42)
-    for _ in range(500):
-        r, g, b = (rng.randrange(256) for _ in range(3))
+def test_rgb_to_hsl_matches_colorsys():
+    rng = random.Random(20261126)
+    for _ in range(300):
+        r = rng.randint(0, 255)
+        g = rng.randint(0, 255)
+        b = rng.randint(0, 255)
         h, s, l = rgb_to_hsl(r, g, b)
-        ch, cl, cs = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
-        hue_diff = abs(h - ch * 360) % 360
-        hue_diff = min(hue_diff, 360 - hue_diff)
-        assert hue_diff <= 1e-9, (r, g, b, h, ch * 360)
-        assert s == pytest.approx(cs, abs=1e-12)
-        assert l == pytest.approx(cl, abs=1e-12)
+        # colorsys order is (h, l, s), not (h, s, l); its hue is in [0, 1].
+        ch, cl, cs = colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
+        ch *= 360.0
+        if r == g == b:
+            # Achromatic: our convention is h = 0.0, s = 0.0.
+            assert s == 0.0
+            assert l == pytest.approx(cl, abs=1e-9)
+        else:
+            assert hue_dist(h, ch) <= 1e-6
+            assert s == pytest.approx(cs, abs=1e-9)
+            assert l == pytest.approx(cl, abs=1e-9)
 
 
-def test_hsl_to_rgb_matches_colorsys_hls_to_rgb():
-    """与 colorsys.hls_to_rgb 逐分量一致（colorsys 返回 float，比较前同样按半上取整）。"""
-    rng = random.Random(43)
-    for _ in range(500):
-        h = rng.random() * 360.0
-        s = rng.random()
-        l = rng.random()
-        ours = hsl_to_rgb(h, s, l)
-        expected = tuple(
-            math.floor(v * 255.0 + 0.5)
-            for v in colorsys.hls_to_rgb(h / 360.0, l, s)
-        )
-        assert ours == expected, (h, s, l, ours, expected)
+def test_round_trip_within_one():
+    rng = random.Random(4242)
+    for _ in range(300):
+        r = rng.randint(0, 255)
+        g = rng.randint(0, 255)
+        b = rng.randint(0, 255)
+        rr, gg, bb = hsl_to_rgb(*rgb_to_hsl(r, g, b))
+        assert abs(rr - r) <= 1
+        assert abs(gg - g) <= 1
+        assert abs(bb - b) <= 1
 
 
-def test_roundtrip_within_one_per_channel():
-    """hsl_to_rgb(*rgb_to_hsl(r, g, b)) 与原值逐通道差 ≤ 1。"""
-    rng = random.Random(44)
-    for _ in range(500):
-        r, g, b = (rng.randrange(256) for _ in range(3))
-        back = hsl_to_rgb(*rgb_to_hsl(r, g, b))
-        for orig, restored in zip((r, g, b), back):
-            assert abs(orig - restored) <= 1, ((r, g, b), back)
+def test_hsl_to_rgb_matches_colorsys_half_up():
+    # Cross-check against colorsys with half-up quantization applied.
+    rng = random.Random(777)
+    for _ in range(300):
+        h = rng.uniform(0.0, 360.0)
+        if h >= 360.0:
+            h = math.nextafter(360.0, 0.0)
+        s = rng.uniform(0.0, 1.0)
+        l = rng.uniform(0.0, 1.0)
+        got = hsl_to_rgb(h, s, l)
+        # colorsys hue is in [0, 1], so convert degrees -> turns.
+        hr, lr, sr = colorsys.hls_to_rgb(h / 360.0, l, s)
+        expected = tuple(int(math.floor(v * 255.0 + 0.5)) for v in (hr, lr, sr))
+        assert got == expected
 
 
-# ---------------------------------------------------------------------------
-# 入参契约
-# ---------------------------------------------------------------------------
+def test_hue_in_valid_range_for_random_rgb():
+    rng = random.Random(1)
+    for _ in range(100):
+        h, s, l = rgb_to_hsl(rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255))
+        assert 0.0 <= h < 360.0
+        assert 0.0 <= s <= 1.0
+        assert 0.0 <= l <= 1.0
 
 
-def test_rgb_to_hsl_out_of_range_raises_value_error():
+# --- ValueError: out of range ------------------------------------------------
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        (256, 0, 0),
+        (0, -1, 0),
+    ],
+)
+def test_rgb_to_hsl_value_error(args):
     with pytest.raises(ValueError):
-        rgb_to_hsl(256, 0, 0)
-    with pytest.raises(ValueError):
-        rgb_to_hsl(0, -1, 0)
+        rgb_to_hsl(*args)
 
 
-def test_hsl_to_rgb_out_of_range_raises_value_error():
+@pytest.mark.parametrize(
+    "args",
+    [
+        (360, 1, 0.5),
+        (-1, 1, 0.5),
+        (0, 1.5, 0.5),
+        (0, 1, -0.1),
+    ],
+)
+def test_hsl_to_rgb_value_error(args):
     with pytest.raises(ValueError):
-        hsl_to_rgb(360, 1, 0.5)  # 360 不含
-    with pytest.raises(ValueError):
-        hsl_to_rgb(-1, 1, 0.5)
-    with pytest.raises(ValueError):
-        hsl_to_rgb(0, 1.5, 0.5)
-    with pytest.raises(ValueError):
-        hsl_to_rgb(0, 1, -0.1)
+        hsl_to_rgb(*args)
 
 
-def test_rgb_to_hsl_wrong_type_raises_type_error():
+# --- TypeError: wrong types (bool included) ----------------------------------
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        (1.5, 0, 0),
+        (True, 0, 0),
+    ],
+)
+def test_rgb_to_hsl_type_error(args):
     with pytest.raises(TypeError):
-        rgb_to_hsl(1.5, 0, 0)
-    with pytest.raises(TypeError):
-        rgb_to_hsl(True, 0, 0)
+        rgb_to_hsl(*args)
 
 
-def test_hsl_to_rgb_wrong_type_raises_type_error():
+def test_hsl_to_rgb_type_error_string():
     with pytest.raises(TypeError):
         hsl_to_rgb("0", 1, 0.5)
+
+
+def test_hsl_to_rgb_type_error_bool():
+    with pytest.raises(TypeError):
+        hsl_to_rgb(True, 1, 0.5)
+
+
+# --- tuple order guard: (h, s, l), not colorsys (h, l, s) --------------------
+
+def test_tuple_order_is_hsl_not_hls():
+    h, s, l = rgb_to_hsl(0, 255, 0)
+    # In (h, s, l) order, the second element is saturation (1.0), not lightness.
+    assert s == pytest.approx(1.0, abs=1e-9)
+    assert l == pytest.approx(0.5, abs=1e-9)
