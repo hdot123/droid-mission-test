@@ -1,8 +1,11 @@
 worker-r58d fixture: round-58 D-run worker-seat death chain (verbatim, read-only source).
 
 Source: CI run 45812793849 (issue #929, round-58 D run), pulled once from CI
-artifacts on 2026-11-26 into the local forensics corpus; that corpus is the
-verbatim source for every file listed in the sha256 table below. Do not
+artifacts on 2026-11-26 into the local forensics corpus. Every file in the
+sha256 table below is byte-verbatim from that corpus, with exactly one
+exception: worker-delta.json is a byte-exact rebuild from the run's
+job-log "delta:" line (the CI delta artifact was not pulled), written in
+write_worker_delta.py's own output format. Do not
 re-pull CI, do not regenerate, do not edit: these bytes attest what the run
 actually recorded. All consumers treat this fixture as read-only replay
 data; tests that need a mutated copy must copy it to a temporary directory.
@@ -12,8 +15,9 @@ What it attests (the worker-seat death chain the pipeline must repair):
   droid exit 124 (GNU timeout), last stream event is the tool_error
   "Error: Tool execution was interrupted" (52-event worker-stream.jsonl,
   vendored whole).
-- The CI-recorded worker delta (worker-delta.json, verbatim job-log
-  "delta:" line) carries no death fact: {"pid": "hslconv",
+- The CI-recorded worker delta (worker-delta.json, byte-exact rebuild from
+  the job-log "delta:" line — the CI delta artifact was not pulled) carries
+  no death fact: {"pid": "hslconv",
   "result": "failure"} — no exit code, no timeout signal, no stream tail.
   worker-delta-wall-killed.json is the structured target shape (not from
   CI; the field contract for the F1 delta extension): session_outcome

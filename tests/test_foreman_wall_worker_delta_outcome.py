@@ -165,6 +165,25 @@ def test_classify_droid_self_exit_clean_tail_is_ok():
     assert marker is False
 
 
+@pytest.mark.parametrize(
+    "tail_line",
+    ["null", "42", "[1,2]", "true", '"text"'],
+)
+def test_classify_json_non_object_tail_returns_false_no_crash(tail_line):
+    """A JSON-valid-but-non-object tail line (truncated stream, split
+    write, junk) must be judged not-interrupted, never raise: the
+    classifier runs inside the delta step under if: always(), and an
+    exception there aborts the whole delta write — the pid then reaches
+    the merge with no delta at all (legacy result fact lost too)."""
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=124,
+        job_cancelled=False,
+        stream_tail=HEALTHY_TAIL_EVENT + "\n" + tail_line + "\n",
+    )
+    assert outcome == "wall_killed"  # exit 124 still proves the kill
+    assert marker is False
+
+
 # --- delta CLI end-to-end ---------------------------------------------------
 
 

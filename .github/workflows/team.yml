@@ -2163,7 +2163,14 @@ jobs:
           cp dl/team-verdict-*/verdict.json stage/verdict.json
           tar -xzf dl/team-evidence-*/evidence.tar.gz -C stage
           python3 - <<'PY'
-          import json, os
+          # self-contained import path (CI-fidelity contract): the inline
+          # heredoc runs in a fresh interpreter with no PYTHONPATH and no
+          # scripts/team on sys.path, so it must seed the repo import path
+          # itself (GITHUB_WORKSPACE-anchored, '.'-floored, like the four
+          # merge verdict steps).
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from attribution_reason import neutral_attribution
           plan = json.load(open("stage/plan-v1.json"))
           verdict = json.load(open("stage/verdict.json"))
           failed = [p["id"] for p in verdict["processes"] if p["verdict"] != "pass"]
@@ -2246,7 +2253,6 @@ jobs:
           if not so_map and not ec_map:
               outcome_facts_lines = "Worker session outcome facts (machine-recorded, from the ForemanRun wall): none — no session outcome facts recorded on the wall (pre-delta run)."
           else:
-              from attribution_reason import neutral_attribution
               outcome_facts_lines = (
                   "Worker session outcome facts (machine-recorded, from the ForemanRun wall):\n"
                   + "\n".join(

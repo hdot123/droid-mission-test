@@ -57,6 +57,11 @@ def _is_interrupt_event(tail_text: str) -> bool:
         event = json.loads(last)
     except ValueError:
         return last.strip().endswith(f'"message":"{STREAM_INTERRUPT_MARKER}"}}')
+    # JSON-valid but non-object tails ('null', '42', '[1,2]', 'true',
+    # '"text"') are not interrupt events; without this guard the .get below
+    # raises and main() dies before the delta file is written at all.
+    if not isinstance(event, dict):
+        return False
     return (event.get("error") or {}).get("message") == STREAM_INTERRUPT_MARKER
 
 

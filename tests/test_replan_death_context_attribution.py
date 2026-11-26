@@ -38,6 +38,17 @@ from foreman_run_lib import init_wall, merge_worker_slice, save_wall  # noqa: E4
 from lint_workflow_wall_exits import job_spans, step_chunks  # noqa: E402
 from merge_worker_deltas import apply_deltas  # noqa: E402
 
+# `python3 -m pytest` (the repo-mandated form) puts the repo root on
+# sys.path; bare pytest does not, so seed it before the helper import.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from tests.replay_heredoc import (  # noqa: E402
+    create_git_archive_copy,
+    replan_heredoc_source,
+    run_heredoc_in_clean_subprocess,
+    stage_replan_replay_dir,
+)
+
 TEAM_YML = ROOT / ".github" / "workflows" / "team.yml"
 FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "worker-r58d"
 CONTROL_ROOT = FIXTURE_ROOT / "control-ok-missing"
@@ -205,6 +216,128 @@ def _wall_with_outcome(delta: dict) -> dict:
     """A wall whose workers slice carries the delta's outcome facts —
     the same machine path the workers-wall-merge job uses (F1)."""
     return _wall_from_delta(delta)
+
+
+# ---------------------------------------------------------------------------
+# Clean-subprocess replay (CI import fidelity) — VAL-M1-004 in the workflow
+# ---------------------------------------------------------------------------
+
+
+def _stage_replan_inputs(replay_dir: Path, wall: dict) -> None:
+    """Write the inputs the replan heredoc reads, exactly as the step's
+    shell lines prepare them (stage/ artifacts + wall-in/foreman-run.json);
+    the tree is a disposable copy, the repo checkout is never written."""
+    stage_replan_replay_dir(replay_dir)
+    stage = replay_dir / "stage"
+    (stage / "verdict.json").write_text(
+        json.dumps(
+            {
+                "processes": [
+                    {
+                        "id": "hslconv",
+                        "verdict": "blocked",
+                        "reason": "料不齐（没料不验收）：缺 handoff, status",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (stage / "plan-v1.json").write_text(
+        json.dumps(
+            {"summary": "r58 replay", "processes": [{"id": "hslconv", "title": "t", "files": ["hslconv.py"]}]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (stage / "manifest.json").write_text(
+        json.dumps(
+            json.loads((FIXTURE_ROOT / "manifest.json").read_text(encoding="utf-8")),
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    wall_in = replay_dir / "wall-in"
+    wall_in.mkdir(exist_ok=True)
+    save_wall(wall, wall_in / "foreman-run.json")
+
+
+def _replay_replan_heredoc(tmp_path: Path, *, wall: dict):
+    """Run the real replan heredoc the way CI does — a clean python3
+    subprocess reading the body on stdin, PYTHONPATH/GITHUB_WORKSPACE
+    unset, cwd = a git-archive copy of the repo (checkout-shaped: the
+    heredoc seeds its import path from GITHUB_WORKSPACE/., exactly as in
+    the runner; the pytest process's sys.path is invisible there, so a
+    missing import path can no longer hide behind exec())."""
+    replay_dir = tmp_path / "replay"
+    create_git_archive_copy(replay_dir)
+    _stage_replan_inputs(replay_dir, wall)
+    proc = run_heredoc_in_clean_subprocess(
+        replan_heredoc_source(),
+        cwd=replay_dir,
+    )
+    return proc, replay_dir
+
+
+def test_replan_heredoc_r58_wall_killed_runs_clean(tmp_path):
+    """CI regression for the scrutiny round-1 blocking defect: the r58
+    wall-kill shape must run the heredoc to completion in a clean
+    interpreter — exit 0, replan-prompt.txt written, death facts on the
+    panel — never ModuleNotFoundError on attribution_reason."""
+    proc, replay_dir = _replay_replan_heredoc(tmp_path, wall=_wall_with_outcome(WALL_KILLED_DELTA))
+    assert proc.returncode == 0, f"stderr:\n{proc.stderr}"
+    prompt = (replay_dir / "replan-prompt.txt").read_text(encoding="utf-8")
+    assert "session_outcome=wall_killed" in prompt
+    assert "droid exit 124" in prompt
+    assert BLAME_SUFFIX not in prompt
+
+
+def test_replan_heredoc_plain_ok_wall_runs_clean(tmp_path):
+    """A plain successful worker reaching replan for an ordinary reason
+    must not crash the step either (the regression was not r58-specific:
+    every post-F1 wall carries outcome maps and took the crashing branch)."""
+    proc, replay_dir = _replay_replan_heredoc(tmp_path, wall=_wall_with_outcome(OK_DELTA))
+    assert proc.returncode == 0, f"stderr:\n{proc.stderr}"
+    prompt = (replay_dir / "replan-prompt.txt").read_text(encoding="utf-8")
+    assert "session_outcome: ok" in prompt
+    assert "droid_exit_code: 0" in prompt
+
+
+def test_replan_heredoc_pre_f1_legacy_wall_runs_clean(tmp_path):
+    """Pre-F1 legacy wall (no outcome maps): the panel says absent and the
+    step still completes — the import must no longer live on the
+    legacy-only else: branch."""
+    proc, replay_dir = _replay_replan_heredoc(
+        tmp_path, wall=init_wall(run_id="45812793849", issue_number=929)
+    )
+    assert proc.returncode == 0, f"stderr:\n{proc.stderr}"
+    prompt = (replay_dir / "replan-prompt.txt").read_text(encoding="utf-8")
+    assert "no session outcome facts recorded on the wall (pre-delta run)" in prompt
+
+
+def test_replan_heredoc_import_path_is_self_contained():
+    """Structural lock on the fix shape: the heredoc puts scripts/team on
+    sys.path itself (GITHUB_WORKSPACE-anchored, '.'-floored) and the
+    attribution import is a top-level statement — importability must not
+    depend on the wall shape or on the caller's sys.path."""
+    src = replan_heredoc_source()
+    assert "sys.path.insert(0, os.path.join(os.environ.get(\"GITHUB_WORKSPACE\", \".\"), \"scripts\", \"team\"))" in src
+    tree = ast.parse(src)
+    top_imported = set()
+    attribution_toplevel = False
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            top_imported.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module == "attribution_reason":
+            attribution_toplevel = True
+    assert {"os", "sys"} <= top_imported, "the heredoc must import os+sys itself"
+    assert attribution_toplevel, (
+        "the attribution import must be a top-level statement (not inside "
+        "else:) so it runs for every wall shape"
+    )
+    assert src.count("from attribution_reason import") == 1
+    assert src.index("from attribution_reason import") < src.index("if not so_map and not ec_map:")
 
 
 # ---------------------------------------------------------------------------

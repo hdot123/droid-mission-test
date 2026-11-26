@@ -201,11 +201,35 @@ def test_r58d_stream_tail_is_interrupted_without_completion():
 
 def test_r58d_provenance_declares_readonly_source_and_usage():
     provenance = (FIXTURE_ROOT / "PROVENANCE.txt").read_text(encoding="utf-8")
-    assert "45812793849" in provenance
+    lines = provenance.splitlines()
+    # line-level guards: the source declaration must be the first line and
+    # the run pin must be the Source line itself, so a contradictory
+    # relabel anywhere else cannot satisfy the guard
+    assert lines[0].startswith("worker-r58d fixture: round-58 D-run worker-seat death chain")
+    assert any(line.startswith("Source: CI run 45812793849 ") for line in lines)
     assert "read-only" in provenance.lower()
     assert "test_worker_r58d_fixtures.py" in provenance
     # repo convention: no machine-local absolute paths in vendored fixtures
     assert "/Users/" not in provenance
+
+
+def test_r58d_provenance_worker_delta_row_is_precise_about_rebuild():
+    """The blanket verbatim claim must stay gone and the worker-delta.json
+    disclosure must carry the byte-exact rebuild semantics: the file has
+    no CI artifact counterpart, so verbatim over-claiming is a provenance
+    defect (W-18)."""
+    provenance = (FIXTURE_ROOT / "PROVENANCE.txt").read_text(encoding="utf-8")
+    lines = provenance.splitlines()
+    delta_bullet = next(
+        (i for i, line in enumerate(lines) if line.startswith("- The CI-recorded worker delta")),
+        None,
+    )
+    assert delta_bullet is not None, "the worker-delta disclosure bullet is gone"
+    row = " ".join(lines[delta_bullet : delta_bullet + 2])
+    assert "byte-exact rebuild" in row
+    assert "CI delta artifact was not pulled" in row
+    assert "verbatim" not in row
+    assert "verbatim source for every file" not in provenance
 
 
 def test_r58d_control_shape_is_self_consistent():
@@ -265,10 +289,13 @@ def test_r58d_control_stream_tail_has_no_interrupt_marker():
 
 
 def test_r58d_control_declared_synthetic_in_readme():
-    readme = (CONTROL_ROOT / "README.txt").read_text(encoding="utf-8")
-    assert "synthetic" in readme.lower()
-    assert "45812793849" in readme  # cross-references the run it contrasts with
-    assert "/Users/" not in readme
+    readme_lines = (CONTROL_ROOT / "README.txt").read_text(encoding="utf-8").splitlines()
+    # line-level guard: the SYNTHETIC label must be on the first line, so
+    # a synthetic-vs-verbatim relabel buried deeper cannot sneak through
+    assert readme_lines[0].startswith("control-ok-missing: SYNTHETIC contrast fixture")
+    assert "synthetic" in "\n".join(readme_lines).lower()
+    assert any("45812793849" in line for line in readme_lines)  # cross-references the run it contrasts with
+    assert "/Users/" not in "\n".join(readme_lines)
 
 
 def test_r58d_control_excluded_from_provenance_verbatim_scope():
