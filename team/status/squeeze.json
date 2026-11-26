@@ -1,0 +1,19 @@
+{
+  "id": "squeeze",
+  "title": "squeeze.py — 重复段压缩（新增，不改存量）",
+  "state": "done",
+  "files": [
+    "squeeze.py",
+    "tests/test_squeeze.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_squeeze.py -q",
+      "result": "pass: 27 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "pass: 369 passed, 2 skipped in 19.96s"
+    }
+  ]
+}
