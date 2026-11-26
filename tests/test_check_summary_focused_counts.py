@@ -15,6 +15,7 @@ scrutiny validator used for the reproduction.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -171,12 +172,24 @@ def test_summary_block_on_r54_pack_produces_real_focused_counts(
         # handoffs/status copies need a repo tree; not exercised for counts
         ns["os"].makedirs(f"{td}/team", exist_ok=True)
         exec(compile(script, "<prep-summary>", "exec"), ns)
+    # vendored bytes self-check: the committed checks-output.txt must still be
+    # byte-identical to what the r54A manifest.json attests, so a corrupted or
+    # re-saved fixture cannot silently change what these counts prove.
+    manifest = json.loads((R54A_PACK / "manifest.json").read_text(encoding="utf-8"))
+    for pid in CARDS:
+        vendored = (R54A_PACK / "evidence" / "packs" / pid / "checks-output.txt")
+        assert hashlib.sha256(vendored.read_bytes()).hexdigest() == manifest[
+            "sha256"
+        ][f"evidence/packs/{pid}/checks-output.txt"], (
+            f"{pid}: vendored checks-output.txt bytes diverge from the "
+            "manifest.json sha256 attestation"
+        )
     # production order replay: the loop has written its outputs; seed the
     # real r54A per-card outputs (the "checks ran and wrote" state) and run
     # only the summary pass again.
-    real = Path("/tmp/r54-audit/a/evidence/packs")
+    vendored_packs = R54A_PACK / "evidence" / "packs"
     for pid in CARDS:
-        src = real / pid / "checks-output.txt"
+        src = vendored_packs / pid / "checks-output.txt"
         (tmp_path / "evidence" / "packs" / pid / "checks-output.txt").write_text(
             src.read_text(encoding="utf-8"), encoding="utf-8"
         )

@@ -44,4 +44,4 @@ python3 scripts/team/lint_workflow_needs.py
 
 以上即 CI（foreman-wall contract workflow）在 push/PR 时运行的全部检查：契约测试子集＋五个 lint 脚本（foreman 接线、墙退出、Projects 解析、预算参数、needs 悬空引用）。
 
-当前基线：341 passed, 2 skipped。
+当前基线：342 passed, 2 skipped。
