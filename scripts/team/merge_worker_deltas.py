@@ -37,6 +37,16 @@ def load_deltas(delta_dir: Path) -> list[dict]:
     return [by_pid[k] for k in sorted(by_pid)]
 
 
+# F1 session-outcome delta fields -> workers-slice by-pid maps they ride on.
+# Optional, backward-compatible: legacy deltas (pid+result only) leave all
+# three maps untouched, so pre-F1 walls keep validating unchanged.
+OUTCOME_FIELDS = (
+    ("session_outcome", "session_outcome_by_pid"),
+    ("droid_exit_code", "droid_exit_code_by_pid"),
+    ("stream_tail_marker", "stream_tail_marker_by_pid"),
+)
+
+
 def apply_deltas(wall: dict, deltas: list[dict], *, round_tag: str = "") -> dict:
     for d in deltas:
         wall = merge_worker_slice(wall, d["pid"], d["result"])
@@ -44,6 +54,13 @@ def apply_deltas(wall: dict, deltas: list[dict], *, round_tag: str = "") -> dict
         if d.get("cancel_reason"):
             reasons[d["pid"]] = d["cancel_reason"]
             wall.setdefault("workers", {})["cancel_reason_by_pid"] = reasons
+        workers = wall.setdefault("workers", {})
+        for field, by_pid_key in OUTCOME_FIELDS:
+            if field not in d:
+                continue
+            by_pid = dict(workers.get(by_pid_key) or {})
+            by_pid[d["pid"]] = d[field]
+            workers[by_pid_key] = by_pid
     if round_tag == "2":
         wall = {**wall, "round2": {**(wall.get("round2") or {}), "workers": wall.get("workers")}}
     return wall

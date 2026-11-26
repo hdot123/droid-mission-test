@@ -142,7 +142,22 @@
         "any_failed": { "type": "boolean" },
         "completed_pids": { "type": "array", "items": { "type": "string" } },
         "cancelled_pids": { "type": "array", "items": { "type": "string" } },
-        "cancel_reason_by_pid": { "type": "object" }
+        "cancel_reason_by_pid": { "type": "object" },
+        "session_outcome_by_pid": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["ok", "wall_killed", "job_wall_cancelled"]
+          }
+        },
+        "droid_exit_code_by_pid": {
+          "type": "object",
+          "additionalProperties": { "type": ["integer", "null"] }
+        },
+        "stream_tail_marker_by_pid": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        }
       }
     },
     "validation_slice": {

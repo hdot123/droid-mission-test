@@ -563,6 +563,7 @@ jobs:
           PY
 
       - name: Worker executes exactly one process card
+        id: session
         env:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
@@ -599,7 +600,14 @@ jobs:
           """
           open("worker-prompt.txt", "w").write(prompt)
           PY
+          # F1: capture the session's own exit code (GNU timeout exit 124 =
+          # 900s wall kill) for the delta step, then re-exit with it so the
+          # job-level conclusion keeps failing on a killed session.
+          set +e
           timeout --signal=TERM --kill-after=30s 900s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
+          DROID_EXIT=$?
+          echo "exit_code=${DROID_EXIT:-0}" >> "$GITHUB_OUTPUT"
+          exit "${DROID_EXIT:-0}"
 
       - name: Upload worker droid stream (W-13)
         if: always()
@@ -803,14 +811,16 @@ jobs:
         env:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
+          DROID_EXIT_CODE: ${{ steps.session.outputs.exit_code }}
         run: |
           RESULT="success"
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
           if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
           PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
-            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
+            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json \
+            --stream worker-stream.jsonl
           if [ "$RESULT" = "cancelled" ]; then
-            python3 -c "import json; d=json.load(open('worker-delta.json')); d['cancel_reason']='job_wall_25m'; json.dump(d,open('worker-delta.json','w'))"
+            python3 -c "import json; d=json.load(open('worker-delta.json')); d['cancel_reason']='job_wall_25m'; d['session_outcome']='job_wall_cancelled'; json.dump(d,open('worker-delta.json','w'))"
           fi
 
       - name: Upload worker delta artifact
@@ -2638,6 +2648,7 @@ jobs:
           PY
 
       - name: Worker executes exactly one process card (round 2)
+        id: session
         env:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
@@ -2674,7 +2685,14 @@ jobs:
           """
           open("worker-prompt.txt", "w").write(prompt)
           PY
+          # F1: capture the session's own exit code (GNU timeout exit 124 =
+          # 900s wall kill) for the delta step, then re-exit with it so the
+          # job-level conclusion keeps failing on a killed session.
+          set +e
           timeout --signal=TERM --kill-after=30s 900s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
+          DROID_EXIT=$?
+          echo "exit_code=${DROID_EXIT:-0}" >> "$GITHUB_OUTPUT"
+          exit "${DROID_EXIT:-0}"
 
       - name: Upload worker droid stream (W-13)
         if: always()
@@ -2878,12 +2896,14 @@ jobs:
         env:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
+          DROID_EXIT_CODE: ${{ steps.session.outputs.exit_code }}
         run: |
           RESULT="success"
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
           if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
           PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
-            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
+            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json \
+            --stream worker-stream.jsonl
 
       - name: Upload worker2 delta artifact
         if: always()
