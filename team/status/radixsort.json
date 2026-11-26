@@ -1,0 +1,19 @@
+{
+  "id": "radixsort",
+  "title": "LSD 基数排序组件与测试",
+  "state": "done",
+  "files": [
+    "radixsort.py",
+    "tests/test_radixsort.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_radixsort.py -q",
+      "result": "11 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "353 passed, 2 skipped in 17.78s"
+    }
+  ]
+}
