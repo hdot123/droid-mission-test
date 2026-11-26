@@ -1,0 +1,19 @@
+{
+  "id": "rectunion",
+  "title": "rectunion — axis-aligned rectangle union area (H)",
+  "state": "done",
+  "files": [
+    "rectunion.py",
+    "tests/test_rectunion.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_rectunion.py -q",
+      "result": "14 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "356 passed, 2 skipped in 19.32s"
+    }
+  ]
+}
