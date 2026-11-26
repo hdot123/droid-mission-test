@@ -1,0 +1,19 @@
+{
+  "id": "sdbmhash",
+  "title": "实现 sdbmhash 字符串哈希",
+  "state": "done",
+  "files": [
+    "sdbmhash.py",
+    "tests/test_sdbmhash.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_sdbmhash.py -q",
+      "result": "10 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "1 failed, 350 passed, 2 skipped — the single failure (test_check_summary_focused_counts.py::test_summary_block_on_r54_pack_produces_real_focused_counts, missing /tmp/r54-audit fixture) is pre-existing: it fails identically with sdbmhash files removed; unrelated to this card"
+    }
+  ]
+}
