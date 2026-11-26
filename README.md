@@ -19,6 +19,18 @@ PYTHONPATH=scripts/team python -m turn_metrics <流工件或目录>
 
 输入为单个流工件（`.jsonl` / `.log`）或运行目录；目录输入会递归查找 `droid-stream-*-run-*` 工件，未知文件自动跳过。加 `--json` 输出完整报告。相关文档：[回合测量数据表 r44–r51](docs/预算族-回合测量数据表-r44-r51.md)、[预算族治理方案呈批件](docs/预算族治理方案-呈批件.md)（待批清单 P-1～P-8，批准后另单实施）。
 
+## 验收协议根治（v2.9，PR #835–#844）
+
+第 54 轮 validator 被 480s 墙杀（exit 124）后整单 human_stop 的死法，经 `adversarial/round54-root-cure/` 三份对抗报告收敛后根治。要点：
+
+- **I-5 自动重验**：首次 `draft_timeout` 不再终局 human_stop——`adopt_verdict.py` 写 `replan_gate.should_revalidate=true`，触发 `team.yml` 的 revalidate / revalidate2 job（只重跑 validator 会话、复用已上传证据包、`EXPECTED_MANIFEST_SHA` 不变、`revalidate_run_started` 哨兵保证至多 1 次）；二次失败仍 human_stop（fail-closed 保持）。改动了 `compute_replan_gate.py`、`compute_validate_conclusion.py` 与 schema 的 replan_gate 切片。
+- **I-6 盘上产物优先**：采认以盘上产物完整性为准、不以退出码为准——完整草稿在盘（即使 exit 124）正常采认；`verdict-partial.json` 全盖 judgeable＋manifest sha 通过＋`--final` 收口时，由 `salvage_assemble.py` 机器组装草稿走正常采认（pytest_exit / conflicts / 机器闸照常适用）。
+- **recorder CLI**：`scripts/team/salvage_verdict.py` 逐件落盘（读一件→recorder 一件），支持 `--conflict`（可重复）与 `--final`（收口标记，seal 粘性——迟到的补记不解封）。
+- **S-2 机器闸**：HARD RULE 不再依赖模型如实报告——`adopt_verdict.py` 的 `machine_gate_reds` 在采认汇合点机器判定：`packs/<id>/checks-exit.json` 非零退出码（exit 127 pytest 不可用例外）或 `checks-failed.marker` 存在即 fail，模型 pass 被翻转并标注 `machine_gate` 证据。
+- **validator prompt 单源模板**：两轮 prompt 抽成 `scripts/team/validator_prompt_template.py`（team.yml 四个渲染位 export `REPO_ROOT` 引用）；prompt 声明 team/handoffs、team/status 为协议自产物非冲突，计数以 prep 产的 `evidence/check-summary.json`（每卡聚焦 check 计数）为唯一权威。
+- **worker 预装依赖（U-10）**：worker / worker2 会话前预装 `requirements-dev.txt`（第 54 轮 12/12 worker 首测 `No module named pytest` 的环境根因）。
+- **V-3 上线门**：prompt 变更须先用真实证据包跑真会话验证 recorder 触发面（判据：流中 tool_call 的 parameters 含 `salvage_verdict` 且 tool_result 成功）。2026-11-26 重跑过门：A=4 / C=3 次 recorder tool_call；门证据与收档见 `docs/evidence/v3-gate-rerun/` 与 `docs/V-3-closeout-收档报告.md`。
+
 ## 测试
 
 ```bash
@@ -32,4 +44,4 @@ python3 scripts/team/lint_workflow_needs.py
 
 以上即 CI（foreman-wall contract workflow）在 push/PR 时运行的全部检查：契约测试子集＋五个 lint 脚本（foreman 接线、墙退出、Projects 解析、预算参数、needs 悬空引用）。
 
-当前基线：314 passed, 2 skipped。
+当前基线：341 passed, 2 skipped。
