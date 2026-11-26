@@ -1,0 +1,21 @@
+{
+  "id": "punycode",
+  "title": "RFC 3492 Punycode 单标签编解码组件与测试",
+  "state": "done",
+  "files": [
+    "punycode.py",
+    "tests/test_punycode.py",
+    "team/handoffs/punycode.md",
+    "team/status/punycode.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_punycode.py -q",
+      "result": "21 passed in 0.04s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "1 failed, 361 passed, 2 skipped; the failure is pre-existing tests/test_check_summary_focused_counts.py (missing external fixture /tmp/r54-audit), confirmed unrelated by rerunning with this card's files stashed"
+    }
+  ]
+}
