@@ -1,0 +1,21 @@
+{
+  "id": "powerconv",
+  "title": "powerconv.py — 功率单位换算（新增，不改存量）",
+  "state": "done",
+  "files": [
+    "powerconv.py",
+    "tests/test_powerconv.py",
+    "team/handoffs/powerconv.md",
+    "team/status/powerconv.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_powerconv.py -q",
+      "result": "PASS: 13 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "PASS: 355 passed, 2 skipped in 19.50s"
+    }
+  ]
+}
