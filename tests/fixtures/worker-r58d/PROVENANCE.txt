@@ -1,11 +1,11 @@
-worker-r58d fixture: round-58 D-run worker-seat death chain (verbatim, read-only source).
+worker-r58d fixture: round-58 D-run worker-seat death chain (read-only verbatim-attested source).
 
 Source: CI run 45812793849 (issue #929, round-58 D run), pulled once from CI
 artifacts on 2026-11-26 into the local forensics corpus. Every file in the
-sha256 table below is byte-verbatim from that corpus, with exactly one
-exception: worker-delta.json is a byte-exact rebuild from the run's
-job-log "delta:" line (the CI delta artifact was not pulled), written in
-write_worker_delta.py's own output format. Do not
+sha256 table below is byte-identical to its counterpart in that corpus, with
+exactly one exception: worker-delta.json is a byte-exact rebuild from the
+run's job-log "delta:" line (the CI delta artifact was not pulled), written
+in write_worker_delta.py's own output format. Do not
 re-pull CI, do not regenerate, do not edit: these bytes attest what the run
 actually recorded. All consumers treat this fixture as read-only replay
 data; tests that need a mutated copy must copy it to a temporary directory.
@@ -36,17 +36,25 @@ are NOT vendored — their sha256 keys stay attested in manifest.json
 following the r53c attested-debt pattern (see
 test_fixture_manifest_hash_lifecycle.py).
 
-Used by:
+Used by (the real consumer test files):
 - tests/test_worker_r58d_fixtures.py — fixture integrity, digest
   reconciliation, death-shape assertions, control-shape contrast
-- downstream worker-r58d features (salvage guard replay, replan
-  death-context attribution replay; same replay files)
+- tests/test_fixture_manifest_hash_lifecycle.py — manifest sha256 keys
+  stay resolvable in-repo (the vendored path is exercised, not debt)
+- tests/test_foreman_wall_worker_delta_outcome.py — F1 delta/outcome
+  contract pinned against the real stream and the wall-killed delta
+- tests/test_replan_death_context_attribution.py — replan input face and
+  blocked-reason attribution replayed on the r58 wall shapes
+- tests/test_worker_salvage.py — salvage guard/acceptance chain, product
+  fields, manifest salvage marker, precheck replay (VAL-M2-002..006)
 
 sha256 vendor table (digest of each vendored file, two spaces, then the
-fixture-root-relative path). worker-delta-wall-killed.json is the one
-synthetic member of this fixture root (the structured delta contract
-sample; its exact bytes are pinned by the test, deliberately not in
-this verbatim digest table):
+fixture-root-relative path). Among the root-level fixture files,
+worker-delta-wall-killed.json is the one synthetic member (the structured
+delta contract sample; its exact bytes are pinned by the test, deliberately
+not in this verbatim digest table). The fully synthetic contrast sub-fixture
+control-ok-missing/ declares its own synthetic status in
+control-ok-missing/README.txt and stays outside this verbatim scope:
 6c947d0c6ccdfede9335d5676b1101ae65d724104e8c324cdf630d3b5a191723  manifest.json
 e6bfecae1f7dedf8f3438b1bd8038154595a748988dcdb9a3dc32a08f6f788b5  worker-delta.json
 42806a6824d50d6512d9f395fc166b5bd6b0462b425f72f55153d57b3bf825e9  worker-stream.jsonl

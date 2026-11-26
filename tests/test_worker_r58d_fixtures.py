@@ -232,6 +232,84 @@ def test_r58d_provenance_worker_delta_row_is_precise_about_rebuild():
     assert "verbatim source for every file" not in provenance
 
 
+# PROVENANCE precision (user-testing round-1 gaps a/b/c): the Used-by
+# section must name every real consumer test file, the synthetic-membership
+# claim must be scoped to the root-level fixture files, and "verbatim" may
+# remain only where it is technically exact (one member is a rebuild).
+R58D_CONSUMER_TESTS = [
+    "test_fixture_manifest_hash_lifecycle.py",
+    "test_foreman_wall_worker_delta_outcome.py",
+    "test_replan_death_context_attribution.py",
+    "test_worker_r58d_fixtures.py",
+    "test_worker_salvage.py",
+]
+
+
+def _provenance_used_by_section() -> str:
+    lines = (FIXTURE_ROOT / "PROVENANCE.txt").read_text(encoding="utf-8").splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("Used by"))
+    used: list[str] = []
+    for line in lines[start + 1:]:
+        if not line.startswith("- ") and not (used and line.startswith("  ")):
+            break
+        used.append(line)
+    return "\n".join(used)
+
+
+def test_r58d_provenance_used_by_names_every_real_consumer():
+    used = _provenance_used_by_section()
+    assert used, "PROVENANCE must keep a Used-by section"
+    for name in R58D_CONSUMER_TESTS:
+        assert name in used, f"PROVENANCE Used-by must name real consumer {name}"
+    assert "downstream worker-r58d features" not in used
+
+
+def test_r58d_provenance_named_consumers_exist_and_reference_fixture():
+    tests_dir = Path(__file__).resolve().parent
+    for name in R58D_CONSUMER_TESTS:
+        path = tests_dir / name
+        assert path.is_file(), f"declared consumer test missing: {name}"
+        assert "worker-r58d" in path.read_text(encoding="utf-8"), (
+            f"{name} is named as a consumer but never references the fixture"
+        )
+
+
+def test_r58d_provenance_synthetic_claim_scoped_to_root_files():
+    """The "one synthetic member" claim must be scoped to the root-level
+    fixture files. The synthetic control-ok-missing/ sub-fixture declares
+    its own synthetic status in its README; PROVENANCE must point there
+    instead of leaving the tree-wide reading ("only one synthetic member
+    anywhere under this root") available."""
+    provenance = (FIXTURE_ROOT / "PROVENANCE.txt").read_text(encoding="utf-8")
+    assert (
+        "Among the root-level fixture files,\n"
+        "worker-delta-wall-killed.json is the one synthetic member" in provenance
+    )
+    assert "synthetic member of this fixture root" not in provenance
+    assert "control-ok-missing/README.txt" in provenance
+
+
+def test_r58d_provenance_verbatim_wording_is_precise():
+    """'verbatim' may remain only where it is technically exact: the
+    attested-source qualifier on the title line and the two scope-negation
+    notes (digest-table exclusion, control sub-fixture exclusion). The
+    blanket "byte-verbatim" over the digest table is false as written —
+    one member is a byte-exact rebuild — so it must stay gone."""
+    provenance = (FIXTURE_ROOT / "PROVENANCE.txt").read_text(encoding="utf-8")
+    lines = provenance.splitlines()
+    flat = " ".join(provenance.split())
+    assert lines[0] == (
+        "worker-r58d fixture: round-58 D-run worker-seat death chain "
+        "(read-only verbatim-attested source)."
+    )
+    assert "byte-verbatim" not in provenance
+    assert (
+        "Every file in the sha256 table below is byte-identical to its "
+        "counterpart in that corpus, with exactly one exception:" in flat
+    )
+    assert provenance.count("verbatim") == 3
+
+
 def test_r58d_control_shape_is_self_consistent():
     manifest = _json(CONTROL_ROOT / "manifest.json")
     pack_meta = manifest["packs"]["hslconv"]
@@ -304,3 +382,12 @@ def test_r58d_control_excluded_from_provenance_verbatim_scope():
     assert not any(rel.startswith("control-ok-missing/") for rel in table), (
         "control fixture is synthetic and must never be attested as verbatim"
     )
+
+
+# --- used-by section parser is exercised directly (keeps the section-shape
+# --- contract explicit rather than implicit inside the string search) -----
+
+
+def test_provenance_used_by_parser_finds_section():
+    used = _provenance_used_by_section()
+    assert "tests/test_worker_r58d_fixtures.py" in used
