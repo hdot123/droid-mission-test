@@ -15,6 +15,13 @@ as optional, backward-compatible fields:
 
 Three wall slices exercise the schema: legacy (no new fields) validates,
 the new fields validate, an illegal outcome enum is rejected.
+
+Job-wall cancellation outranks the checks marker (BLK-2, M3 scrutiny
+round-1): a verify marker that landed before a 25m job-wall cancellation
+must never flip the recorded result to failure —
+cancelled/job_wall_cancelled/cancel_reason=job_wall_25m stay intact and
+prep stays closed (pinned in tests/test_verify_marker_interaction.py
+through the real delta-step shell logic extracted from team.yml).
 """
 from __future__ import annotations
 

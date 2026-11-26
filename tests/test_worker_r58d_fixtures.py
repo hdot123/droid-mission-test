@@ -239,7 +239,9 @@ def test_r58d_provenance_worker_delta_row_is_precise_about_rebuild():
 R58D_CONSUMER_TESTS = [
     "test_fixture_manifest_hash_lifecycle.py",
     "test_foreman_wall_worker_delta_outcome.py",
+    "test_r58d_e2e_replay.py",
     "test_replan_death_context_attribution.py",
+    "test_verify_prep_salvage_chain.py",
     "test_worker_r58d_fixtures.py",
     "test_worker_salvage.py",
 ]

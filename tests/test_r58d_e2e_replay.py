@@ -12,6 +12,12 @@ Dead chain (verbatim r58 evidence, hslconv):
   salvaged_from_machine → the validator precheck scan judges the pack
   judgeable (hslconv), nothing blocked.
 
+  This chain stages the pack without the marker the real verify step would
+  write (the vendored evidence predates the if-always verify guard); the
+  workflow-level proof WITH that marker in place (scrutiny SV-4 variant B)
+  lives in tests/test_verify_prep_salvage_chain.py, together with the full
+  verify-step → marker → prep → guard → adopt chain for both shapes.
+
 Contrast chain (synthetic control, same run shape, session completed ok):
   delta ok → the wording stays exactly the current one (the worker-blame
   suffix survives) → the guard refuses (normal end = compliance failure) →

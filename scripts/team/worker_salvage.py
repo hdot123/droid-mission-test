@@ -14,10 +14,13 @@ The guard is machine-judged and fail-closed; ALL of:
   1. the worker branch was merged into the candidate (merged true);
   2. no out-of-bounds files (F-1 clean);
   3. prep's own re-run of the card checks is all green (checks-exit.json
-     exists and every entry exited 0) AND the pack carries no
-     checks-failed.marker (the worker's own verify verdict — a wall-killed
-     worker whose checks went red is never salvaged into done; scrutiny
-     NC-3, fail-closed ahead of M3's if: always() verify step);
+     exists and every entry exited 0) AND the pack's checks-failed.marker,
+     if present, reads RED BY CONTENT (marker_verdict: a non-zero check
+     exit, a malformed-status problem, or unparseable bytes refuses; the
+     worker-side marker is the verify record, prep's checks-exit.json is
+     the green authority — a marker whose problems are only the missing
+     evidence files does not refuse, M3 scrutiny round-1 BLK-1. A worker
+     whose checks went red is never salvaged into done; scrutiny NC-3);
   4. the session terminated abnormally — any of:
        - the wall records session_outcome=wall_killed for the pid;
        - a non-zero droid exit code (covers the exit-1 droid self-crash and
@@ -35,7 +38,11 @@ The guard is machine-judged and fail-closed; ALL of:
   paper over it).
 
 Products (only files missing from the pack; worker-written files are never
-touched — evidence immutability):
+touched — evidence immutability. The one exception: an on-disk status.json
+that is NOT a completed status (state done + non-empty checks matching the
+card) is a skeleton the prompt template asks workers to write first — the
+machine render replaces it and the handoff discloses that, M3 scrutiny
+round-1 BLK-3):
   - status.json: the worker protocol shape (id/title/state/files/checks)
     rendered from the process card + checks-exit.json + checks-output.txt;
   - handoff.md: machine rendering of the machine facts, explicitly declaring
@@ -62,6 +69,13 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+
+from marker_verdict import (
+    MARKER_NAME,
+    marker_problems,
+    marker_red_detail,
+    marker_verdict_red,
+)
 
 SALVAGE_MARKER_KEY = "salvaged_from_machine"
 STATUS_NAME = "status.json"
@@ -146,12 +160,34 @@ def evaluate_salvage_guard(
             reasons.append(
                 f"guard: machine checks not all green for {pid} ({bad or 'malformed entries'})"
             )
-    marker = info.get("checks_failed_marker") is True or (pack_dir / "checks-failed.marker").is_file()
+    marker = info.get("checks_failed_marker") is True or (pack_dir / MARKER_NAME).is_file()
+    marker_red = False
     if marker:
-        reasons.append(
-            f"guard: checks-failed.marker present for {pid} (the worker's own verify "
-            "verdict went red) — red checks are never salvaged into done"
-        )
+        # Marker verdicts are by CONTENT, never by presence (M3 scrutiny
+        # round-1 BLK-1): the verify step records missing deliverables in
+        # the same marker as red checks, and the worker-side marker is the
+        # record — prep's own checks-exit.json above is the green
+        # authority. Only a genuinely red marker (non-zero check exit /
+        # malformed status / unparseable bytes) refuses; a missing-file-only
+        # marker is noted in the decision trail and salvage continues.
+        marker_text: str | None = None
+        marker_path = pack_dir / MARKER_NAME
+        if marker_path.is_file():
+            marker_text = marker_path.read_text(encoding="utf-8", errors="replace")
+        marker_red = marker_verdict_red(marker_text)
+        if marker_red:
+            reasons.append(
+                f"guard: {MARKER_NAME} red by content for {pid} "
+                f"({marker_red_detail(marker_text)}) — red checks are never "
+                "salvaged into done"
+            )
+        else:
+            kinds = sorted({p["kind"] for p in marker_problems(marker_text)})
+            reasons.append(
+                f"guard: {MARKER_NAME} present for {pid} but green by content "
+                f"(problems: {', '.join(kinds)}); checks-exit.json all-0 is "
+                "the green authority"
+            )
     abnormal, ev = abnormal_termination_evidence(workers, pid)
     if abnormal:
         reasons.append(f"guard: abnormal session end for {pid}: " + "; ".join(ev))
@@ -174,7 +210,7 @@ def evaluate_salvage_guard(
         bool(info.get("merged")),
         not bool(oob),
         green,
-        not marker,
+        not marker_red,
         abnormal,
     ]
     return all(ok_conditions), reasons
@@ -230,7 +266,7 @@ def _death_cause_narrative(workers: dict, pid: str, exit_part: str) -> str:
     outcome_part = f"session_outcome={outcome}" if outcome is not None else "session_outcome 未记录"
     structural = (
         "这不是工序产出失败，而是落盘责任绑在一个会异常终结的会话上的结构性缺口。\n"
-        "补卷守卫条件（分支已并、无越界、机器 checks 全绿、无 checks-failed 标记、"
+        "补卷守卫条件（分支已并、无越界、机器 checks 全绿、checks-failed 标记按内容判定非红、"
         "会话异常终结）\n全部由机器判定为真后方才补卷。"
     )
     if outcome == "wall_killed":
@@ -297,6 +333,7 @@ def build_handoff(
     branch: str,
     workers: dict,
     missing_files: tuple[str, ...] = (HANDOFF_NAME, STATUS_NAME),
+    status_replaced_skeleton: bool = False,
 ) -> str:
     checks_lines = "\n".join(
         f"- `$ {e.get('command', '')}` — [exit {e.get('exit')}]" for e in checks_exit
@@ -327,12 +364,18 @@ def build_handoff(
         STATUS_NAME: f"evidence/packs/{pid}/status.json",
     }
     backfilled = "、".join(salvaged_paths[m] for m in missing_files if m in salvaged_paths)
+    skeleton_clause = (
+        "\n> status 由机器渲染（工人在盘状态为未完成骨架，state=in_progress/checks 空——"
+        "机器渲染 status 替换骨架）。"
+        if status_replaced_skeleton
+        else ""
+    )
     return f"""# Handoff: {pid}（补卷器生成）
 
 > **本件由补卷器（scripts/team/worker_salvage.py）机器生成，非工人亲写。**
 > 工人会话{abnormal_fact}，
 > {never_clause}；按盘上产物完整性优先原则（salvaged_from_machine=true），
-> {backfill_clause}（{backfilled}）。
+> {backfill_clause}（{backfilled}）。{skeleton_clause}
 > 本件不含任何工人自述。
 
 ## 工序（process card）
@@ -362,6 +405,26 @@ prep 在合并后的候选树上重跑了本卡全部 checks，逐条退出码 0
 {checks_output.strip()}
 ```
 """
+
+
+def _status_is_worker_final(status: Any, card: dict) -> bool:
+    """True only for a completed worker status: state done, non-empty
+    checks whose commands are exactly the card's. Everything else (the
+    in_progress skeleton the prompt template tells workers to write first,
+    empty or mismatched checks, unparseable bytes) is intermediate state —
+    the machine renders the final status from prep's facts (M3 scrutiny
+    round-1 BLK-3: a salvaged pack must never carry a status that says the
+    work is unfinished beside a handoff saying it is)."""
+    if not isinstance(status, dict):
+        return False
+    if status.get("state") != "done":
+        return False
+    checks = status.get("checks")
+    if not isinstance(checks, list) or not checks:
+        return False
+    card_cmds = list(card.get("checks") or [])
+    entry_cmds = [c.get("command") for c in checks if isinstance(c, dict)]
+    return bool(card_cmds) and entry_cmds == card_cmds
 
 
 def salvage_packs(
@@ -434,12 +497,15 @@ def _salvage_one(
         return False, reasons
     pack = info.setdefault("pack", {})
     to_write: list[str] = []
-    if not pack.get("status"):
+    status_on_disk = _load_json(pack_dir / STATUS_NAME)
+    status_final = pack.get("status") and _status_is_worker_final(status_on_disk, card)
+    if not status_final:
         to_write.append(STATUS_NAME)
     if not pack.get("handoff"):
         to_write.append(HANDOFF_NAME)
     if not to_write:
         return False, reasons + [f"pack files already present for {pid}"]
+    status_replaced_skeleton = bool(pack.get("status")) and STATUS_NAME in to_write
 
     checks_exit = _load_json(pack_dir / "checks-exit.json") or []
     checks_output = ""
@@ -453,7 +519,13 @@ def _salvage_one(
             json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
         pack["status"] = True
-        reasons.append(f"salvage: wrote {STATUS_NAME} from machine facts")
+        if status_replaced_skeleton:
+            reasons.append(
+                f"salvage: replaced {STATUS_NAME} skeleton (the on-disk worker "
+                "status was an unfinished skeleton) with the machine render"
+            )
+        else:
+            reasons.append(f"salvage: wrote {STATUS_NAME} from machine facts")
     if HANDOFF_NAME in to_write:
         handoff = build_handoff(
             pid=pid,
@@ -463,6 +535,7 @@ def _salvage_one(
             branch=info.get("branch", ""),
             workers=workers,
             missing_files=tuple(to_write),
+            status_replaced_skeleton=status_replaced_skeleton,
         )
         (pack_dir / HANDOFF_NAME).write_text(handoff, encoding="utf-8")
         pack["handoff"] = True

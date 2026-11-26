@@ -612,16 +612,24 @@ jobs:
       - name: Verify process checks and handoff
         # r58 (M3): this step had no if guard, so a wall-killed session step
         # (exit 124) skipped it entirely — the job's machine re-check
-        # channel never executed and produced zero evidence lines. always()
-        # keeps it running after the session step failed; its own v2.6.3
+        # channel never executed and produced zero evidence lines.
+        # always() keeps it running after the session step failed. The
+        # cancelled exclusion (M3 scrutiny round-1 BLK-2) keeps the 25m
+        # job-wall path byte-identical to the pre-guard shape: a cancelled
+        # job must not grow a marker (the delta step's RESULT override and
+        # the classifier both key on it), so cancelled ->
+        # job_wall_cancelled -> cancel_reason=job_wall_25m ->
+        # prep_should_run=False survives untouched. The step's own v2.6.3
         # semantics (record problems in the marker, never fail here) are
         # unchanged, and the commit step below still gates on !cancelled().
-        if: always()
+        if: always() && !cancelled()
         env:
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
         run: |
           python3 - <<'PY'
           import json, os, subprocess, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from marker_verdict import write_marker
           if subprocess.run(["python3", "-m", "pytest", "--version"],
                             capture_output=True).returncode != 0:
               print("pytest missing; installing deterministically (v2.1)")
@@ -645,6 +653,14 @@ jobs:
           # failed workers' branches into one candidate.) Only the harness
           # failure above (pytest cannot be installed at all) keeps the
           # hard exit: without pytest no check can run at all.
+          # The marker body is written through marker_verdict (M3 scrutiny
+          # round-1 BLK-1): its consumers (salvage guard, adopt gate)
+          # classify the marker by CONTENT — a non-zero check exit or a
+          # malformed status is red, a missing-expected-file-only marker
+          # (this step's output for a green worker whose two protocol files
+          # never got written) is not. The job-level semantics are
+          # unchanged: the trailing step still fails the job whenever the
+          # marker FILE exists.
           marker = f"team/status/{proc['id']}.checks-failed.marker"
           # v2.6.3 (review fix): delete any pre-existing marker for this
           # process before checking. A stale marker (e.g. one that reached
@@ -676,11 +692,7 @@ jobs:
           if problems:
               os.makedirs(os.path.dirname(marker), exist_ok=True)
               with open(marker, "w") as fh:
-                  fh.write(f"process: {proc['id']}\n")
-                  for cmd, rc in check_results:
-                      fh.write(f"check exit {rc}: {cmd}\n")
-                  for problem in problems:
-                      fh.write(f"problem: {problem}\n")
+                  fh.write(write_marker(proc["id"], check_results, problems))
               print("worker verification found problems; marker written, "
                     "evidence will still be committed and the job failed afterwards:")
               for problem in problems:
@@ -814,7 +826,13 @@ jobs:
         run: |
           RESULT="success"
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
-          if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
+          # BLK-2 (M3 scrutiny round-1): the marker override must never
+          # un-cancel a cancelled job — the cancelled verdict is judged
+          # first and the marker line is guarded, so a verify marker that
+          # landed before the 25m job wall cannot flip
+          # cancelled/job_wall_cancelled/cancel_reason=job_wall_25m into
+          # failure/wall_killed and re-open prep.
+          if [ "$RESULT" != "cancelled" ] && [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
           PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
             --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json \
             --stream worker-stream.jsonl
@@ -2779,16 +2797,24 @@ jobs:
       - name: Verify process checks and handoff
         # r58 (M3): this step had no if guard, so a wall-killed session step
         # (exit 124) skipped it entirely — the job's machine re-check
-        # channel never executed and produced zero evidence lines. always()
-        # keeps it running after the session step failed; its own v2.6.3
+        # channel never executed and produced zero evidence lines.
+        # always() keeps it running after the session step failed. The
+        # cancelled exclusion (M3 scrutiny round-1 BLK-2) keeps the 25m
+        # job-wall path byte-identical to the pre-guard shape: a cancelled
+        # job must not grow a marker (the delta step's RESULT override and
+        # the classifier both key on it), so cancelled ->
+        # job_wall_cancelled -> cancel_reason=job_wall_25m ->
+        # prep_should_run=False survives untouched. The step's own v2.6.3
         # semantics (record problems in the marker, never fail here) are
         # unchanged, and the commit step below still gates on !cancelled().
-        if: always()
+        if: always() && !cancelled()
         env:
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
         run: |
           python3 - <<'PY'
           import json, os, subprocess, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from marker_verdict import write_marker
           if subprocess.run(["python3", "-m", "pytest", "--version"],
                             capture_output=True).returncode != 0:
               print("pytest missing; installing deterministically (v2.1)")
@@ -2812,6 +2838,14 @@ jobs:
           # failed workers' branches into one candidate.) Only the harness
           # failure above (pytest cannot be installed at all) keeps the
           # hard exit: without pytest no check can run at all.
+          # The marker body is written through marker_verdict (M3 scrutiny
+          # round-1 BLK-1): its consumers (salvage guard, adopt gate)
+          # classify the marker by CONTENT — a non-zero check exit or a
+          # malformed status is red, a missing-expected-file-only marker
+          # (this step's output for a green worker whose two protocol files
+          # never got written) is not. The job-level semantics are
+          # unchanged: the trailing step still fails the job whenever the
+          # marker FILE exists.
           marker = f"team/status/{proc['id']}.checks-failed.marker"
           # v2.6.3 (review fix): delete any pre-existing marker for this
           # process before checking. A stale marker (e.g. one that reached
@@ -2843,11 +2877,7 @@ jobs:
           if problems:
               os.makedirs(os.path.dirname(marker), exist_ok=True)
               with open(marker, "w") as fh:
-                  fh.write(f"process: {proc['id']}\n")
-                  for cmd, rc in check_results:
-                      fh.write(f"check exit {rc}: {cmd}\n")
-                  for problem in problems:
-                      fh.write(f"problem: {problem}\n")
+                  fh.write(write_marker(proc["id"], check_results, problems))
               print("worker verification found problems; marker written, "
                     "evidence will still be committed and the job failed afterwards:")
               for problem in problems:
@@ -2981,7 +3011,9 @@ jobs:
         run: |
           RESULT="success"
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
-          if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
+          # BLK-2 (M3 scrutiny round-1): same guard as round 1 — a marker
+          # must never un-cancel a cancelled job.
+          if [ "$RESULT" != "cancelled" ] && [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
           PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
             --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json \
             --stream worker-stream.jsonl

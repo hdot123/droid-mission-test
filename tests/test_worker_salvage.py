@@ -7,14 +7,19 @@ merged branch was green — machine-verified work orphaned by a session death.
 
 Contract (all machine-judged, fail-closed):
 - salvage guard = branch merged + no out-of-bounds files + checks-exit all
-  zero + no checks-failed.marker in the pack + session abnormally
-  terminated. Termination evidence is the wall's own outcome fields: wall
-  outcome wall_killed, or a non-zero droid exit code (the exit-1 self-crash
-  family the outcome classifier keeps "ok" is still an abnormal END for the
-  guard). There is no stream lever on the salvage face (scrutiny NC-4: the
-  old completion-absence clause was dead in production and fail-open when
-  exercised). A session that exited 0 is a normal end: its missing files
-  are a compliance failure and stay blocked (the control fixture pins that).
+  zero + the pack's checks-failed.marker (if present) reading red BY
+  CONTENT + session abnormally terminated. The marker is the worker-side
+  verify record; prep's own checks-exit.json is the green authority — a
+  marker whose problems are only the missing evidence files (green checks,
+  the r58 death shape's own verify output) does not refuse (M3 scrutiny
+  round-1 BLK-1, marker_verdict.py). Termination evidence is the wall's own
+  outcome fields: wall outcome wall_killed, or a non-zero droid exit code
+  (the exit-1 self-crash family the outcome classifier keeps "ok" is still
+  an abnormal END for the guard). There is no stream lever on the salvage
+  face (scrutiny NC-4: the old completion-absence clause was dead in
+  production and fail-open when exercised). A session that exited 0 is a
+  normal end: its missing files are a compliance failure and stay blocked
+  (the control fixture pins that).
 - handoff.md renders the death cause from the wall's own outcome fields
   (scrutiny BLK-1): a wall recording ok + a non-zero exit states the exit
   code and that the death family is not machine-determined, never 900s /
@@ -24,7 +29,10 @@ Contract (all machine-judged, fail-closed):
 - salvage writes only the missing evidence files, renders them from machine
   facts, declares its machine origin in handoff.md, marks the manifest pack
   salvaged_from_machine=true, and the pack then passes the validator
-  precheck's judgeable/blocked scan.
+  precheck's judgeable/blocked scan. An on-disk status that is not a
+  completed status (state=done + non-empty checks matching the card) is an
+  unfinished skeleton — the machine render replaces it and the salvage
+  discloses the replacement (M3 scrutiny round-1 BLK-3).
 - prep2 salvage reads the ROUND-2 workers snapshot restricted to pids whose
   round-2 delta actually arrived (scrutiny NC-5): a stale round-1
   wall_killed never authorizes a round-2 salvage.
@@ -302,7 +310,7 @@ def test_exit_zero_ok_outcome_never_salvaged_regardless_of_stream(tmp_path):
     assert not (ws / "evidence" / "packs" / PID / "handoff.md").exists()
 
 
-# --- scrutiny NC-3: checks-failed.marker is a fail-closed refusal -------------
+# --- scrutiny NC-3: a red-by-content marker is a fail-closed refusal ----------
 
 
 def test_guard_rejects_checks_failed_marker(tmp_path):
@@ -320,9 +328,9 @@ def test_guard_rejects_checks_failed_marker(tmp_path):
 
 
 def test_wall_killed_with_marker_file_is_not_salvaged_bytes_unchanged(tmp_path):
-    """M3 will give the verify step if: always(), making this path reachable:
-    a wall-killed worker whose own checks failed must never be salvaged into
-    state=done — the pack keeps prep's bytes exactly (fail-closed)."""
+    """A wall-killed worker whose marker reads RED BY CONTENT must never be
+    salvaged into state=done — the pack keeps prep's bytes exactly
+    (fail-closed)."""
     ws = stage_replay_dir(tmp_path)
     pack = ws / "evidence" / "packs" / PID
     (pack / "checks-failed.marker").write_text("checks red\n", encoding="utf-8")
@@ -342,9 +350,9 @@ def test_wall_killed_with_marker_file_is_not_salvaged_bytes_unchanged(tmp_path):
 
 
 def test_marker_absent_guard_still_allows_salvage(tmp_path):
-    """The marker clause must not need the manifest flag: a marker FILE in
-    the pack is refused on sight even when info carries no flag (and the
-    legacy no-marker shape keeps salvaging)."""
+    """The marker clause does not need the manifest flag: a red-by-content
+    marker FILE in the pack is refused on sight even when info carries no
+    flag (and the legacy no-marker shape keeps salvaging)."""
     ws = stage_replay_dir(tmp_path)
     pack = ws / "evidence" / "packs" / PID
     (pack / "checks-failed.marker").write_text("checks red\n", encoding="utf-8")

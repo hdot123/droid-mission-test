@@ -17,6 +17,10 @@
 | `tests/test_replan_death_context_attribution.py` | replan 输入面死因注入 + 四合并步归责模板分支（含 clean-subprocess 回放） | 归责措辞回退到工人归责、heredoc import 破坏不会让 CI 红 |
 | `tests/test_worker_r58d_fixtures.py` | r58 夹具完整性 + sha256 对账 + 死亡形态钉子 | 夹具字节漂移/PROVENANCE 失真不会让 CI 红 |
 | `tests/test_worker_salvage.py` | 补卷守卫正反例 + 产物字段 + manifest 标记 + 工作流 salvage 块重放 | 补卷守卫/fail-closed 回归不会让 CI 红 |
+| `tests/test_worker_prompt_single_source.py` | 模板单源渲染（执行级）+ verify 步守卫形状 | 模板漂移 / verify 守卫守卫条件回退不会让 CI 红 |
+| `tests/test_r58d_e2e_replay.py` | 死链/对照端到端重放（VAL-CROSS-001/002） | 端到端链回退不会让 CI 红 |
+
+（后两文件为 M3 新增，晚于本表初稿；一并列入以保持表格完整。）
 
 纳入方式（若大哥裁决扩）：把三个文件名追加进 foreman-wall-ci.yml 的 `pytest tests/...` 文件清单并过五 lint——属 workflow 门清单变更，需重新走批准。
 

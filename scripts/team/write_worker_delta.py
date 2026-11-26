@@ -12,7 +12,11 @@ and the salvage guard need — all classified from machine evidence only:
   tool_error (session killed mid-action, never reached its own end)
 
 Job-wall cancellation outranks the session verdict: a cancelled job still
-records the session evidence, but the outcome names the 25m envelope.
+records the session evidence, but the outcome names the 25m envelope. It
+also outranks the checks marker (BLK-2, M3 scrutiny round-1): a verify
+marker present when the job was cancelled must not flip the recorded
+result to failure — the cancelled chain (cancelled / job_wall_cancelled /
+cancel_reason=job_wall_25m / prep closed) stays intact.
 """
 from __future__ import annotations
 
@@ -129,8 +133,12 @@ def main() -> int:
         args.result = "failure"
     elif job_status == "cancelled":
         args.result = "cancelled"
-    # Infer failure if checks marker exists
-    if Path(f"team/status/{args.pid}.checks-failed.marker").exists():
+    # Infer failure if checks marker exists. The cancelled verdict ranks
+    # above the marker (M3 scrutiny round-1 BLK-2): a verify marker that
+    # landed before a 25m job-wall cancellation must not flip the recorded
+    # result to failure — cancelled/job_wall_cancelled/cancel_reason stay
+    # intact, and prep stays closed.
+    if args.result != "cancelled" and Path(f"team/status/{args.pid}.checks-failed.marker").exists():
         args.result = "failure"
 
     raw_exit = (os.environ.get("DROID_EXIT_CODE") or "").strip()

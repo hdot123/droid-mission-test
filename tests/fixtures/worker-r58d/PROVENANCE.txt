@@ -47,6 +47,11 @@ Used by (the real consumer test files):
   blocked-reason attribution replayed on the r58 wall shapes
 - tests/test_worker_salvage.py — salvage guard/acceptance chain, product
   fields, manifest salvage marker, precheck replay (VAL-M2-002..006)
+- tests/test_r58d_e2e_replay.py — dead-chain and contrast end-to-end
+  replay (VAL-CROSS-001/002)
+- tests/test_verify_prep_salvage_chain.py — verify-step→marker→prep→guard
+  →adopt workflow-level chain, both shapes (BLK-1 fix pin), and the
+  marker-in-place e2e variant B
 
 sha256 vendor table (digest of each vendored file, two spaces, then the
 fixture-root-relative path). Among the root-level fixture files,

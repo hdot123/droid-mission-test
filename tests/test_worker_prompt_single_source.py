@@ -18,9 +18,13 @@ and the two template additions this milestone makes:
 - the "at most 20 tool calls" arithmetic cap is replaced by I-1-style
   milestone-ordering wording (per the V-3 report: an arithmetic question
   is one more decision the model reasons over, not a limit);
-- the verify steps carry if: always() so a wall-killed session step no
-  longer skips the job's machine re-check channel (r58: zero output lines
-  from that step in the whole job log).
+- the verify steps carry `if: always() && !cancelled()` so a wall-killed
+  session step no longer skips the job's machine re-check channel (r58:
+  zero output lines from that step in the whole job log) while the 25m
+  job-wall cancelled path stays byte-identical to the pre-guard shape
+  (M3 scrutiny round-1 BLK-2 — a cancelled job must never grow a verify
+  marker, so the delta step's RESULT override cannot flip the recorded
+  outcome).
 """
 from __future__ import annotations
 
@@ -268,8 +272,10 @@ def test_legacy_inline_worker_heredoc_removed():
 @pytest.mark.parametrize(("job_key", "step_name"), VERIFY_STEPS)
 def test_verify_step_runs_after_session_failure(job_key, step_name):
     chunk = _step_text(_job_text(TEAM_YML.read_text(encoding="utf-8"), job_key), step_name)
-    assert "if: always()" in chunk, (
-        f"{job_key}: verify step must run even when the session step was killed"
+    assert "if: always() && !cancelled()" in chunk, (
+        f"{job_key}: verify step must run even when the session step was "
+        "killed, but never on the cancelled path (BLK-2: a cancelled job "
+        "must not grow a marker)"
     )
     # the step's own v2.6.3 semantics are unchanged: it records problems in
     # the per-process marker instead of failing, so the machine re-check

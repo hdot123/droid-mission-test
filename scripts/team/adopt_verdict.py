@@ -28,6 +28,7 @@ from pathlib import Path
 
 from budget_resolve import adopt_session_completion_status
 from foreman_run_lib import deep_merge, load_wall, save_wall
+from marker_verdict import MARKER_NAME, marker_red_detail, marker_verdict_red
 from salvage_assemble import assemble_assembled_draft
 from salvage_verdict import read_salvage
 
@@ -84,10 +85,14 @@ def conflicts_escalated(conflicts: list[dict] | None) -> bool:
 # S-2: the validator HARD RULE ("a red mandated check is never a pass,
 # exit 127 recorded because pytest was unavailable excepted") is enforced
 # here on the adopt side, from the pack evidence itself — a pass verdict
-# riding over a red check-exit or a checks-failed.marker is machine-flipped,
-# no longer dependent on the model reporting its own violation.
+# riding over a red check-exit or a red-by-content checks-failed.marker is
+# machine-flipped, no longer dependent on the model reporting its own
+# violation. The marker is judged by CONTENT (marker_verdict, M3 scrutiny
+# round-1 BLK-1): the verify step records missing deliverables in the same
+# marker as red checks, and checks-exit.json is the green authority — only
+# a genuinely red marker gates the process here.
 GATE_EXIT_UNREADABLE = "checks-exit.json 不可读或格式非法（按红处理）"
-GATE_MARKER = "checks-failed.marker 在包内（机器闸：worker 侧已判定检查失败）"
+GATE_MARKER = "checks-failed.marker 按内容判定为红（机器闸：worker 侧 verify 记录非零 check exit / status 非法）"
 
 
 def _gate_red_reason(pack_dir: Path) -> str | None:
@@ -119,8 +124,14 @@ def _gate_red_reason(pack_dir: Path) -> str | None:
                 )
         except Exception:
             return GATE_EXIT_UNREADABLE
-    if (pack_dir / "checks-failed.marker").exists():
-        return GATE_MARKER
+    marker_path = pack_dir / MARKER_NAME
+    if marker_path.exists():
+        try:
+            marker_text = marker_path.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            marker_text = None
+        if marker_verdict_red(marker_text):
+            return f"{GATE_MARKER}（{marker_red_detail(marker_text)}）"
     return None
 
 
