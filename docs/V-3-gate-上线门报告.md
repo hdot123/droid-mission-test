@@ -2,6 +2,13 @@
 
 日期：2026-11-26 ｜ 断言：VAL-V3-001 ｜ 判定：**门未过（通道级阻塞）——禁止上线新 prompt，等通道恢复后重跑**
 
+## 复探记录（2026-11-26 当日第二次实测，任务收尾轮）
+
+- 通道复探（node-01 网关，与首探同法）：`deepseek-v4.1-flash` 仍 **403**「Model access is disabled. Change model access at https://opencode.ai/console/wrk_01M2TDZV72YSY2CP6M55418B5Y/controls.」；对照 `glm-5.3-flash` 仍 200——阻塞未解除。
+- 真 CI 通道探测（`https://droid-test.lumivane.dpdns.org`，team.yml 四个 BYOM 步的 baseUrl）：1Password 在册的 lumivane CF 网关调用凭证在该 host 的 chat 端点返回 401（该网关鉴权走 GitHub secret `GO_GITHUB_RUN_TOKEN`，非 1Password 在册凭证）；裸 urllib 被边缘 CF 以 error 1010 拦（客户端指纹）。CI 通道侧无法从 worker 侧证实/证伪 deepseek 状态，但上游（opencode console）403 已经独立证实模型本身访问被禁。
+- 重跑就绪件复核：`/tmp/v3-gate/{a,c}/validator-prompt.txt` 与当前 main 单源模板渲染**逐字节一致**（A 5,423 B / C 5,417 B，含 `--final`/`--conflict` 说明、无双连字符 bullet）——通道恢复即可按原命令形态重跑，无需重造。
+- 代码面复核（同日）：全量 pytest **333 passed 2 skipped**、五 lint 全绿、预算冻结 diff 0 字节——门未过与代码面无关，维持「禁止上线新 prompt」。
+
 ## 门定义（validation-contract.md VAL-V3-001）
 
 用 54 轮 A/C 证据包（`/tmp/r54-audit/{a,c}/evidence/`）各跑一次真实 droid 会话（与 CI live 同通道、新 prompt），流事件级解析必须各出现 ≥1 次 `salvage_verdict` tool_call。任一流零调用 → 门未过。
