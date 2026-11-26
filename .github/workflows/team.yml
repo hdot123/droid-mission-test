@@ -3425,8 +3425,14 @@ jobs:
               import sys as _salvage_sys
               _salvage_sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
               from worker_salvage import salvage_packs as _worker_salvage_packs
+              from merge_worker_deltas import round2_salvage_wall as _round2_salvage_wall
               salvage_cards = {pid: rerun[pid] for pid in rerun}
               salvage_wall = json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else None
+              # NC-5 fail-closed: judge round-2 salvage on the round-2 snapshot
+              # restricted to pids whose round-2 delta actually arrived — a
+              # stale round-1 wall_killed must never authorize a round-2 salvage.
+              salvage_workers = _round2_salvage_wall(salvage_wall)
+              salvage_wall = {"workers": salvage_workers} if salvage_wall is not None else None
               salvage_reports = _worker_salvage_packs(
                   evidence_dir="evidence",
                   cards=salvage_cards,

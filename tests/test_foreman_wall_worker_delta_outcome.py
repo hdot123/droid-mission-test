@@ -122,6 +122,39 @@ def test_classify_wall_killed_exit_124_interrupted_tail():
     assert marker is True
 
 
+# --- scrutiny NC-2: explicit wall branches stay pinned over completion-present
+#     streams (the catch-all clause would otherwise silently backstop them) ----
+
+
+@pytest.mark.parametrize("exit_code", [124, 137])
+def test_classify_wall_killed_explicit_branches_with_completion_present(exit_code):
+    """A completion event anywhere in the stream proves a self-ended session
+    in the abstract — but the explicit wall exits 124/137 outrank it: those
+    codes are the GNU timeout kill verdicts, never a self-end. Deleting
+    either explicit branch must go red (with a completion-present stream the
+    catch-all would otherwise backstop the deletion silently)."""
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=exit_code,
+        job_cancelled=False,
+        stream_tail=HEALTHY_TAIL_EVENT + "\n" + COMPLETION_TAIL_EVENT + "\n",
+    )
+    assert outcome == "wall_killed"
+    assert marker is False
+
+
+@pytest.mark.parametrize("exit_code", [124, 137, 2])
+def test_classify_job_wall_cancelled_priority_over_wall_codes(exit_code):
+    """The job envelope (25m cancel) outranks every session-side kill verdict:
+    cancelled wins over exit 124, 137 AND the catch-all wall codes."""
+    outcome, marker = write_worker_delta.classify_session_outcome(
+        droid_exit_code=exit_code,
+        job_cancelled=True,
+        stream_tail=HEALTHY_TAIL_EVENT + "\n" + COMPLETION_TAIL_EVENT + "\n",
+    )
+    assert outcome == "job_wall_cancelled"
+    assert marker is False
+
+
 def test_classify_wall_killed_interrupted_tail_with_zero_exit():
     """The interrupted tail alone proves the kill: the OR rule (exit 124 or
     interrupted tail) must not be masked by a zero pipeline exit."""
@@ -186,9 +219,11 @@ def test_classify_exit_1_without_completion_is_droid_self_crash_ok():
 
 
 def test_classify_negative_exit_without_completion_is_droid_self_crash_ok():
-    """Negative exit codes (128+signal shell conventions, e.g. -15 from a
-    direct kill) are process deaths outside the GNU timeout wall family:
-    same carve-out as exit 1, never wall_killed."""
+    """Negative exit codes are not producible in production (bash $? is
+    0-255; the 128+signal convention yields POSITIVE codes like 137/143),
+    but a negative value arriving over the env face is a process death
+    outside the GNU timeout wall family: same carve-out as exit 1, never
+    wall_killed."""
     outcome, marker = write_worker_delta.classify_session_outcome(
         droid_exit_code=-15,
         job_cancelled=False,
@@ -238,6 +273,48 @@ def test_classify_job_wall_cancelled_wins_over_exit_124(tmp_path=None):
     )
     assert outcome == "job_wall_cancelled"
     assert marker is True
+
+
+# --- scrutiny NC-1: the classifier scans the WHOLE stream for completion ----
+
+
+def test_classify_completion_followed_by_trailing_event_is_ok_at_nonzero_exit():
+    """NC-1 pinning shape (red on the old last-line-only scan): a completion
+    event followed by one more trailing event — the completion is NOT the
+    last line, yet it proves the session ended on its own, so a non-wall,
+    non-self exit (2) over such a stream is ok, not wall_killed. The delta
+    CLI feeds the classifier the whole stream text; the last line is
+    consulted only for the interrupt marker."""
+    stream = (
+        HEALTHY_TAIL_EVENT + "\n" + COMPLETION_TAIL_EVENT + "\n" + HEALTHY_TAIL_EVENT + "\n"
+    )
+    for exit_code in (2, 3):
+        outcome, marker = write_worker_delta.classify_session_outcome(
+            droid_exit_code=exit_code,
+            job_cancelled=False,
+            stream_tail=stream,
+        )
+        assert outcome == "ok", exit_code
+        assert marker is False
+
+
+def test_delta_cli_completion_midstream_is_ok_at_exit_2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """CLI-level NC-1 pin: completion followed by a trailing event, exit 2 —
+    the delta must record ok (the old implementation scanned only the last
+    line and mis-reported wall_killed here)."""
+    payload = _run_delta_cli(
+        tmp_path,
+        monkeypatch,
+        result="failure",
+        droid_exit_code=2,
+        stream_text=HEALTHY_TAIL_EVENT + "\n" + COMPLETION_TAIL_EVENT + "\n"
+        + HEALTHY_TAIL_EVENT + "\n",
+    )
+    assert payload["session_outcome"] == "ok"
+    assert payload["droid_exit_code"] == 2
+    assert payload["stream_tail_marker"] is False
 
 
 def test_classify_wall_killed_exit_124_with_empty_stream():

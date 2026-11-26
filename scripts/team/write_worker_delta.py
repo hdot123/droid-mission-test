@@ -29,9 +29,10 @@ STREAM_INTERRUPT_MARKER = "Error: Tool execution was interrupted"
 # the same machine-proven wall kill. Any other non-zero exit whose stream
 # never carried a completion event is the same abnormal-termination family
 # (a self-ended session always emits completion). Exit 1 (and negative
-# codes, 128+signal shell convention) with no completion is the droid
-# self-crash death family — a different death, kept ok: the salvage guard
-# reads droid_exit_code directly for that family.
+# codes — not producible in production anyway: bash $? is 0-255 and the
+# 128+signal convention yields POSITIVE codes like 137/143) with no
+# completion is the droid self-crash death family — a different death,
+# kept ok: the salvage guard reads droid_exit_code directly for that family.
 # Exits that belong to the session itself, never to a wall: 0 self-ended,
 # 1 self-crash. Only these (plus negatives) keep ok with no completion.
 SELF_EXIT_CODES = (0, 1)
@@ -45,12 +46,13 @@ def classify_session_outcome(
 ) -> tuple[str, bool]:
     """(session_outcome, stream_tail_marker) from exit code + stream shape.
 
-    stream_tail is the text of the stream's last line (or None when the
-    stream is missing/unreadable). The kill is proven by any signal
-    independently: exit 124/137 (GNU timeout TERM / --kill-after SIGKILL),
-    an interrupted tool_error as the final stream event, or a non-zero
-    exit outside the self-crash codes over a stream that carries no
-    completion event (a self-ended session always emits completion).
+    ``stream_tail`` names the caller's contract, not the amount scanned: it
+    may be the stream's LAST LINE, its full text, or None (stream
+    missing/unreadable). The completion-absence clause (scrutiny NC-1)
+    scans every line of the given text — a completion event anywhere proves
+    the session ended on its own. The interrupt marker alone keys on the
+    last non-empty line, since "the last event was interrupted" is a
+    tail-shaped fact.
     """
     marker = bool(stream_tail) and _is_interrupt_event(stream_tail)
     if job_cancelled:
@@ -116,7 +118,8 @@ def main() -> int:
     p.add_argument(
         "--stream",
         default="worker-stream.jsonl",
-        help="session stream file whose final event is inspected for the interrupt marker",
+        help="session stream file; its full text feeds the completion scan, "
+        "its last non-empty line the interrupt marker",
     )
     args = p.parse_args()
     if args.result == "cancelled" and not args.cancel_reason:
@@ -136,13 +139,13 @@ def main() -> int:
         droid_exit_code = int(raw_exit)
     job_cancelled = args.result == "cancelled"
     try:
-        stream_tail = read_last_stream_line(Path(args.stream))
+        stream_text = read_stream_text(Path(args.stream))
     except OSError:
-        stream_tail = None
+        stream_text = None
     session_outcome, stream_tail_marker = classify_session_outcome(
         droid_exit_code=droid_exit_code,
         job_cancelled=job_cancelled,
-        stream_tail=stream_tail,
+        stream_tail=stream_text,
     )
 
     payload: dict = {"pid": args.pid, "result": args.result}
@@ -158,14 +161,22 @@ def main() -> int:
 
 def read_last_stream_line(path: Path) -> str | None:
     """Last non-empty line of the session stream, or None when absent."""
+    text = read_stream_text(path)
+    if text is None:
+        return None
+    last: str | None = None
+    for line in text.splitlines():
+        if line.strip():
+            last = line
+    return last
+
+
+def read_stream_text(path: Path) -> str | None:
+    """The whole session stream text, or None when absent/unreadable."""
     if not path.is_file():
         return None
     with path.open("r", encoding="utf-8", errors="replace") as fh:
-        last: str | None = None
-        for line in fh:
-            if line.strip():
-                last = line
-    return last
+        return fh.read()
 
 
 if __name__ == "__main__":
