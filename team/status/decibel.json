@@ -1,0 +1,21 @@
+{
+  "id": "decibel",
+  "title": "实现分贝换算 decibel.py 及其测试",
+  "state": "done",
+  "files": [
+    "decibel.py",
+    "tests/test_decibel.py",
+    "team/handoffs/decibel.md",
+    "team/status/decibel.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_decibel.py -q",
+      "result": "41 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "383 passed, 2 skipped in 19.54s"
+    }
+  ]
+}
