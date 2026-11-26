@@ -1,0 +1,21 @@
+{
+  "id": "kaprekar",
+  "title": "kaprekar.py — 四位数 Kaprekar 例程（新增，不改存量）",
+  "state": "done",
+  "files": [
+    "kaprekar.py",
+    "tests/test_kaprekar.py",
+    "team/handoffs/kaprekar.md",
+    "team/status/kaprekar.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_kaprekar.py -q",
+      "result": "34 passed in 0.13s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "376 passed, 2 skipped in 21.56s"
+    }
+  ]
+}
