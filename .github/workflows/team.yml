@@ -1190,6 +1190,42 @@ jobs:
               }
               info["complete"] = all(info["pack"].values()) and info["merged"] and not info.get("out_of_bounds")
 
+          # M2 (worker-salvage-packer): salvage pass — for packs whose session
+          # died abnormally (900s wall kill and family) while the machine
+          # evidence is green (branch merged, F-1 clean, prep's own re-run of
+          # the card checks all exit 0), machine-write the two evidence files
+          # the session never did, mark salvaged_from_machine, and refresh
+          # complete. Fail-closed: guard miss / error / already-present file
+          # keeps the pack exactly as produced above (blocked stays blocked);
+          # a salvage defect must never kill prep (try/except). The pack
+          # digests below (os.walk over evidence/) cover the salvaged bytes,
+          # so the validator precheck's per-entry verification sees them.
+          try:
+              import sys as _salvage_sys
+              _salvage_sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+              from worker_salvage import salvage_packs as _worker_salvage_packs
+              salvage_cards = {p["id"]: p for p in plan["processes"]}
+              salvage_wall = json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else None
+              salvage_reports = _worker_salvage_packs(
+                  evidence_dir="evidence",
+                  cards=salvage_cards,
+                  packs=packs,
+                  wall=salvage_wall,
+              )
+              for _r in salvage_reports:
+                  print("salvage:", json.dumps(_r, ensure_ascii=False))
+              if any(_r["salvaged"] for _r in salvage_reports):
+                  # persist the salvage markers + refreshed pack flags so the
+                  # manifest digests below cover the salvaged bytes and the
+                  # validator precheck sees complete packs (PR #836 principle:
+                  # the on-disk manifest is what downstream judges).
+                  _m = json.load(open("evidence/manifest.json"))
+                  _m["packs"] = packs
+                  json.dump(_m, open("evidence/manifest.json", "w"), ensure_ascii=False, indent=2)
+                  print("salvage: manifest packs updated (salvaged_from_machine markers)")
+          except Exception as _salvage_exc:
+              print(f"worker salvage pass failed (packs left as produced): {_salvage_exc}")
+
           # I-4 (round54-root-cure): check-summary.json is the authoritative
           # count — per-card passed/skipped from the focused check prep ran
           # for that card, merged totals from the real pytest output. Written
@@ -3377,6 +3413,38 @@ jobs:
                               "diff": os.path.exists(f"{pack_dir}/diff.patch"),
                               "checks_output": True}
               info["complete"] = all(info["pack"].values()) and info["merged"] and not info.get("out_of_bounds")
+
+          # M2 (worker-salvage-packer): salvage pass (round 2) — same guard
+          # and products as round 1, but scoped to the RERUN processes only
+          # (a rerun card's worker2 session may have died before writing its
+          # evidence while prep's machine re-run is green); carried-over
+          # packs keep their round-1 bytes untouched (their salvage, if any,
+          # happened in round 1 and is already attested in their manifest).
+          # Fail-closed: guard miss / error keeps the pack as produced above.
+          try:
+              import sys as _salvage_sys
+              _salvage_sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+              from worker_salvage import salvage_packs as _worker_salvage_packs
+              salvage_cards = {pid: rerun[pid] for pid in rerun}
+              salvage_wall = json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else None
+              salvage_reports = _worker_salvage_packs(
+                  evidence_dir="evidence",
+                  cards=salvage_cards,
+                  packs=packs,
+                  wall=salvage_wall,
+              )
+              for _r in salvage_reports:
+                  print("salvage (round 2):", json.dumps(_r, ensure_ascii=False))
+              if any(_r["salvaged"] for _r in salvage_reports):
+                  # persist the salvage markers + refreshed pack flags so the
+                  # manifest digest walk below covers the salvaged bytes and
+                  # the validator precheck sees complete packs.
+                  _m = json.load(open("evidence/manifest.json"))
+                  _m["packs"] = packs
+                  json.dump(_m, open("evidence/manifest.json", "w"), ensure_ascii=False, indent=2)
+                  print("salvage (round 2): manifest packs updated (salvaged_from_machine markers)")
+          except Exception as _salvage_exc:
+              print(f"worker salvage pass failed (packs left as produced): {_salvage_exc}")
 
           # I-4 (round54-root-cure): check-summary.json is the authoritative
           # count (round 2) — per-card counts from the focused check, written
