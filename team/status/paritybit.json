@@ -1,0 +1,19 @@
+{
+  "id": "paritybit",
+  "title": "实现奇偶校验位 paritybit.py 及其测试",
+  "state": "done",
+  "files": [
+    "paritybit.py",
+    "tests/test_paritybit.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_paritybit.py -q",
+      "result": "19 passed in 0.03s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "1 failed, 359 passed, 2 skipped (exit 1); the single failure is tests/test_check_summary_focused_counts.py::test_summary_block_on_r54_pack_produces_real_focused_counts with FileNotFoundError for external fixture /tmp/r54-audit/a/evidence/packs/damm/checks-output.txt — pre-existing and unrelated to paritybit"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+process: paritybit
+check exit 0: python3 -m pytest tests/test_paritybit.py -q
+check exit 1: python3 -m pytest tests/ -q
+problem: check failed (exit 1): python3 -m pytest tests/ -q
