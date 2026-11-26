@@ -1,0 +1,17 @@
+{
+  "id": "divisorsum",
+  "title": "divisorsum.py 约数和与盈亏分类",
+  "state": "done",
+  "files": [
+    "divisorsum.py",
+    "tests/test_divisorsum.py",
+    "team/handoffs/divisorsum.md",
+    "team/status/divisorsum.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_divisorsum.py -q",
+      "result": "PASS: 38 passed in 0.03s, exit 0"
+    }
+  ]
+}
