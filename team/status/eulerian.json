@@ -1,0 +1,21 @@
+{
+  "id": "eulerian",
+  "title": "eulerian — Eulerian numbers by descents (row and A(n, m))",
+  "state": "done",
+  "files": [
+    "eulerian.py",
+    "tests/test_eulerian.py",
+    "team/handoffs/eulerian.md",
+    "team/status/eulerian.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_eulerian.py -q",
+      "result": "11 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "353 passed, 2 skipped"
+    }
+  ]
+}
