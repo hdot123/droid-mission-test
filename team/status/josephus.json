@@ -1,0 +1,19 @@
+{
+  "id": "josephus",
+  "title": "实现约瑟夫环幸存者 josephus.py 及其测试",
+  "state": "done",
+  "files": [
+    "josephus.py",
+    "tests/test_josephus.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_josephus.py -q",
+      "result": "11 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "353 passed, 2 skipped in 20.12s (exit 0)"
+    }
+  ]
+}
