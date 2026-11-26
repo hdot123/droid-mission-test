@@ -1,0 +1,21 @@
+{
+  "id": "inversions",
+  "title": "inversions: 逆序对计数",
+  "state": "done",
+  "files": [
+    "inversions.py",
+    "tests/test_inversions.py",
+    "team/handoffs/inversions.md",
+    "team/status/inversions.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_inversions.py -q",
+      "result": "passed (18 passed in 0.04s)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed (360 passed, 2 skipped in 21.59s)"
+    }
+  ]
+}
