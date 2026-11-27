@@ -194,7 +194,7 @@
 | `scripts/team/write_worker_delta.py:45` | `def classify_session_outcome` | 转引 |
 | `scripts/team/write_worker_delta.py:63` | 分类分支区段起（124/137→wall_killed、cancelled→job_wall_cancelled） | ★ |
 | `scripts/team/worker_salvage.py:13` | `The guard is machine-judged and fail-closed`（四条件 docstring） | 转引 |
-| `scripts/team/worker_salvage.py:47` | adoptable 语义行 | ★ |
+| `scripts/team/salvage_verdict.py:47` | adoptable 语义行 | ★（F5 总装实读修正：原误记 `worker_salvage.py:47`——该行实为补卷产品清单行；adoptable 语义在 salvage_verdict.py:45-47 区段） |
 | `scripts/team/salvage_verdict.py:18` | `PARTIAL_NAME` | 转引 |
 | `scripts/team/salvage_verdict.py:30` | `def salvage_verdict` | 转引 handoff-schemas 附表 |
 | `scripts/team/salvage_verdict.py:93` | sealed 粘性（跨 :93-:94） | ★ |
