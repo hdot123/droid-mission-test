@@ -1,0 +1,21 @@
+{
+  "id": "pell",
+  "title": "Pell 方程最小正整数解（连分数法）",
+  "state": "done",
+  "files": [
+    "pell.py",
+    "tests/test_pell.py",
+    "team/handoffs/pell.md",
+    "team/status/pell.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_pell.py -q",
+      "result": "17 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "359 passed, 2 skipped in 19.39s"
+    }
+  ]
+}
