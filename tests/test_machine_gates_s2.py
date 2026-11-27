@@ -184,7 +184,7 @@ def test_missing_checks_exit_with_no_exit_field_is_green(
 # --- checks-failed.marker gate ----------------------------------------------
 
 
-def test_marker_presence_overrides_pass_verdict(
+def test_marker_red_by_content_overrides_pass_verdict(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     """A checks-failed.marker whose content reads RED fails the process

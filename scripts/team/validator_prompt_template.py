@@ -45,8 +45,9 @@ def build_validator_prompt(judgeable: list[str], *, round_num: int = 1) -> str:
     ids = ", ".join(judgeable)
     packs = "\n".join(
         f"- packs/{pid}/ (process-card.json, handoff.md, status.json, diff.patch, "
-        "checks-output.txt, checks-exit.json, checks-failed.marker (present only "
-        "when the worker's own checks failed))"
+        "checks-output.txt, checks-exit.json, checks-failed.marker (written whenever "
+        "the verify step found any problem; on a machine-salvaged pack it is also "
+        "present when all checks exited 0 and the problems are only missing evidence files))"
         for pid in judgeable
     )
     plan_line = (
@@ -93,7 +94,7 @@ def build_validator_prompt(judgeable: list[str], *, round_num: int = 1) -> str:
 
           Rules:
           - Pass a process only when its card, handoff, status, diff, and check outputs line up.
-          - HARD RULE — a red mandated check is never a pass: if any entry in packs/<id>/checks-exit.json has a non-zero "exit", or packs/<id>/checks-failed.marker exists, you MUST judge that process "fail", however well the five artifacts line up. Alignment proves the evidence is honest, not that the work passed. In the reason, cite the failed check command(s) and exit code(s) from checks-exit.json. One exception: exit 127 recorded because pytest was unavailable does not count under this rule (that is an environment failure, judged via the pack/manifest evidence).
+          - HARD RULE — a red mandated check is never a pass: if any entry in packs/<id>/checks-exit.json has a non-zero "exit", or the pack's checks-failed.marker is red by content — a "check exit" line with a non-zero code, a "problem: status file is not valid JSON" line, any problem line other than a "problem: missing expected file:" entry, or marker content that cannot be parsed into these shapes counts red too — you MUST judge that process "fail", however well the five artifacts line up. Alignment proves the evidence is honest, not that the work passed. A marker whose problems are only missing-expected-file entries is NOT red by itself (that is the machine-salvaged pack shape): do not fail the process for the marker's existence — judge the rest of the evidence with checks-exit.json as the authoritative check record. In the reason, cite the failed check command(s) and exit code(s) from checks-exit.json. One exception: exit 127 recorded because pytest was unavailable does not count under this rule (that is an environment failure, judged via the pack/manifest evidence).
           - If a process's status.json or handoff.md explicitly flags a conflict outside its card or inside the work order itself (for example a body-vs-acceptance mismatch) and neither the card nor the plan addresses it, you MUST record it in the top-level "conflicts" array — do not bury it in a reason and do not silently pass over it. Recording a conflict does not by itself change that process's verdict: judge the card as written; the conflict is escalated for a human to see, and a verdict carrying any escalated conflict is treated as fail by the machine gates.
           - NOT conflicts: the team/handoffs/* and team/status/* files are protocol artifacts the pipeline itself maintains (they are whitelisted for the workers); their presence or absence is never an out-of-card conflict. A count difference between any pre-merge report and check-summary.json is bookkeeping, not a conflict — check-summary.json is the single authoritative count.
           - Authoritative counts: check-summary.json (per-card passed/skipped and merged totals) is the ONLY authoritative test-count source. Do not recount from worker status files and do not treat a mismatch as evidence of tampering.
