@@ -1,0 +1,21 @@
+{
+  "id": "bezier",
+  "title": "实现 bezier.py：Bézier 曲线求值（point/curve）",
+  "state": "done",
+  "files": [
+    "bezier.py",
+    "tests/test_bezier.py",
+    "team/handoffs/bezier.md",
+    "team/status/bezier.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_bezier.py -q",
+      "result": "passed: 23 tests (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 365 passed, 2 skipped (exit 0)"
+    }
+  ]
+}
