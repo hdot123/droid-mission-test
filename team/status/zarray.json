@@ -1,0 +1,21 @@
+{
+  "id": "zarray",
+  "title": "zarray.py — Z 数组",
+  "state": "done",
+  "files": [
+    "zarray.py",
+    "tests/test_zarray.py",
+    "team/handoffs/zarray.md",
+    "team/status/zarray.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_zarray.py -q",
+      "result": "7 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "349 passed, 2 skipped in 21.31s (exit 0)"
+    }
+  ]
+}
