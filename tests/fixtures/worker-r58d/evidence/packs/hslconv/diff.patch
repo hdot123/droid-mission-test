@@ -1,0 +1,318 @@
+diff --git a/hslconv.py b/hslconv.py
+new file mode 100644
+index 0000000..f4f464e
+--- /dev/null
++++ b/hslconv.py
+@@ -0,0 +1,118 @@
++"""hslconv: RGB ↔ HSL 颜色换算组件（第五十八轮 D 单）。
++
++- ``rgb_to_hsl(r, g, b)`` 返回 ``(h, s, l)``：h ∈ [0, 360)，s ∈ [0, 1]，
++  l ∈ [0, 1]；无色（r == g == b）时按约定 h = 0.0、s = 0.0。
++- ``hsl_to_rgb(h, s, l)`` 返回 ``(r, g, b)`` 整数通道；h ∈ [0, 360)
++  （不含 360），s、l ∈ [0, 1]；通道值按四舍五入半上
++  （``floor(x * 255 + 0.5)`` 口径）取整，不用银行家舍入（``round``）。
++
++注意：返回元组顺序是 ``(h, s, l)``，与标准库 ``colorsys`` 的
++``(h, l, s)``（HLS 序）不同。入参越界抛 ``ValueError``；
++类型不合（rgb 非 int、hsl 非数值，含 bool）抛 ``TypeError``。
++仅依赖标准库。
++"""
++
++import math
++
++__all__ = ["rgb_to_hsl", "hsl_to_rgb"]
++
++
++def _require_int(value, name):
++    """rgb 分量必须是 int（bool 不算）。"""
++    if isinstance(value, bool) or not isinstance(value, int):
++        raise TypeError("%s must be int, got %s" % (name, type(value).__name__))
++
++
++def _require_number(value, name):
++    """hsl 分量必须是数值（int/float，bool 不算）。"""
++    if isinstance(value, bool) or not isinstance(value, (int, float)):
++        raise TypeError(
++            "%s must be a real number, got %s" % (name, type(value).__name__)
++        )
++
++
++def _hue_to_rgb(p, q, t):
++    """把单个色相分量从 [0, 1] 区间换算回 RGB 分量（float）。"""
++    if t < 0.0:
++        t += 1.0
++    if t > 1.0:
++        t -= 1.0
++    if t < 1.0 / 6.0:
++        return p + (q - p) * 6.0 * t
++    if t < 1.0 / 2.0:
++        return q
++    if t < 2.0 / 3.0:
++        return p + (q - p) * (2.0 / 3.0 - t) * 6.0
++    return p
++
++
++def rgb_to_hsl(r, g, b):
++    """把 RGB 整数通道（各 ∈ [0, 255]）换算成 (h, s, l)。
++
++    无色（r == g == b）时返回 h = 0.0、s = 0.0；h 落在 [0, 360)。
++    """
++    _require_int(r, "r")
++    _require_int(g, "g")
++    _require_int(b, "b")
++    for value, name in ((r, "r"), (g, "g"), (b, "b")):
++        if not 0 <= value <= 255:
++            raise ValueError("%s out of range [0, 255]: %r" % (name, value))
++    rf = r / 255.0
++    gf = g / 255.0
++    bf = b / 255.0
++    mx = max(rf, gf, bf)
++    mn = min(rf, gf, bf)
++    lightness = (mx + mn) / 2.0
++    if mx == mn:
++        # 无色：按约定 h = 0.0、s = 0.0。
++        return 0.0, 0.0, lightness
++    delta = mx - mn
++    if lightness > 0.5:
++        saturation = delta / (2.0 - mx - mn)
++    else:
++        saturation = delta / (mx + mn)
++    if mx == rf:
++        hue = (gf - bf) / delta
++        if gf < bf:
++            hue += 6.0
++    elif mx == gf:
++        hue = (bf - rf) / delta + 2.0
++    else:
++        hue = (rf - gf) / delta + 4.0
++    hue *= 60.0
++    hue %= 360.0
++    return hue, saturation, lightness
++
++
++def hsl_to_rgb(h, s, l):
++    """把 (h, s, l) 换算回 (r, g, b) 整数通道。
++
++    h ∈ [0, 360)（不含 360），s、l ∈ [0, 1]；
++    通道值按四舍五入半上 floor(x * 255 + 0.5) 取整。
++    """
++    _require_number(h, "h")
++    _require_number(s, "s")
++    _require_number(l, "l")
++    if not 0 <= h < 360:
++        raise ValueError("h out of range [0, 360): %r" % (h,))
++    if not 0 <= s <= 1:
++        raise ValueError("s out of range [0, 1]: %r" % (s,))
++    if not 0 <= l <= 1:
++        raise ValueError("l out of range [0, 1]: %r" % (l,))
++    if s == 0:
++        gray = math.floor(l * 255.0 + 0.5)
++        return (gray, gray, gray)
++    if l < 0.5:
++        q = l * (1.0 + s)
++    else:
++        q = l + s - l * s
++    p = 2.0 * l - q
++    hue = h / 360.0
++    red = _hue_to_rgb(p, q, hue + 1.0 / 3.0)
++    green = _hue_to_rgb(p, q, hue)
++    blue = _hue_to_rgb(p, q, hue - 1.0 / 3.0)
++    return (
++        math.floor(red * 255.0 + 0.5),
++        math.floor(green * 255.0 + 0.5),
++        math.floor(blue * 255.0 + 0.5),
++    )
+diff --git a/tests/test_hslconv.py b/tests/test_hslconv.py
+new file mode 100644
+index 0000000..78ab70a
+--- /dev/null
++++ b/tests/test_hslconv.py
+@@ -0,0 +1,188 @@
++"""hslconv 测试：RGB ↔ HSL 换算（逐字覆盖验收要点）。
++
++只依赖标准库（colorsys 用于交叉验证）。随机性质测试用固定种子，
++保证可复现。
++"""
++
++import colorsys
++import math
++import random
++
++import pytest
++
++from hslconv import hsl_to_rgb, rgb_to_hsl
++
++
++# ---------------------------------------------------------------------------
++# rgb_to_hsl 已知值
++# ---------------------------------------------------------------------------
++
++
++def test_rgb_to_hsl_red():
++    assert rgb_to_hsl(255, 0, 0) == (0.0, 1.0, 0.5)
++
++
++def test_rgb_to_hsl_green():
++    h, s, l = rgb_to_hsl(0, 255, 0)
++    assert h == pytest.approx(120.0, abs=1e-9)
++    assert s == pytest.approx(1.0, abs=1e-9)
++    assert l == pytest.approx(0.5, abs=1e-9)
++
++
++def test_rgb_to_hsl_blue():
++    h, _s, _l = rgb_to_hsl(0, 0, 255)
++    assert h == pytest.approx(240.0, abs=1e-9)
++
++
++def test_rgb_to_hsl_yellow():
++    h, _s, _l = rgb_to_hsl(255, 255, 0)
++    assert h == pytest.approx(60.0, abs=1e-9)
++
++
++def test_rgb_to_hsl_black():
++    assert rgb_to_hsl(0, 0, 0) == (0.0, 0.0, 0.0)
++
++
++def test_rgb_to_hsl_white():
++    assert rgb_to_hsl(255, 255, 255) == (0.0, 0.0, 1.0)
++
++
++def test_rgb_to_hsl_gray_achromatic():
++    h, s, l = rgb_to_hsl(128, 128, 128)
++    assert s == pytest.approx(0.0, abs=1e-9)
++    assert l == pytest.approx(128 / 255, abs=1e-12)
++    # 无色约定：色相按 0.0 处理
++    assert h == 0.0
++
++
++def test_rgb_to_hsl_output_ranges():
++    rng = random.Random(7)
++    for _ in range(300):
++        r, g, b = (rng.randrange(256) for _ in range(3))
++        h, s, l = rgb_to_hsl(r, g, b)
++        assert 0 <= h < 360
++        assert 0 <= s <= 1
++        assert 0 <= l <= 1
++
++
++# ---------------------------------------------------------------------------
++# hsl_to_rgb 已知值
++# ---------------------------------------------------------------------------
++
++
++def test_hsl_to_rgb_red():
++    assert hsl_to_rgb(0, 1, 0.5) == (255, 0, 0)
++
++
++def test_hsl_to_rgb_blue():
++    assert hsl_to_rgb(240, 1, 0.5) == (0, 0, 255)
++
++
++def test_hsl_to_rgb_green_half_up_rounding():
++    # 120/360 位置的绿：G 通道恰好半值，须按半上取 128（非银行家舍入的 128 也对，
++    # 但 254.5 → 255 这类下例才是半上的判据）
++    assert hsl_to_rgb(120, 1, 0.25) == (0, 128, 0)
++
++
++def test_hsl_to_rgb_black():
++    assert hsl_to_rgb(0, 0, 0) == (0, 0, 0)
++
++
++def test_hsl_to_rgb_white():
++    assert hsl_to_rgb(0, 0, 1) == (255, 255, 255)
++
++
++def test_half_up_rounding_is_not_bankers_round():
++    """通道值必须四舍五入半上 floor(x*255+0.5)，不得用 round()（银行家舍入）。
++
++    灰色路径（s == 0）下通道值恰好是 floor(l*255+0.5)，故取 l = (k+0.5)/255
++    构造精确半值：k 为偶数时 round(k+0.5) 按银行家舍入取 k，半上须取 k+1。
++    """
++    for k in (0, 2, 126, 128, 130):
++        l = (k + 0.5) / 255
++        assert l * 255 == k + 0.5, "fixture must be an exact half tie"
++        assert hsl_to_rgb(0, 0, l) == (k + 1, k + 1, k + 1)
++        assert round(l * 255) == k  # 银行家舍入会取偶数 k（证明两者确实分歧）
++    # 半上口径本身：0.5 → 1、127.5 → 128、128.5 → 129
++    assert hsl_to_rgb(0, 0, 0.5 / 255)[0] == 1
++    assert hsl_to_rgb(0, 0, 127.5 / 255)[0] == 128
++    assert hsl_to_rgb(0, 0, 128.5 / 255)[0] == 129
++
++
++# ---------------------------------------------------------------------------
++# 性质测试
++# ---------------------------------------------------------------------------
++
++
++def test_rgb_to_hsl_matches_colorsys_hls_order():
++    """与标准库 colorsys（rgb_to_hls，注意其序为 HLS）逐分量一致；色相差按环形距离比。"""
++    rng = random.Random(42)
++    for _ in range(500):
++        r, g, b = (rng.randrange(256) for _ in range(3))
++        h, s, l = rgb_to_hsl(r, g, b)
++        ch, cl, cs = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
++        hue_diff = abs(h - ch * 360) % 360
++        hue_diff = min(hue_diff, 360 - hue_diff)
++        assert hue_diff <= 1e-9, (r, g, b, h, ch * 360)
++        assert s == pytest.approx(cs, abs=1e-12)
++        assert l == pytest.approx(cl, abs=1e-12)
++
++
++def test_hsl_to_rgb_matches_colorsys_hls_to_rgb():
++    """与 colorsys.hls_to_rgb 逐分量一致（colorsys 返回 float，比较前同样按半上取整）。"""
++    rng = random.Random(43)
++    for _ in range(500):
++        h = rng.random() * 360.0
++        s = rng.random()
++        l = rng.random()
++        ours = hsl_to_rgb(h, s, l)
++        expected = tuple(
++            math.floor(v * 255.0 + 0.5)
++            for v in colorsys.hls_to_rgb(h / 360.0, l, s)
++        )
++        assert ours == expected, (h, s, l, ours, expected)
++
++
++def test_roundtrip_within_one_per_channel():
++    """hsl_to_rgb(*rgb_to_hsl(r, g, b)) 与原值逐通道差 ≤ 1。"""
++    rng = random.Random(44)
++    for _ in range(500):
++        r, g, b = (rng.randrange(256) for _ in range(3))
++        back = hsl_to_rgb(*rgb_to_hsl(r, g, b))
++        for orig, restored in zip((r, g, b), back):
++            assert abs(orig - restored) <= 1, ((r, g, b), back)
++
++
++# ---------------------------------------------------------------------------
++# 入参契约
++# ---------------------------------------------------------------------------
++
++
++def test_rgb_to_hsl_out_of_range_raises_value_error():
++    with pytest.raises(ValueError):
++        rgb_to_hsl(256, 0, 0)
++    with pytest.raises(ValueError):
++        rgb_to_hsl(0, -1, 0)
++
++
++def test_hsl_to_rgb_out_of_range_raises_value_error():
++    with pytest.raises(ValueError):
++        hsl_to_rgb(360, 1, 0.5)  # 360 不含
++    with pytest.raises(ValueError):
++        hsl_to_rgb(-1, 1, 0.5)
++    with pytest.raises(ValueError):
++        hsl_to_rgb(0, 1.5, 0.5)
++    with pytest.raises(ValueError):
++        hsl_to_rgb(0, 1, -0.1)
++
++
++def test_rgb_to_hsl_wrong_type_raises_type_error():
++    with pytest.raises(TypeError):
++        rgb_to_hsl(1.5, 0, 0)
++    with pytest.raises(TypeError):
++        rgb_to_hsl(True, 0, 0)
++
++
++def test_hsl_to_rgb_wrong_type_raises_type_error():
++    with pytest.raises(TypeError):
++        hsl_to_rgb("0", 1, 0.5)

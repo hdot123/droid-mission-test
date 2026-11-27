@@ -1,7 +1,15 @@
 """VAL-P3-001: the S-2 machine gates — checks-exit.json non-zero (exit 127
-exception kept) and checks-failed.marker present — live on the adopt side,
-so a red mandated check can never ride a pass through adoption even when the
-validator's verdict says pass (HARD RULE no longer rests on model obedience).
+exception kept) and a red-by-content checks-failed.marker — live on the
+adopt side, so a red mandated check can never ride a pass through adoption
+even when the validator's verdict says pass (HARD RULE no longer rests on
+model obedience).
+
+The marker gate is judged by CONTENT (marker_verdict, M3 scrutiny round-1
+BLK-1): the verify step records missing deliverables in the same marker as
+red checks, and prep's checks-exit.json is the green authority — only a
+genuinely red marker (non-zero check exit / malformed status / unparseable
+bytes) fails the process; a missing-file-only marker with all-0 exits does
+not (covered end to end in tests/test_salvage_marker_content.py).
 
 Three-state pin per gate (red / green / 127 exception), plus the fail-closed
 corner cases:
@@ -176,11 +184,11 @@ def test_missing_checks_exit_with_no_exit_field_is_green(
 # --- checks-failed.marker gate ----------------------------------------------
 
 
-def test_marker_presence_overrides_pass_verdict(
+def test_marker_red_by_content_overrides_pass_verdict(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """A checks-failed.marker in the pack fails the process regardless of the
-    validator's pass verdict."""
+    """A checks-failed.marker whose content reads RED fails the process
+    regardless of the validator's pass verdict."""
     wall_path, work = _env(tmp_path, monkeypatch)
     (work / "packs" / IDS[2] / "checks-failed.marker").write_text(
         "checks failed\n", encoding="utf-8"
@@ -201,8 +209,8 @@ def test_marker_presence_overrides_pass_verdict(
 def test_marker_red_beats_exit_127_exception(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """Marker and 127 together: the marker alone is red; the 127 exception
-    does not launder it."""
+    """Red-by-content marker and 127 together: the marker alone is red; the
+    127 exception does not launder it."""
     wall_path, work = _env(tmp_path, monkeypatch)
     (work / "packs" / IDS[0] / "checks-exit.json").write_text(
         json.dumps([{"command": "pytest -q", "exit": 127}]), encoding="utf-8"
@@ -278,8 +286,9 @@ def test_fail_verdict_with_red_gate_stays_fail(
 def test_gate_failure_flips_overall_even_when_pytest_zero(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """A red gate alone turns the round red (overall=fail, empty failed list
-    never happens): failed_process_ids carries the gated pid."""
+    """A red-by-content marker alone turns the round red (overall=fail,
+    empty failed list never happens): failed_process_ids carries the gated
+    pid."""
     wall_path, work = _env(tmp_path, monkeypatch)
     (work / "packs" / IDS[0] / "checks-failed.marker").write_text("m", encoding="utf-8")
 

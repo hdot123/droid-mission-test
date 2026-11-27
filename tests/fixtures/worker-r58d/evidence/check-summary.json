@@ -1,0 +1,21 @@
+{
+  "schema_version": "check-summary.v1",
+  "per_card": {
+    "hslconv": {
+      "passed": 21,
+      "skipped": 0
+    },
+    "radixsort": {
+      "passed": 11,
+      "skipped": 0
+    },
+    "uuencode": {
+      "passed": 10,
+      "skipped": 0
+    }
+  },
+  "totals": {
+    "passed": 384,
+    "skipped": 2
+  }
+}

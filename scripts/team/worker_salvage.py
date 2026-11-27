@@ -1,0 +1,606 @@
+#!/usr/bin/env python3
+"""Prep salvage packer (M2): machine-write the evidence files a killed
+worker session never wrote.
+
+Round-58 D-run death chain: the hslconv worker died to the 900s wall before
+writing team/handoffs/<pid>.md and team/status/<pid>.json, yet prep's own
+machine re-run of the card's checks on the merged branch was green — the
+work was machine-verified and only the evidence files were missing (the
+validator's blocked scan is a file-presence scan, nothing more). Per the
+PR #836 artifact-first principle, on-disk product completeness outranks the
+session's exit code.
+
+The guard is machine-judged and fail-closed; ALL of:
+  1. the worker branch was merged into the candidate (merged true);
+  2. no out-of-bounds files (F-1 clean);
+  3. prep's own re-run of the card checks is all green (checks-exit.json
+     exists and every entry exited 0) AND the pack's checks-failed.marker,
+     if present, reads RED BY CONTENT (marker_verdict: a non-zero check
+     exit, a malformed-status problem, or unparseable bytes refuses; the
+     worker-side marker is the verify record, prep's checks-exit.json is
+     the green authority — a marker whose problems are only the missing
+     evidence files does not refuse, M3 scrutiny round-1 BLK-1. A worker
+     whose checks went red is never salvaged into done; scrutiny NC-3);
+  4. the session terminated abnormally — any of:
+       - the wall records session_outcome=wall_killed for the pid;
+       - a non-zero droid exit code (covers the exit-1 droid self-crash and
+         exit-137 SIGKILL families, which classify_session_outcome keeps
+         "ok" — scrutiny round-1: an abnormal END is abnormal regardless of
+         the outcome classifier's death-family bookkeeping);
+       - a true stream_tail_marker (interrupted tool_error as last event).
+  There is deliberately NO stream-text lever here (scrutiny NC-4): the
+  completion-absence clause was dead in production (prep never downloads
+  the stream) and fail-open when exercised (it could override an explicit
+  exit-0 + ok wall and fired on an empty string). The wall's own outcome
+  fields are the only termination evidence. A session that exited 0 with
+  outcome ok is a NORMAL end: its missing files are a compliance failure
+  and stay blocked (the control fixture pins that — salvage must never
+  paper over it).
+
+Products (only files missing from the pack; worker-written files are never
+touched — evidence immutability. The one exception: an on-disk status.json
+that is NOT a completed status (state done + non-empty checks matching the
+card) is a skeleton the prompt template asks workers to write first — the
+machine render replaces it and the handoff discloses that, M3 scrutiny
+round-1 BLK-3):
+  - status.json: the worker protocol shape (id/title/state/files/checks)
+    rendered from the process card + checks-exit.json + checks-output.txt;
+  - handoff.md: machine rendering of the machine facts, explicitly declaring
+    the salvage origin, the death cause AS THE WALL RECORDED IT (scrutiny
+    BLK-1: wall_killed -> the 900s wall-kill text; ok + non-zero exit -> the
+    exit code and "death family not machine-determined", never 900s /
+    wall_killed wording; job_wall_cancelled -> the job-envelope
+    cancellation; marker-only -> the interrupted tool_error), and the green
+    machine re-verification — never impersonating a worker-written handoff;
+  - manifest: pack.salvaged_from_machine=true, pack.handoff/status refreshed,
+    complete recomputed, and the new files hashed into manifest.sha256 so the
+    pack's own digest covers the salvaged bytes (validator precheck verifies
+    every entry against disk; prep's os.walk hashing picks the files up too).
+
+Any guard miss, salvage error, or already-present file keeps the pack
+exactly as prep produced it (blocked stays blocked). The salvage call site
+in team.yml wraps this in try/except: a salvage defect must fail the pack
+closed, never kill prep.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from pathlib import Path
+from typing import Any
+
+from marker_verdict import (
+    MARKER_NAME,
+    marker_problems,
+    marker_red_detail,
+    marker_verdict_red,
+)
+
+SALVAGE_MARKER_KEY = "salvaged_from_machine"
+STATUS_NAME = "status.json"
+HANDOFF_NAME = "handoff.md"
+
+_COMPLETED_RE = re.compile(r"(\d+) passed(?:, (\d+) skipped)?")
+
+
+def _load_json(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def checks_all_green(checks_exit: Any, pack_dir: Path) -> bool:
+    """True only when checks-exit.json parses to a non-empty list and every
+    entry exited 0 (the machine verdict on the merged tree, independent of
+    the dead session)."""
+    doc = checks_exit if checks_exit is not None else _load_json(pack_dir / "checks-exit.json")
+    if not isinstance(doc, list) or not doc:
+        return False
+    return all(isinstance(e, dict) and e.get("exit") == 0 for e in doc)
+
+
+def abnormal_termination_evidence(
+    workers: dict | None,
+    pid: str,
+) -> tuple[bool, list[str]]:
+    """(abnormal_end, evidence lines) for the guard's fourth condition.
+
+    workers = the wall's workers slice (session_outcome_by_pid /
+    droid_exit_code_by_pid / stream_tail_marker_by_pid). The wall's own
+    outcome fields are the only evidence face: prep has no stream artifact,
+    and the stream clause was removed as fail-open dead code (scrutiny
+    NC-4)."""
+    evidence: list[str] = []
+    w = workers or {}
+    outcome = (w.get("session_outcome_by_pid") or {}).get(pid)
+    exit_code = (w.get("droid_exit_code_by_pid") or {}).get(pid)
+    tail_marker = (w.get("stream_tail_marker_by_pid") or {}).get(pid)
+    if outcome == "wall_killed":
+        evidence.append(f"session_outcome=wall_killed (droid exit {exit_code})")
+    if isinstance(exit_code, int) and exit_code != 0 and outcome != "wall_killed":
+        evidence.append(f"non-zero droid_exit_code={exit_code} (no normal completion)")
+    if tail_marker is True:
+        evidence.append("stream_tail_marker=true (interrupted tool_error is the last event)")
+    return (bool(evidence), evidence)
+
+
+def evaluate_salvage_guard(
+    *,
+    info: dict,
+    pack_dir: Path,
+    card: dict,
+    workers: dict | None,
+    pid: str,
+) -> tuple[bool, list[str]]:
+    """The five machine-judged conditions. Returns (allowed, reasons); the
+    reasons always name the satisfied/failed conditions so the prep log and
+    the salvage handoff carry the full decision trail. ``card`` is accepted
+    for call-site symmetry; the guard conditions read only machine facts."""
+    reasons: list[str] = []
+    if not info.get("branch_present"):
+        reasons.append(f"guard: branch_present=false for {pid}")
+    if not info.get("merged"):
+        reasons.append(f"guard: branch not merged for {pid}")
+    oob = info.get("out_of_bounds") or []
+    if oob:
+        reasons.append(f"guard: out_of_bounds files for {pid}: {', '.join(oob)}")
+    doc = _load_json(pack_dir / "checks-exit.json")
+    green = checks_all_green(doc, pack_dir)
+    if not green:
+        if not isinstance(doc, list) or not doc:
+            reasons.append(
+                f"guard: machine checks not all green for {pid} (checks-exit.json missing/empty)"
+            )
+        else:
+            bad = ", ".join(
+                f"exit {e.get('exit')}" for e in doc if not (isinstance(e, dict) and e.get("exit") == 0)
+            )
+            reasons.append(
+                f"guard: machine checks not all green for {pid} ({bad or 'malformed entries'})"
+            )
+    marker = info.get("checks_failed_marker") is True or (pack_dir / MARKER_NAME).is_file()
+    marker_red = False
+    if marker:
+        # Marker verdicts are by CONTENT, never by presence (M3 scrutiny
+        # round-1 BLK-1): the verify step records missing deliverables in
+        # the same marker as red checks, and the worker-side marker is the
+        # record — prep's own checks-exit.json above is the green
+        # authority. Only a genuinely red marker (non-zero check exit /
+        # malformed status / unparseable bytes) refuses; a missing-file-only
+        # marker is noted in the decision trail and salvage continues.
+        marker_text: str | None = None
+        marker_path = pack_dir / MARKER_NAME
+        if marker_path.is_file():
+            marker_text = marker_path.read_text(encoding="utf-8", errors="replace")
+        marker_red = marker_verdict_red(marker_text)
+        if marker_red:
+            reasons.append(
+                f"guard: {MARKER_NAME} red by content for {pid} "
+                f"({marker_red_detail(marker_text)}) — red checks are never "
+                "salvaged into done"
+            )
+        else:
+            kinds = sorted({p["kind"] for p in marker_problems(marker_text)})
+            reasons.append(
+                f"guard: {MARKER_NAME} present for {pid} but green by content "
+                f"(problems: {', '.join(kinds)}); checks-exit.json all-0 is "
+                "the green authority"
+            )
+    abnormal, ev = abnormal_termination_evidence(workers, pid)
+    if abnormal:
+        reasons.append(f"guard: abnormal session end for {pid}: " + "; ".join(ev))
+    else:
+        outcome = ((workers or {}).get("session_outcome_by_pid") or {}).get(pid)
+        exit_code = ((workers or {}).get("droid_exit_code_by_pid") or {}).get(pid)
+        if outcome is None and exit_code is None:
+            reasons.append(
+                f"guard: no session outcome facts on the wall for {pid} "
+                "— salvage needs a recorded abnormal end"
+            )
+        else:
+            reasons.append(
+                f"guard: normal session end for {pid} "
+                f"(session_outcome={outcome}, droid exit {exit_code}) — missing files are a "
+                "compliance failure, not salvageable"
+            )
+    ok_conditions = [
+        bool(info.get("branch_present")),
+        bool(info.get("merged")),
+        not bool(oob),
+        green,
+        not marker_red,
+        abnormal,
+    ]
+    return all(ok_conditions), reasons
+
+
+def build_status(*, card: dict, checks_exit: list, checks_output: str) -> dict:
+    """The worker protocol status shape, rendered from machine facts only.
+
+    checks[] mirrors checks-exit.json command-for-command; each result is
+    that command's captured pytest summary line (when one exists) plus the
+    exit code prep recorded — the numbers always agree with checks-exit.json
+    because they come from it."""
+    per_command: dict[str, str] = {}
+    for block in checks_output.split("$ ")[1:]:
+        lines = block.splitlines()
+        if lines:
+            per_command[lines[0].strip()] = "\n".join(lines[1:]).strip()
+    checks = []
+    for entry in checks_exit:
+        cmd = entry.get("command", "")
+        body = per_command.get(cmd, "")
+        summary = ""
+        for line in reversed(body.splitlines()):
+            if _COMPLETED_RE.search(line):
+                summary = line.strip()
+                break
+        exit_part = f"[exit {entry.get('exit')}]" if entry.get("exit") is not None else ""
+        result = " ".join(p for p in (summary, exit_part) if p)
+        checks.append({"command": cmd, "result": result})
+    return {
+        "id": card.get("id"),
+        "title": card.get("title"),
+        "state": "done",
+        "files": list(card.get("files") or []),
+        "checks": checks,
+    }
+
+
+def _death_cause_narrative(workers: dict, pid: str, exit_part: str) -> str:
+    """The 死因 section body, rendered ONLY from what the wall recorded.
+
+    Machine-rendered artifacts may assert machine-judged facts, nothing
+    more (scrutiny BLK-1): the old unconditional text claimed a 900s wall
+    kill for every salvage, including shapes whose wall said ok + exit 1
+    (droid self-crash) or job_wall_cancelled — false statements about a
+    death the machine never judged. Each family opens with the recorded
+    outcome fact, then states exactly its family's evidence.
+    """
+    w = workers or {}
+    outcome = (w.get("session_outcome_by_pid") or {}).get(pid)
+    exit_code = (w.get("droid_exit_code_by_pid") or {}).get(pid)
+    tail_marker = (w.get("stream_tail_marker_by_pid") or {}).get(pid)
+    outcome_part = f"session_outcome={outcome}" if outcome is not None else "session_outcome 未记录"
+    structural = (
+        "这不是工序产出失败，而是落盘责任绑在一个会异常终结的会话上的结构性缺口。\n"
+        "补卷守卫条件（分支已并、无越界、机器 checks 全绿、checks-failed 标记按内容判定非红、"
+        "会话异常终结）\n全部由机器判定为真后方才补卷。"
+    )
+    if outcome == "wall_killed":
+        opening = f"墙面记录 session_outcome=wall_killed（droid exit {exit_part}）：工人会话在落盘之前"
+        if exit_code in (124, 137):
+            # 124/137 are the GNU timeout TERM / --kill-after SIGKILL
+            # signature — the machine-proven 900s wall kill family.
+            opening += "被 900s 进程墙杀死"
+        else:
+            # Any other exit has no machine-proven wall-kill family: assert
+            # the exit code and say so, never the 900s arithmetic.
+            opening += f"以退出码 {exit_code} 异常终结——死族非机器判定，本件不宣称墙杀族。"
+        if tail_marker is True:
+            opening += "\n（末事件为被中断的 tool_error，会话异常终结）。"
+        else:
+            opening += "\n（墙面上无中断尾事件记录，会话异常终结）。"
+        return f"{opening}{structural}"
+    if outcome == "job_wall_cancelled":
+        return (
+            f"墙面记录 session_outcome=job_wall_cancelled（droid exit {exit_part}）："
+            "工序的 job 被整体 job 墙\n（25m 上限）取消，会话终止于落盘之前。"
+            f"{structural}"
+        )
+    if isinstance(exit_code, int) and exit_code != 0:
+        return (
+            f"墙面记录 {outcome_part}（droid exit {exit_part}）：工人会话以该退出码异常终结于"
+            "落盘之前。\n死族非机器判定——墙面上没有墙杀证据，本件不宣称墙杀。"
+            f"{structural}"
+        )
+    if tail_marker is True:
+        return (
+            f"墙面记录 {outcome_part}（droid exit {exit_part}）：会话末事件为被中断的 "
+            'tool_error（"Tool execution was interrupted"），\n会话异常终结于落盘之前。'
+            f"{structural}"
+        )
+    return (
+        f"墙面记录 {outcome_part}（droid exit {exit_part}）：会话异常终结于落盘之前。"
+        f"{structural}"
+    )
+
+
+def _never_written_sentence(pid: str, missing_files: tuple[str, ...]) -> str:
+    """The 落盘 sentence derived from the actually missing set — a partial
+    pack (the worker did write one file) is never described as a total
+    loss (scrutiny BLK-1)."""
+    names = {
+        HANDOFF_NAME: f"team/handoffs/{pid}.md",
+        STATUS_NAME: f"team/status/{pid}.json",
+    }
+    missing = [names[m] for m in missing_files if m in names]
+    if not missing:
+        return ""
+    if len(missing) == 1:
+        return missing[0]
+    return "、".join(missing)
+
+
+def build_handoff(
+    *,
+    pid: str,
+    card: dict,
+    checks_exit: list,
+    checks_output: str,
+    branch: str,
+    workers: dict,
+    missing_files: tuple[str, ...] = (HANDOFF_NAME, STATUS_NAME),
+    status_replaced_skeleton: bool = False,
+) -> str:
+    checks_lines = "\n".join(
+        f"- `$ {e.get('command', '')}` — [exit {e.get('exit')}]" for e in checks_exit
+    )
+    exit_code = ((workers or {}).get("droid_exit_code_by_pid") or {}).get(pid)
+    exit_part = str(exit_code) if exit_code is not None else "unknown"
+    outcome = ((workers or {}).get("session_outcome_by_pid") or {}).get(pid)
+    outcome_fact = f"session_outcome={outcome}" if outcome is not None else "session_outcome 未记录"
+    tail_marker = ((workers or {}).get("stream_tail_marker_by_pid") or {}).get(pid)
+    if outcome is not None:
+        abnormal_fact = f"异常终结（{outcome_fact}，droid exit {exit_part}）"
+    elif tail_marker is True:
+        abnormal_fact = f"异常终结（中断尾事件在场，droid exit {exit_part}）"
+    else:
+        abnormal_fact = f"异常终结（droid exit {exit_part}）"
+    never_written = _never_written_sentence(pid, missing_files)
+    if never_written:
+        count = "两件" if len(missing_files) > 1 else "一件"
+        never_clause = (
+            f"{count}协议证据文件（{never_written}）在写出之前会话已终结（落盘未遂）"
+        )
+        backfill_clause = "由机器依据 prep 重跑的机器事实补齐缺失的协议证据文件"
+    else:
+        never_clause = "本件为唯一缺失件（落盘未遂）"
+        backfill_clause = "由机器依据 prep 重跑的机器事实补齐本件"
+    salvaged_paths = {
+        HANDOFF_NAME: f"evidence/packs/{pid}/handoff.md",
+        STATUS_NAME: f"evidence/packs/{pid}/status.json",
+    }
+    backfilled = "、".join(salvaged_paths[m] for m in missing_files if m in salvaged_paths)
+    skeleton_clause = (
+        "\n> status 由机器渲染（工人在盘状态为未完成骨架，state=in_progress/checks 空——"
+        "机器渲染 status 替换骨架）。"
+        if status_replaced_skeleton
+        else ""
+    )
+    return f"""# Handoff: {pid}（补卷器生成）
+
+> **本件由补卷器（scripts/team/worker_salvage.py）机器生成，非工人亲写。**
+> 工人会话{abnormal_fact}，
+> {never_clause}；按盘上产物完整性优先原则（salvaged_from_machine=true），
+> {backfill_clause}（{backfilled}）。{skeleton_clause}
+> 本件不含任何工人自述。
+
+## 工序（process card）
+
+- id: `{pid}`
+- title: {card.get('title', '')}
+- files: {', '.join(f'`{f}`' for f in (card.get('files') or []))}
+- branch: `{branch}`（已由 prep 合并进候选分支）
+
+## 死因（机器记录）
+
+{_death_cause_narrative(workers, pid, exit_part)}
+
+## 机器复验（全绿）
+
+prep 在合并后的候选树上重跑了本卡全部 checks，逐条退出码 0：
+
+{checks_lines}
+
+机器复验结论：**代码与测试经机器复验全绿**，采认所需的缺失协议证据文件
+（{backfilled}）由本补卷器补齐；补卷产物已记入 manifest
+（salvaged_from_machine=true），其字节被 manifest sha256 覆盖。
+
+## 机器 checks 输出（截录）
+
+```
+{checks_output.strip()}
+```
+"""
+
+
+def _status_is_worker_final(status: Any, card: dict) -> bool:
+    """True only for a completed worker status: state done, non-empty
+    checks whose commands are exactly the card's. Everything else (the
+    in_progress skeleton the prompt template tells workers to write first,
+    empty or mismatched checks, unparseable bytes) is intermediate state —
+    the machine renders the final status from prep's facts (M3 scrutiny
+    round-1 BLK-3: a salvaged pack must never carry a status that says the
+    work is unfinished beside a handoff saying it is)."""
+    if not isinstance(status, dict):
+        return False
+    if status.get("state") != "done":
+        return False
+    checks = status.get("checks")
+    if not isinstance(checks, list) or not checks:
+        return False
+    card_cmds = list(card.get("checks") or [])
+    entry_cmds = [c.get("command") for c in checks if isinstance(c, dict)]
+    return bool(card_cmds) and entry_cmds == card_cmds
+
+
+def salvage_packs(
+    *,
+    evidence_dir: Path | str,
+    cards: dict[str, dict],
+    packs: dict[str, dict],
+    wall: dict | None,
+    manifest: dict | None = None,
+) -> list[dict]:
+    """Guard + write the missing evidence files for every salvageable pack.
+
+    Mutates ``packs`` in place (pack flags, complete, salvaged_from_machine)
+    and writes status.json / handoff.md. When ``manifest`` is given (it owns
+    ``packs``), the salvaged bytes are hashed into manifest["sha256"]; in the
+    workflow the caller then persists the manifest as usual (its own os.walk
+    hashing covers the new files anyway). Returns one report per pack. Only
+    missing files are written; a worker-written handoff or status is never
+    touched. Per-pack exceptions are caught: salvage failure degrades to
+    "not salvaged" (fail-closed), never kills prep.
+    """
+    workers = (wall or {}).get("workers") or {}
+    evidence_dir = Path(evidence_dir)
+    reports: list[dict] = []
+    for pid, info in packs.items():
+        if not isinstance(info, dict):
+            continue
+        card = cards.get(pid)
+        reasons: list[str] = []
+        salvaged = False
+        if card is None:
+            reasons.append(f"no process card for {pid}; salvage skipped")
+        elif info.get(SALVAGE_MARKER_KEY):
+            reasons.append(f"pack already salvaged for {pid}")
+        else:
+            try:
+                salvaged, reasons = _salvage_one(
+                    pid=pid,
+                    info=info,
+                    card=card,
+                    evidence_dir=evidence_dir,
+                    workers=workers,
+                )
+            except Exception as exc:  # fail-closed: salvage must never kill prep
+                salvaged = False
+                reasons = [f"salvage error for {pid}: {exc}"]
+        reports.append({"pid": pid, "salvaged": salvaged, "reasons": reasons})
+    if manifest is not None:
+        refresh_manifest_digests(evidence_dir, manifest)
+    return reports
+
+
+def _salvage_one(
+    *,
+    pid: str,
+    info: dict,
+    card: dict,
+    evidence_dir: Path,
+    workers: dict,
+) -> tuple[bool, list[str]]:
+    pack_dir = evidence_dir / "packs" / pid
+    allowed, reasons = evaluate_salvage_guard(
+        info=info,
+        pack_dir=pack_dir,
+        card=card,
+        workers=workers,
+        pid=pid,
+    )
+    if not allowed:
+        return False, reasons
+    pack = info.setdefault("pack", {})
+    to_write: list[str] = []
+    status_on_disk = _load_json(pack_dir / STATUS_NAME)
+    status_final = pack.get("status") and _status_is_worker_final(status_on_disk, card)
+    if not status_final:
+        to_write.append(STATUS_NAME)
+    if not pack.get("handoff"):
+        to_write.append(HANDOFF_NAME)
+    if not to_write:
+        return False, reasons + [f"pack files already present for {pid}"]
+    status_replaced_skeleton = bool(pack.get("status")) and STATUS_NAME in to_write
+
+    checks_exit = _load_json(pack_dir / "checks-exit.json") or []
+    checks_output = ""
+    out_path = pack_dir / "checks-output.txt"
+    if out_path.is_file():
+        checks_output = out_path.read_text(encoding="utf-8", errors="replace")
+
+    if STATUS_NAME in to_write:
+        status = build_status(card=card, checks_exit=checks_exit, checks_output=checks_output)
+        (pack_dir / STATUS_NAME).write_text(
+            json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        pack["status"] = True
+        if status_replaced_skeleton:
+            reasons.append(
+                f"salvage: replaced {STATUS_NAME} skeleton (the on-disk worker "
+                "status was an unfinished skeleton) with the machine render"
+            )
+        else:
+            reasons.append(f"salvage: wrote {STATUS_NAME} from machine facts")
+    if HANDOFF_NAME in to_write:
+        handoff = build_handoff(
+            pid=pid,
+            card=card,
+            checks_exit=checks_exit,
+            checks_output=checks_output,
+            branch=info.get("branch", ""),
+            workers=workers,
+            missing_files=tuple(to_write),
+            status_replaced_skeleton=status_replaced_skeleton,
+        )
+        (pack_dir / HANDOFF_NAME).write_text(handoff, encoding="utf-8")
+        pack["handoff"] = True
+        reasons.append(f"salvage: wrote {HANDOFF_NAME} (machine origin declared)")
+    info[SALVAGE_MARKER_KEY] = True
+    info["complete"] = (
+        all(pack.values()) and bool(info.get("merged")) and not (info.get("out_of_bounds") or [])
+    )
+    return True, reasons
+
+
+def refresh_manifest_digests(evidence_dir: Path | str, manifest: dict) -> list[str]:
+    """Hash the salvaged pack files into manifest["sha256"] so the pack's own
+    digest covers them (validator precheck verifies every entry vs disk).
+    Returns the sha keys added."""
+    added: list[str] = []
+    for pid, info in (manifest.get("packs") or {}).items():
+        if not isinstance(info, dict) or not info.get(SALVAGE_MARKER_KEY):
+            continue
+        pack = info.get("pack") or {}
+        for name in (STATUS_NAME, HANDOFF_NAME):
+            flag = "status" if name == STATUS_NAME else "handoff"
+            if not pack.get(flag):
+                continue
+            path = Path(evidence_dir) / "packs" / pid / name
+            if not path.is_file():
+                continue
+            key = f"evidence/packs/{pid}/{name}"
+            manifest["sha256"][key] = hashlib.sha256(path.read_bytes()).hexdigest()
+            added.append(key)
+    return added
+
+
+def main() -> int:
+    """CLI face for offline replay: point it at an extracted evidence tree."""
+    import argparse
+
+    p = argparse.ArgumentParser(description="Salvage missing worker evidence packs")
+    p.add_argument("--evidence-dir", default="evidence")
+    p.add_argument("--wall", default="foreman-run.json")
+    p.add_argument("--plan", default="evidence/plan.json")
+    args = p.parse_args()
+    evidence_dir = Path(args.evidence_dir)
+    manifest_path = evidence_dir / "manifest.json"
+    manifest = _load_json(manifest_path)
+    wall = _load_json(Path(args.wall))
+    plan = _load_json(Path(args.plan))
+    if manifest is None or plan is None:
+        print("missing manifest or plan; nothing to salvage", flush=True)
+        return 1
+    cards = {proc.get("id"): proc for proc in (plan.get("processes") or [])}
+    reports = salvage_packs(
+        evidence_dir=evidence_dir,
+        cards=cards,
+        packs=manifest["packs"],
+        wall=wall,
+        manifest=manifest,
+    )
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    for r in reports:
+        print(json.dumps(r, ensure_ascii=False), flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

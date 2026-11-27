@@ -563,6 +563,7 @@ jobs:
           PY
 
       - name: Worker executes exactly one process card
+        id: session
         env:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
@@ -570,36 +571,35 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           set -o pipefail
+          # Single-source prompt (M3): the round-1/round-2 prompts were
+          # byte-identical heredoc copies; both rounds now render from
+          # scripts/team/worker_prompt_template.py (validator-face
+          # precedent). The heredoc seeds its own import path from
+          # GITHUB_WORKSPACE (CI-fidelity: no PYTHONPATH in the runner
+          # shell), like the validator render steps.
           python3 - <<'PY'
-          import json, os
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from worker_prompt_template import build_worker_prompt
           proc = json.loads(os.environ["PROCESS_JSON"])
           ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
           issue = ev.get("issue") or {}
-          retry = proc.get("retry_note") or ""
-          retry_block = f"\n          Retry context (this card was re-dispatched after validation):\n          {retry}\n" if retry else ""
-          prompt = f"""You are a WORKER on a development team under the foreman pattern. Execute exactly one process card (your sub-issue #{proc.get('sub_issue_number', '?')}). Do not do any other process. Do not expand scope.
-
-          Work order: #{os.environ['ISSUE_NUMBER']} {issue.get('title','')}
-          Work order body:
-          {issue.get('body') or ''}
-
-          Your process card:
-          {json.dumps(proc, ensure_ascii=False, indent=2)}
-          {retry_block}
-          Instructions:
-          - Create or edit only these files: {', '.join(proc['files'])}
-          - Also write exactly these two team files:
-            1. team/handoffs/{proc['id']}.md — a self-contained handoff with: what was requested, what you did, what you did not do, checks you ran and their results, and anything the validator must pay attention to.
-            2. team/status/{proc['id']}.json — valid JSON with keys: id, title, state ("done"), files (array), checks (array of objects with command and result).
-          - Run your process checks before finishing: {'; '.join(proc['checks'])}
-          - Checks may run tests across the whole repo. Files like verdict.json or verdict.md that appear in the repo root because of those checks are pipeline by-products of the test suite, not your deliverables. They are outside your card, so delete them before finishing (e.g. rm -f verdict.json verdict.md).
-          - Do not commit or push; the workflow will do that.
-          - Do not modify files owned by other processes.
-          - Be efficient: at most 20 tool calls.
-          """
+          prompt = build_worker_prompt(
+              proc,
+              issue_number=os.environ["ISSUE_NUMBER"],
+              issue_title=issue.get("title", ""),
+              issue_body=issue.get("body") or "",
+          )
           open("worker-prompt.txt", "w").write(prompt)
           PY
+          # F1: capture the session's own exit code (GNU timeout exit 124 =
+          # 900s wall kill) for the delta step, then re-exit with it so the
+          # job-level conclusion keeps failing on a killed session.
+          set +e
           timeout --signal=TERM --kill-after=30s 900s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
+          DROID_EXIT=$?
+          echo "exit_code=${DROID_EXIT:-0}" >> "$GITHUB_OUTPUT"
+          exit "${DROID_EXIT:-0}"
 
       - name: Upload worker droid stream (W-13)
         if: always()
@@ -610,11 +610,26 @@ jobs:
           if-no-files-found: warn
 
       - name: Verify process checks and handoff
+        # r58 (M3): this step had no if guard, so a wall-killed session step
+        # (exit 124) skipped it entirely — the job's machine re-check
+        # channel never executed and produced zero evidence lines.
+        # always() keeps it running after the session step failed. The
+        # cancelled exclusion (M3 scrutiny round-1 BLK-2) keeps the 25m
+        # job-wall path byte-identical to the pre-guard shape: a cancelled
+        # job must not grow a marker (the delta step's RESULT override and
+        # the classifier both key on it), so cancelled ->
+        # job_wall_cancelled -> cancel_reason=job_wall_25m ->
+        # prep_should_run=False survives untouched. The step's own v2.6.3
+        # semantics (record problems in the marker, never fail here) are
+        # unchanged, and the commit step below still gates on !cancelled().
+        if: always() && !cancelled()
         env:
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
         run: |
           python3 - <<'PY'
           import json, os, subprocess, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from marker_verdict import write_marker
           if subprocess.run(["python3", "-m", "pytest", "--version"],
                             capture_output=True).returncode != 0:
               print("pytest missing; installing deterministically (v2.1)")
@@ -638,6 +653,14 @@ jobs:
           # failed workers' branches into one candidate.) Only the harness
           # failure above (pytest cannot be installed at all) keeps the
           # hard exit: without pytest no check can run at all.
+          # The marker body is written through marker_verdict (M3 scrutiny
+          # round-1 BLK-1): its consumers (salvage guard, adopt gate)
+          # classify the marker by CONTENT — a non-zero check exit or a
+          # malformed status is red, a missing-expected-file-only marker
+          # (this step's output for a green worker whose two protocol files
+          # never got written) is not. The job-level semantics are
+          # unchanged: the trailing step still fails the job whenever the
+          # marker FILE exists.
           marker = f"team/status/{proc['id']}.checks-failed.marker"
           # v2.6.3 (review fix): delete any pre-existing marker for this
           # process before checking. A stale marker (e.g. one that reached
@@ -669,11 +692,7 @@ jobs:
           if problems:
               os.makedirs(os.path.dirname(marker), exist_ok=True)
               with open(marker, "w") as fh:
-                  fh.write(f"process: {proc['id']}\n")
-                  for cmd, rc in check_results:
-                      fh.write(f"check exit {rc}: {cmd}\n")
-                  for problem in problems:
-                      fh.write(f"problem: {problem}\n")
+                  fh.write(write_marker(proc["id"], check_results, problems))
               print("worker verification found problems; marker written, "
                     "evidence will still be committed and the job failed afterwards:")
               for problem in problems:
@@ -803,14 +822,22 @@ jobs:
         env:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
+          DROID_EXIT_CODE: ${{ steps.session.outputs.exit_code }}
         run: |
           RESULT="success"
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
-          if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
+          # BLK-2 (M3 scrutiny round-1): the marker override must never
+          # un-cancel a cancelled job — the cancelled verdict is judged
+          # first and the marker line is guarded, so a verify marker that
+          # landed before the 25m job wall cannot flip
+          # cancelled/job_wall_cancelled/cancel_reason=job_wall_25m into
+          # failure/wall_killed and re-open prep.
+          if [ "$RESULT" != "cancelled" ] && [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
           PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
-            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
+            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json \
+            --stream worker-stream.jsonl
           if [ "$RESULT" = "cancelled" ]; then
-            python3 -c "import json; d=json.load(open('worker-delta.json')); d['cancel_reason']='job_wall_25m'; json.dump(d,open('worker-delta.json','w'))"
+            python3 -c "import json; d=json.load(open('worker-delta.json')); d['cancel_reason']='job_wall_25m'; d['session_outcome']='job_wall_cancelled'; json.dump(d,open('worker-delta.json','w'))"
           fi
 
       - name: Upload worker delta artifact
@@ -1180,6 +1207,42 @@ jobs:
               }
               info["complete"] = all(info["pack"].values()) and info["merged"] and not info.get("out_of_bounds")
 
+          # M2 (worker-salvage-packer): salvage pass — for packs whose session
+          # died abnormally (900s wall kill and family) while the machine
+          # evidence is green (branch merged, F-1 clean, prep's own re-run of
+          # the card checks all exit 0), machine-write the two evidence files
+          # the session never did, mark salvaged_from_machine, and refresh
+          # complete. Fail-closed: guard miss / error / already-present file
+          # keeps the pack exactly as produced above (blocked stays blocked);
+          # a salvage defect must never kill prep (try/except). The pack
+          # digests below (os.walk over evidence/) cover the salvaged bytes,
+          # so the validator precheck's per-entry verification sees them.
+          try:
+              import sys as _salvage_sys
+              _salvage_sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+              from worker_salvage import salvage_packs as _worker_salvage_packs
+              salvage_cards = {p["id"]: p for p in plan["processes"]}
+              salvage_wall = json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else None
+              salvage_reports = _worker_salvage_packs(
+                  evidence_dir="evidence",
+                  cards=salvage_cards,
+                  packs=packs,
+                  wall=salvage_wall,
+              )
+              for _r in salvage_reports:
+                  print("salvage:", json.dumps(_r, ensure_ascii=False))
+              if any(_r["salvaged"] for _r in salvage_reports):
+                  # persist the salvage markers + refreshed pack flags so the
+                  # manifest digests below cover the salvaged bytes and the
+                  # validator precheck sees complete packs (PR #836 principle:
+                  # the on-disk manifest is what downstream judges).
+                  _m = json.load(open("evidence/manifest.json"))
+                  _m["packs"] = packs
+                  json.dump(_m, open("evidence/manifest.json", "w"), ensure_ascii=False, indent=2)
+                  print("salvage: manifest packs updated (salvaged_from_machine markers)")
+          except Exception as _salvage_exc:
+              print(f"worker salvage pass failed (packs left as produced): {_salvage_exc}")
+
           # I-4 (round54-root-cure): check-summary.json is the authoritative
           # count — per-card passed/skipped from the focused check prep ran
           # for that card, merged totals from the real pytest output. Written
@@ -1495,6 +1558,7 @@ jobs:
           import hashlib, json, os, re, sys
           sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
           from salvage_assemble import assemble_assembled_draft
+          from attribution_reason import blocked_reason, blocked_report_line
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -1536,9 +1600,16 @@ jobs:
                       sys.exit(1)
                   verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
                                    "reason": entry.get("reason", "")}
+          # F1b: the wall carries the worker-delta outcome facts — read it
+          # (workdir copy first, r58 shape, else the wall-in artifact) so
+          # the blocked-reason template branches on machine-recorded death
+          # facts (neutral attribution when wall-killed, current wording
+          # otherwise, fail-closed).
+          wall = json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else (json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else {})
+
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+                               "reason": blocked_reason(pid, missing, wall=wall)}
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
@@ -1614,7 +1685,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+              lines.append(blocked_report_line(pid, missing, wall=wall))
           if unattributed_failure:
               trunc_note = "（已截断至 50 条）" if failing_tests_truncated else ""
               lines.append(f"无主失败：逐工序全 pass 但合并 pytest 退出码 {pytest_exit}，失败测试见 verdict.json 的 failing_tests（共 {len(failing_tests)} 条{trunc_note}）。")
@@ -1892,6 +1963,7 @@ jobs:
           import hashlib, json, os, sys
           sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
           from salvage_assemble import assemble_assembled_draft
+          from attribution_reason import blocked_reason, blocked_report_line
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -1932,9 +2004,16 @@ jobs:
                       sys.exit(1)
                   verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
                                    "reason": entry.get("reason", "")}
+          # F1b: the wall carries the worker-delta outcome facts — read it
+          # (workdir copy first, r58 shape, else the wall-in artifact) so
+          # the blocked-reason template branches on machine-recorded death
+          # facts (neutral attribution when wall-killed, current wording
+          # otherwise, fail-closed).
+          wall = json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else (json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else {})
+
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+                               "reason": blocked_reason(pid, missing, wall=wall)}
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
@@ -1976,7 +2055,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+              lines.append(blocked_report_line(pid, missing, wall=wall))
           if unattributed_failure:
               lines.append("无主失败：逐工序全 pass 但合并 pytest 退出码非 0（见 verdict.json）。")
           if conflicts:
@@ -2137,7 +2216,14 @@ jobs:
           cp dl/team-verdict-*/verdict.json stage/verdict.json
           tar -xzf dl/team-evidence-*/evidence.tar.gz -C stage
           python3 - <<'PY'
-          import json, os
+          # self-contained import path (CI-fidelity contract): the inline
+          # heredoc runs in a fresh interpreter with no PYTHONPATH and no
+          # scripts/team on sys.path, so it must seed the repo import path
+          # itself (GITHUB_WORKSPACE-anchored, '.'-floored, like the four
+          # merge verdict steps).
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from attribution_reason import neutral_attribution
           plan = json.load(open("stage/plan-v1.json"))
           verdict = json.load(open("stage/verdict.json"))
           failed = [p["id"] for p in verdict["processes"] if p["verdict"] != "pass"]
@@ -2207,6 +2293,30 @@ jobs:
               except Exception as exc:
                   print("could not derive blocked causes from manifest:", exc)
           blocked_cause_line = ""
+          # F1b: surface the worker-delta outcome facts from the wall in the
+          # replan input panel. The foreman's redispatch/revise call stays
+          # its own, but its evidence base now includes the machine-recorded
+          # session outcome (a wall-killed worker is no longer invisible at
+          # the attribution step — the r58 death shape).
+          wall = json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else (json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else {})
+          workers = wall.get("workers") or {}
+          so_map = workers.get("session_outcome_by_pid") or {}
+          ec_map = workers.get("droid_exit_code_by_pid") or {}
+          outcome_facts_lines = ""
+          if not so_map and not ec_map:
+              outcome_facts_lines = "Worker session outcome facts (machine-recorded, from the ForemanRun wall): none — no session outcome facts recorded on the wall (pre-delta run)."
+          else:
+              outcome_facts_lines = (
+                  "Worker session outcome facts (machine-recorded, from the ForemanRun wall):\n"
+                  + "\n".join(
+                      "- " + neutral_attribution(pid=pid, exit_code=ec_map.get(pid))
+                      if so_map.get(pid) == "wall_killed"
+                      else "- process `" + pid + "`: session_outcome: " + str(so_map.get(pid)) + ", droid_exit_code: " + str(ec_map.get(pid)) + "."
+                      for pid in sorted(set(so_map) | set(ec_map))
+                  )
+              )
+              if attribution_mode:
+                  outcome_facts_lines += "\nAttribution note: these outcome facts are part of your evidence base — a wall_killed outcome means the worker session was machine-killed, not that the worker ignored its protocol."
           if blocked_by_pid:
               blocked_cause_line = " ".join(
                   f"For process `{pid}`: {cause}." for pid, cause in sorted(blocked_by_pid.items())
@@ -2255,6 +2365,10 @@ jobs:
           - stage/verdict.json (the validator verdict per process)
           - stage/manifest.json and stage/packs/<id>/ (evidence packs, including failed ones)
           - stage/pytest-output.txt (full test evidence)
+          - wall-in/foreman-run.json (the ForemanRun wall: worker session
+            outcome facts below are machine-recorded there, not judged)
+
+          {outcome_facts_lines}
 
           {failed_line}{conflicts_line}{blocked_cause_line}
 
@@ -2638,6 +2752,7 @@ jobs:
           PY
 
       - name: Worker executes exactly one process card (round 2)
+        id: session
         env:
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
@@ -2645,36 +2760,31 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           set -o pipefail
+          # Single-source prompt (M3): same module as round 1 — the two
+          # heredocs were byte-identical, so the rounds share one template.
           python3 - <<'PY'
-          import json, os
+          import json, os, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from worker_prompt_template import build_worker_prompt
           proc = json.loads(os.environ["PROCESS_JSON"])
           ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
           issue = ev.get("issue") or {}
-          retry = proc.get("retry_note") or ""
-          retry_block = f"\n          Retry context (this card was re-dispatched after validation):\n          {retry}\n" if retry else ""
-          prompt = f"""You are a WORKER on a development team under the foreman pattern. Execute exactly one process card (your sub-issue #{proc.get('sub_issue_number', '?')}). Do not do any other process. Do not expand scope.
-
-          Work order: #{os.environ['ISSUE_NUMBER']} {issue.get('title','')}
-          Work order body:
-          {issue.get('body') or ''}
-
-          Your process card:
-          {json.dumps(proc, ensure_ascii=False, indent=2)}
-          {retry_block}
-          Instructions:
-          - Create or edit only these files: {', '.join(proc['files'])}
-          - Also write exactly these two team files:
-            1. team/handoffs/{proc['id']}.md — a self-contained handoff with: what was requested, what you did, what you did not do, checks you ran and their results, and anything the validator must pay attention to.
-            2. team/status/{proc['id']}.json — valid JSON with keys: id, title, state ("done"), files (array), checks (array of objects with command and result).
-          - Run your process checks before finishing: {'; '.join(proc['checks'])}
-          - Checks may run tests across the whole repo. Files like verdict.json or verdict.md that appear in the repo root because of those checks are pipeline by-products of the test suite, not your deliverables. They are outside your card, so delete them before finishing (e.g. rm -f verdict.json verdict.md).
-          - Do not commit or push; the workflow will do that.
-          - Do not modify files owned by other processes.
-          - Be efficient: at most 20 tool calls.
-          """
+          prompt = build_worker_prompt(
+              proc,
+              issue_number=os.environ["ISSUE_NUMBER"],
+              issue_title=issue.get("title", ""),
+              issue_body=issue.get("body") or "",
+          )
           open("worker-prompt.txt", "w").write(prompt)
           PY
+          # F1: capture the session's own exit code (GNU timeout exit 124 =
+          # 900s wall kill) for the delta step, then re-exit with it so the
+          # job-level conclusion keeps failing on a killed session.
+          set +e
           timeout --signal=TERM --kill-after=30s 900s ~/.local/bin/droid exec --auto high -m "custom:DeepSeek-V4.1-Flash-Go" --output-format stream-json "$(cat worker-prompt.txt)" | tee worker-stream.jsonl
+          DROID_EXIT=$?
+          echo "exit_code=${DROID_EXIT:-0}" >> "$GITHUB_OUTPUT"
+          exit "${DROID_EXIT:-0}"
 
       - name: Upload worker droid stream (W-13)
         if: always()
@@ -2685,11 +2795,26 @@ jobs:
           if-no-files-found: warn
 
       - name: Verify process checks and handoff
+        # r58 (M3): this step had no if guard, so a wall-killed session step
+        # (exit 124) skipped it entirely — the job's machine re-check
+        # channel never executed and produced zero evidence lines.
+        # always() keeps it running after the session step failed. The
+        # cancelled exclusion (M3 scrutiny round-1 BLK-2) keeps the 25m
+        # job-wall path byte-identical to the pre-guard shape: a cancelled
+        # job must not grow a marker (the delta step's RESULT override and
+        # the classifier both key on it), so cancelled ->
+        # job_wall_cancelled -> cancel_reason=job_wall_25m ->
+        # prep_should_run=False survives untouched. The step's own v2.6.3
+        # semantics (record problems in the marker, never fail here) are
+        # unchanged, and the commit step below still gates on !cancelled().
+        if: always() && !cancelled()
         env:
           PROCESS_JSON: ${{ toJSON(matrix.process) }}
         run: |
           python3 - <<'PY'
           import json, os, subprocess, sys
+          sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+          from marker_verdict import write_marker
           if subprocess.run(["python3", "-m", "pytest", "--version"],
                             capture_output=True).returncode != 0:
               print("pytest missing; installing deterministically (v2.1)")
@@ -2713,6 +2838,14 @@ jobs:
           # failed workers' branches into one candidate.) Only the harness
           # failure above (pytest cannot be installed at all) keeps the
           # hard exit: without pytest no check can run at all.
+          # The marker body is written through marker_verdict (M3 scrutiny
+          # round-1 BLK-1): its consumers (salvage guard, adopt gate)
+          # classify the marker by CONTENT — a non-zero check exit or a
+          # malformed status is red, a missing-expected-file-only marker
+          # (this step's output for a green worker whose two protocol files
+          # never got written) is not. The job-level semantics are
+          # unchanged: the trailing step still fails the job whenever the
+          # marker FILE exists.
           marker = f"team/status/{proc['id']}.checks-failed.marker"
           # v2.6.3 (review fix): delete any pre-existing marker for this
           # process before checking. A stale marker (e.g. one that reached
@@ -2744,11 +2877,7 @@ jobs:
           if problems:
               os.makedirs(os.path.dirname(marker), exist_ok=True)
               with open(marker, "w") as fh:
-                  fh.write(f"process: {proc['id']}\n")
-                  for cmd, rc in check_results:
-                      fh.write(f"check exit {rc}: {cmd}\n")
-                  for problem in problems:
-                      fh.write(f"problem: {problem}\n")
+                  fh.write(write_marker(proc["id"], check_results, problems))
               print("worker verification found problems; marker written, "
                     "evidence will still be committed and the job failed afterwards:")
               for problem in problems:
@@ -2878,12 +3007,16 @@ jobs:
         env:
           PROCESS_ID: ${{ matrix.process.id }}
           JOB_STATUS: ${{ job.status }}
+          DROID_EXIT_CODE: ${{ steps.session.outputs.exit_code }}
         run: |
           RESULT="success"
           if [ "$JOB_STATUS" = "cancelled" ]; then RESULT="cancelled"; fi
-          if [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
+          # BLK-2 (M3 scrutiny round-1): same guard as round 1 — a marker
+          # must never un-cancel a cancelled job.
+          if [ "$RESULT" != "cancelled" ] && [ -f "team/status/${PROCESS_ID}.checks-failed.marker" ]; then RESULT="failure"; fi
           PYTHONPATH=scripts/team python3 scripts/team/write_worker_delta.py \
-            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json
+            --pid "$PROCESS_ID" --result "$RESULT" --out worker-delta.json \
+            --stream worker-stream.jsonl
 
       - name: Upload worker2 delta artifact
         if: always()
@@ -3307,6 +3440,44 @@ jobs:
                               "checks_output": True}
               info["complete"] = all(info["pack"].values()) and info["merged"] and not info.get("out_of_bounds")
 
+          # M2 (worker-salvage-packer): salvage pass (round 2) — same guard
+          # and products as round 1, but scoped to the RERUN processes only
+          # (a rerun card's worker2 session may have died before writing its
+          # evidence while prep's machine re-run is green); carried-over
+          # packs keep their round-1 bytes untouched (their salvage, if any,
+          # happened in round 1 and is already attested in their manifest).
+          # Fail-closed: guard miss / error keeps the pack as produced above.
+          try:
+              import sys as _salvage_sys
+              _salvage_sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
+              from worker_salvage import salvage_packs as _worker_salvage_packs
+              from merge_worker_deltas import round2_salvage_wall as _round2_salvage_wall
+              salvage_cards = {pid: rerun[pid] for pid in rerun}
+              salvage_wall = json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else None
+              # NC-5 fail-closed: judge round-2 salvage on the round-2 snapshot
+              # restricted to pids whose round-2 delta actually arrived — a
+              # stale round-1 wall_killed must never authorize a round-2 salvage.
+              salvage_workers = _round2_salvage_wall(salvage_wall)
+              salvage_wall = {"workers": salvage_workers} if salvage_wall is not None else None
+              salvage_reports = _worker_salvage_packs(
+                  evidence_dir="evidence",
+                  cards=salvage_cards,
+                  packs=packs,
+                  wall=salvage_wall,
+              )
+              for _r in salvage_reports:
+                  print("salvage (round 2):", json.dumps(_r, ensure_ascii=False))
+              if any(_r["salvaged"] for _r in salvage_reports):
+                  # persist the salvage markers + refreshed pack flags so the
+                  # manifest digest walk below covers the salvaged bytes and
+                  # the validator precheck sees complete packs.
+                  _m = json.load(open("evidence/manifest.json"))
+                  _m["packs"] = packs
+                  json.dump(_m, open("evidence/manifest.json", "w"), ensure_ascii=False, indent=2)
+                  print("salvage (round 2): manifest packs updated (salvaged_from_machine markers)")
+          except Exception as _salvage_exc:
+              print(f"worker salvage pass failed (packs left as produced): {_salvage_exc}")
+
           # I-4 (round54-root-cure): check-summary.json is the authoritative
           # count (round 2) — per-card counts from the focused check, written
           # AFTER the per-card checks loop (scrutiny PR2-2) and BEFORE the
@@ -3624,6 +3795,7 @@ jobs:
           import hashlib, json, os, sys
           sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
           from salvage_assemble import assemble_assembled_draft
+          from attribution_reason import blocked_reason, blocked_report_line
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -3662,9 +3834,16 @@ jobs:
                       sys.exit(1)
                   verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
                                    "reason": entry.get("reason", "")}
+          # F1b: the wall carries the worker-delta outcome facts — read it
+          # (workdir copy first, r58 shape, else the wall-in artifact) so
+          # the blocked-reason template branches on machine-recorded death
+          # facts (neutral attribution when wall-killed, current wording
+          # otherwise, fail-closed).
+          wall = json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else (json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else {})
+
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+                               "reason": blocked_reason(pid, missing, wall=wall)}
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
@@ -3732,7 +3911,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+              lines.append(blocked_report_line(pid, missing, wall=wall))
           for fl in flips:
               lines.append(f"⚠ 翻案：`{fl['id']}` 第 1 轮 pass → 第 2 轮 {fl['round2_verdict']}（一轮理由：{fl['round1_reason']}；二轮理由：{fl['round2_reason']}）")
           if conflicts:
@@ -4015,6 +4194,7 @@ jobs:
           import hashlib, json, os, sys
           sys.path.insert(0, os.path.join(os.environ.get("GITHUB_WORKSPACE", "."), "scripts", "team"))
           from salvage_assemble import assemble_assembled_draft
+          from attribution_reason import blocked_reason, blocked_report_line
           expected_sha = os.environ.get("EXPECTED_MANIFEST_SHA", "")
           actual_sha = hashlib.sha256(open("work/manifest.json", "rb").read()).hexdigest()
           if not expected_sha or actual_sha != expected_sha:
@@ -4055,9 +4235,16 @@ jobs:
                       sys.exit(1)
                   verdicts[pid] = {"id": pid, "verdict": entry["verdict"],
                                    "reason": entry.get("reason", "")}
+          # F1b: the wall carries the worker-delta outcome facts — read it
+          # (workdir copy first, r58 shape, else the wall-in artifact) so
+          # the blocked-reason template branches on machine-recorded death
+          # facts (neutral attribution when wall-killed, current wording
+          # otherwise, fail-closed).
+          wall = json.load(open("foreman-run.json")) if os.path.exists("foreman-run.json") else (json.load(open("wall-in/foreman-run.json")) if os.path.exists("wall-in/foreman-run.json") else {})
+
           for pid, missing in blocked.items():
               verdicts[pid] = {"id": pid, "verdict": "blocked",
-                               "reason": "料不齐（没料不验收）：缺 " + ", ".join(missing) + "（缺件归该工序补齐）"}
+                               "reason": blocked_reason(pid, missing, wall=wall)}
 
           expected_ids = sorted(p["id"] for p in plan["processes"])
           if sorted(verdicts) != expected_ids:
@@ -4114,7 +4301,7 @@ jobs:
           lines += ["", "## 机器闸与缺料判定（脚本）", "",
                     f"全量 pytest 退出码：{pytest_exit}（非 0 时 overall 强制 fail）"]
           for pid, missing in blocked.items():
-              lines.append(f"- `{pid}`：blocked — 料不齐，缺 {', '.join(missing)}（缺件归该工序补齐）")
+              lines.append(blocked_report_line(pid, missing, wall=wall))
           for fl in flips:
               lines.append(f"⚠ 翻案：`{fl['id']}` 第 1 轮 pass → 第 2 轮 {fl['round2_verdict']}（一轮理由：{fl['round1_reason']}；二轮理由：{fl['round2_reason']}）")
           if conflicts:

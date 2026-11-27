@@ -1,0 +1,74 @@
+worker-r58d fixture: round-58 D-run worker-seat death chain (read-only verbatim-attested source).
+
+Source: CI run 45812793849 (issue #929, round-58 D run), pulled once from CI
+artifacts on 2026-11-26 into the local forensics corpus. Every file in the
+sha256 table below is byte-identical to its counterpart in that corpus, with
+exactly one exception: worker-delta.json is a byte-exact rebuild from the
+run's job-log "delta:" line (the CI delta artifact was not pulled), written
+in write_worker_delta.py's own output format. Do not
+re-pull CI, do not regenerate, do not edit: these bytes attest what the run
+actually recorded. All consumers treat this fixture as read-only replay
+data; tests that need a mutated copy must copy it to a temporary directory.
+
+What it attests (the worker-seat death chain the pipeline must repair):
+- worker session hslconv died to the 900s process wall mid-checks-run:
+  droid exit 124 (GNU timeout), last stream event is the tool_error
+  "Error: Tool execution was interrupted" (52-event worker-stream.jsonl,
+  vendored whole).
+- The CI-recorded worker delta (worker-delta.json, byte-exact rebuild from
+  the job-log "delta:" line — the CI delta artifact was not pulled) carries
+  no death fact: {"pid": "hslconv",
+  "result": "failure"} — no exit code, no timeout signal, no stream tail.
+  worker-delta-wall-killed.json is the structured target shape (not from
+  CI; the field contract for the F1 delta extension): session_outcome
+  wall_killed / droid_exit_code 124 / stream_tail_marker true.
+- prep merged the worker branch and re-ran both checks green before the
+  session died: evidence/packs/hslconv/checks-exit.json (both exit 0),
+  checks-output.txt (21 passed / 384 passed, 2 skipped), check-summary
+  totals {passed: 384, skipped: 2}. manifest packs.hslconv: branch_present
+  + merged true, pack.handoff + pack.status false, complete false —
+  machine-verified work orphaned by the wall kill.
+
+Vendored scope: hslconv one-round evidence members (manifest.json,
+evidence/packs/hslconv/*, check-summary, pytest-output/exit,
+candidate-branch, plan.json). The two sibling packs (radixsort, uuencode)
+are NOT vendored — their sha256 keys stay attested in manifest.json
+following the r53c attested-debt pattern (see
+test_fixture_manifest_hash_lifecycle.py).
+
+Used by (the real consumer test files):
+- tests/test_worker_r58d_fixtures.py — fixture integrity, digest
+  reconciliation, death-shape assertions, control-shape contrast
+- tests/test_fixture_manifest_hash_lifecycle.py — manifest sha256 keys
+  stay resolvable in-repo (the vendored path is exercised, not debt)
+- tests/test_foreman_wall_worker_delta_outcome.py — F1 delta/outcome
+  contract pinned against the real stream and the wall-killed delta
+- tests/test_replan_death_context_attribution.py — replan input face and
+  blocked-reason attribution replayed on the r58 wall shapes
+- tests/test_worker_salvage.py — salvage guard/acceptance chain, product
+  fields, manifest salvage marker, precheck replay (VAL-M2-002..006)
+- tests/test_r58d_e2e_replay.py — dead-chain and contrast end-to-end
+  replay (VAL-CROSS-001/002)
+- tests/test_verify_prep_salvage_chain.py — verify-step→marker→prep→guard
+  →adopt workflow-level chain, both shapes (BLK-1 fix pin), and the
+  marker-in-place e2e variant B
+
+sha256 vendor table (digest of each vendored file, two spaces, then the
+fixture-root-relative path). Among the root-level fixture files,
+worker-delta-wall-killed.json is the one synthetic member (the structured
+delta contract sample; its exact bytes are pinned by the test, deliberately
+not in this verbatim digest table). The fully synthetic contrast sub-fixture
+control-ok-missing/ declares its own synthetic status in
+control-ok-missing/README.txt and stays outside this verbatim scope:
+6c947d0c6ccdfede9335d5676b1101ae65d724104e8c324cdf630d3b5a191723  manifest.json
+e6bfecae1f7dedf8f3438b1bd8038154595a748988dcdb9a3dc32a08f6f788b5  worker-delta.json
+42806a6824d50d6512d9f395fc166b5bd6b0462b425f72f55153d57b3bf825e9  worker-stream.jsonl
+73ee8497faa03bed16986d6e2a063ef850b72eeafaae86e22d353faddfc4c0b1  evidence/candidate-branch.txt
+ca22acb1b735e840f5665bfe28aeb3e53a55d83ad9bd942e68f6f7f9a513bde4  evidence/check-summary.json
+a6102bad362a940b01344192b91b8d232af5bf6a486d85fd4b3b17df91afbb55  evidence/plan.json
+a183deedc124aa0a10f3ea439e868bd77c1de7bcbb8b74413ee706f163b89d07  evidence/packs/hslconv/checks-exit.json
+dfacff569a6640ec2bd26cf032111633414d41b12bc1dda1918df8043b8c0dcc  evidence/packs/hslconv/checks-output.txt
+af465132005883ccb84d4cfd6d266e5be1f12602ca01e977f724c1bd5196594d  evidence/packs/hslconv/diff.patch
+9023be3b6cbcefb357032493ea21ce751c39a8b228d255463ad36edb450b31ed  evidence/packs/hslconv/process-card.json
+5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9  evidence/pytest-exit.txt
+c29c4e6ed8bbf9ca8aafe5e7607be0b3667ff2181e912c9d0931fbb172a2e163  evidence/pytest-output.txt
