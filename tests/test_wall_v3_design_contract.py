@@ -1,0 +1,428 @@
+"""Design contract tests for 领班面墙 API 设计稿 v3.0 (mission F5/design-master).
+
+Pure additions (mission AGENTS.md boundary): asserts the structure and anchor
+resolvability of docs/领班制-面墙API设计稿-v3.md. The single data source is
+tests/fixtures/wall-v3/design-contract.json — edit the fixture and this file
+in the same change batch (schema-lock discipline).
+
+Anchor resolution: test-repo anchors resolve against the repo this test runs
+in; engine-repo anchors resolve against WALL_V3_ENGINE_REPO (default: the
+`infraro-core` checkout under the user home). The engine repo is a read-only
+reference that does not exist in CI, so engine anchors skip there — locally
+they must pass (VAL-MASTER-003: anchors verified on the real trees).
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+# Engine repo is a read-only reference checkout (mission environment); the
+# default resolves the same checkout without hardcoding an absolute home path.
+ENGINE_REPO_ROOT = Path(
+    os.environ.get("WALL_V3_ENGINE_REPO", str(Path.home() / "infraro-core"))
+).expanduser()
+FIXTURE_PATH = REPO_ROOT / "tests/fixtures/wall-v3/design-contract.json"
+
+
+def _load_fixture() -> dict:
+    return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+
+
+FIXTURE = _load_fixture()
+DOC_PATH = REPO_ROOT / FIXTURE["doc_path"]
+
+
+@pytest.fixture(scope="module")
+def doc_text() -> str:
+    return DOC_PATH.read_text(encoding="utf-8")
+
+
+def _section(text: str, header: str) -> str:
+    """Return the body of one `## ` section (up to the next `## ` heading)."""
+    start = text.index(header)
+    nxt = text.find("\n## ", start + len(header))
+    return text[start:nxt] if nxt != -1 else text[start:]
+
+
+# ---------------------------------------------------------------------------
+# Existence and version declaration (VAL-MASTER-001 / VAL-MASTER-006)
+# ---------------------------------------------------------------------------
+
+
+class TestDocExists:
+    def test_main_design_doc_exists(self):
+        assert DOC_PATH.is_file(), f"missing design doc: {DOC_PATH}"
+
+    def test_fixture_files_exist(self):
+        assert FIXTURE_PATH.is_file()
+
+
+class TestVersionDeclaration:
+    @pytest.mark.parametrize("marker", FIXTURE["preamble_markers"])
+    def test_preamble_declares_v3_lineage(self, doc_text: str, marker: str):
+        assert marker in doc_text, f"version/ban declaration marker missing: {marker!r}"
+
+    def test_no_full_length_secret_shapes_in_doc(self, doc_text: str):
+        # Zero-value rule: full-length token shapes must never appear; the
+        # registered I8-B dummy fragment (short prefix form) is allowed.
+        leak = re.search(
+            r"ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|"
+            r"github_pat_[A-Za-z0-9_]{20,}|fk-[A-Za-z0-9]{20,}",
+            doc_text,
+        )
+        assert leak is None, f"full-length secret-shaped value leaked at {leak.start() if leak else 0}"
+
+
+# ---------------------------------------------------------------------------
+# Three-piece structure: sections (VAL-MASTER-001)
+# ---------------------------------------------------------------------------
+
+
+class TestThreePieceSections:
+    @pytest.mark.parametrize("header", list(FIXTURE["sections"].values()))
+    def test_required_section_present(self, doc_text: str, header: str):
+        assert header in doc_text, f"required section missing: {header!r}"
+
+
+class TestDefaultDenyCharter:
+    @pytest.mark.parametrize("marker", FIXTURE["charter_markers"])
+    def test_charter_states_default_deny(self, doc_text: str, marker: str):
+        assert marker in doc_text, f"default-deny charter marker missing: {marker!r}"
+
+
+# ---------------------------------------------------------------------------
+# Ten hard rules placement (VAL-MASTER-001, cross-area mapping)
+# ---------------------------------------------------------------------------
+
+
+class TestTenHardRulesPlaced:
+    @pytest.mark.parametrize("rule", FIXTURE["hard_rules"])
+    def test_rule_has_placement_row(self, doc_text: str, rule: str):
+        assert f"| {rule} |" in doc_text, f"hard rule {rule} has no placement row"
+
+    def test_every_rule_maps_to_samples(self, doc_text: str):
+        mapping = _section(doc_text, "### 1.3 十条硬规则逐条落位映射")
+        rows = [
+            ln for ln in mapping.splitlines()
+            if ln.startswith("| ") and ("SL-" in ln or "RS-" in ln)
+        ]
+        assert len(rows) >= 10, f"expected ≥10 rule rows with sample refs, got {len(rows)}"
+
+
+# ---------------------------------------------------------------------------
+# Seat gates and M-CAP comparison matrix (VAL-GATES-001 / VAL-GATES-002)
+# ---------------------------------------------------------------------------
+
+
+class TestSevenSeatGateLists:
+    @pytest.mark.parametrize("seat", FIXTURE["seats"])
+    def test_seat_has_gate_section(self, doc_text: str, seat: str):
+        gates = _section(doc_text, FIXTURE["sections"]["gates"])
+        assert f"**{seat}**" in gates, f"seat {seat} has no gate entry"
+
+    @pytest.mark.parametrize("seat", FIXTURE["seats"])
+    def test_seat_has_default_deny_declaration(self, doc_text: str, seat: str):
+        gates = _section(doc_text, FIXTURE["sections"]["gates"])
+        seat_body_start = gates.index(f"**{seat}**")
+        nxt = gates.find(f"\n**", seat_body_start + 1)
+        body = gates[seat_body_start:nxt] if nxt != -1 else gates[seat_body_start:]
+        assert "default-deny" in body, f"seat {seat} lacks default-deny declaration"
+
+
+class TestComparisonMatrixFullCoverage:
+    def _matrix_rows(self, doc_text: str) -> dict[str, list[str]]:
+        matrix = _section(doc_text, "### 2.3 与引擎 M-CAP 的对位表")
+        rows: dict[str, list[str]] = {}
+        for line in matrix.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("|"):
+                continue
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            if cells and cells[0] in FIXTURE["matrix_keys"]:
+                rows[cells[0]] = cells[1:]
+        return rows
+
+    def test_all_keys_covered_for_all_seats(self, doc_text: str):
+        rows = self._matrix_rows(doc_text)
+        missing = [k for k in FIXTURE["matrix_keys"] if k not in rows]
+        assert not missing, f"matrix keys missing rows: {missing}"
+        for key in FIXTURE["matrix_keys"]:
+            cells = rows[key]
+            assert len(cells) == len(FIXTURE["seats"]), (
+                f"key {key}: expected {len(FIXTURE['seats'])} seat cells, got {len(cells)}"
+            )
+            assert all(cells), f"key {key} has empty cells"
+
+    def test_matrix_cells_match_fixture_baseline(self, doc_text: str):
+        rows = self._matrix_rows(doc_text)
+        for key, expected in FIXTURE["matrix_expected"].items():
+            for seat_idx, verdict in enumerate(expected):
+                cell = rows[key][seat_idx]
+                assert cell.startswith(verdict), (
+                    f"key {key} seat#{seat_idx}: {cell!r} does not carry fixture verdict {verdict!r}"
+                )
+
+    def test_boundary_event_declaration_present(self, doc_text: str):
+        assert "动门＝边界事件" in doc_text
+
+
+class TestExtraAndMissingGates:
+    def test_extra_gates_table_complete(self, doc_text: str):
+        gates = _section(doc_text, FIXTURE["sections"]["gates"])
+        extra = _section(gates, "### 2.4 多出的门总表")
+        n_rows = len([ln for ln in extra.splitlines() if re.match(r"^\| \d+ \|", ln)])
+        assert n_rows >= FIXTURE["extra_gates_rows"], f"extra-gates rows {n_rows} < {FIXTURE['extra_gates_rows']}"
+        assert extra.count("默认删") >= FIXTURE["extra_gates_rows"]
+        assert "单独呈" in extra
+
+    def test_default_delete_verdicts_present(self, doc_text: str):
+        gates = _section(doc_text, FIXTURE["sections"]["gates"])
+        baseline = sum(
+            row.count("多出默认删") for row in FIXTURE["matrix_expected"].values()
+        )
+        assert gates.count("多出默认删") >= baseline, (
+            f"matrix default-delete cell verdicts {gates.count('多出默认删')} < fixture baseline {baseline}"
+        )
+
+    def test_missing_gates_have_remediation(self, doc_text: str):
+        gates = _section(doc_text, FIXTURE["sections"]["gates"])
+        assert gates.count("缺门补齐") >= FIXTURE["missing_gates_rows"] * len(FIXTURE["seats"]) // 2
+        assert "补齐" in gates
+
+
+# ---------------------------------------------------------------------------
+# Handoff schemas (VAL-GATES-003)
+# ---------------------------------------------------------------------------
+
+
+class TestHandoffSchemas:
+    @pytest.mark.parametrize("schema_id", FIXTURE["schema_ids"])
+    def test_four_handoff_schemas_referenced(self, doc_text: str, schema_id: str):
+        assert schema_id in doc_text, f"handoff schema {schema_id} not referenced"
+
+    @pytest.mark.parametrize("marker", FIXTURE["handoff_markers"])
+    def test_handoff_principles_stated(self, doc_text: str, marker: str):
+        assert marker in doc_text, f"handoff principle marker missing: {marker!r}"
+
+
+# ---------------------------------------------------------------------------
+# Worker wrapper (VAL-GATES-004)
+# ---------------------------------------------------------------------------
+
+
+class TestWorkerWrapper:
+    @pytest.mark.parametrize("marker", FIXTURE["wrapper_markers"])
+    def test_wrapper_design_stated(self, doc_text: str, marker: str):
+        assert marker in doc_text, f"wrapper design marker missing: {marker!r}"
+
+
+# ---------------------------------------------------------------------------
+# Out-of-graph clearance + key registry (VAL-OOGRAPH-001)
+# ---------------------------------------------------------------------------
+
+
+class TestOutOfGraphClearance:
+    def _oog(self, doc_text: str) -> str:
+        return _section(doc_text, FIXTURE["sections"]["out_of_graph"])
+
+    @pytest.mark.parametrize("mark", FIXTURE["out_of_graph_marks"])
+    def test_six_artifacts_listed(self, doc_text: str, mark: str):
+        oog = self._oog(doc_text)
+        assert f"| {mark} |" in oog, f"out-of-graph item {mark} not listed"
+
+    def test_each_artifact_has_four_elements(self, doc_text: str):
+        oog = self._oog(doc_text)
+        for column in ("现位置锚", "图外性", "收编/禁绝", "责任席位"):
+            assert column in oog, f"four-element column missing: {column}"
+
+    @pytest.mark.parametrize("marker", FIXTURE["key_registry_markers"])
+    def test_key_registry_design_stated(self, doc_text: str, marker: str):
+        assert marker in doc_text, f"key registry marker missing: {marker!r}"
+
+
+# ---------------------------------------------------------------------------
+# Failure specs + absence-as-event (VAL-FSPEC-001)
+# ---------------------------------------------------------------------------
+
+
+class TestFailureSpecs:
+    @pytest.mark.parametrize("field", FIXTURE["failure_spec_markers"]["fields"])
+    def test_four_field_format_used_for_all_seats(self, doc_text: str, field: str):
+        fspec = _section(doc_text, FIXTURE["sections"]["failure_specs"])
+        assert field in fspec, f"failure-spec field {field!r} not stated in section"
+        seat_rows = [
+            ln for ln in fspec.splitlines()
+            if re.match(r"^\| (" + "|".join(FIXTURE["seats"]) + r") \|", ln)
+        ]
+        assert len(seat_rows) >= len(FIXTURE["seats"]), (
+            f"expected ≥{len(FIXTURE['seats'])} seat rows under the four-field table, got {len(seat_rows)}"
+        )
+
+    @pytest.mark.parametrize("marker", FIXTURE["failure_spec_markers"]["extra"])
+    def test_cure_merge_and_layer3_noted(self, doc_text: str, marker: str):
+        fspec = _section(doc_text, FIXTURE["sections"]["failure_specs"])
+        assert marker in fspec, f"failure-spec extra marker missing: {marker!r}"
+
+    @pytest.mark.parametrize("inv", FIXTURE["invariants"])
+    def test_seven_absence_invariants_listed(self, doc_text: str, inv: str):
+        assert inv in doc_text, f"invariant {inv} missing"
+
+
+# ---------------------------------------------------------------------------
+# Acceptance line: SL samples, latency, live evidence (VAL-FSPEC-002)
+# ---------------------------------------------------------------------------
+
+
+class TestMustDieSamples:
+    @pytest.mark.parametrize("sample", FIXTURE["sla_samples"])
+    def test_sl_family_indexed(self, doc_text: str, sample: str):
+        assert sample in doc_text, f"must-die sample {sample} missing from acceptance line"
+
+
+class TestEnforcementLatency:
+    @pytest.mark.parametrize("marker", FIXTURE["latency_markers"])
+    def test_latency_protocol_stated(self, doc_text: str, marker: str):
+        acceptance = _section(doc_text, FIXTURE["sections"]["acceptance"])
+        assert marker in acceptance, f"latency marker missing in acceptance section: {marker!r}"
+
+    def test_upper_bound_per_run_discipline(self, doc_text: str):
+        acceptance = _section(doc_text, FIXTURE["sections"]["acceptance"])
+        assert "N≥5" in acceptance
+        assert "实测" in acceptance
+
+
+class TestLiveEvidenceGate:
+    @pytest.mark.parametrize("marker", FIXTURE["live_evidence_markers"])
+    def test_no_number_no_build_criteria(self, doc_text: str, marker: str):
+        assert marker in doc_text, f"live-evidence marker missing: {marker!r}"
+
+
+# ---------------------------------------------------------------------------
+# Round-59 four problems regression (VAL-CROSS-001)
+# ---------------------------------------------------------------------------
+
+
+class TestFourProblemsPlaced:
+    @pytest.mark.parametrize("problem", FIXTURE["four_problems"], ids=lambda p: p["id"])
+    def test_problem_has_design_and_samples(self, doc_text: str, problem: dict):
+        for marker in problem["markers"]:
+            assert marker in doc_text, f"{problem['id']} marker missing: {marker!r}"
+
+    @pytest.mark.parametrize("rs", FIXTURE["regression_samples"])
+    def test_regression_samples_indexed(self, doc_text: str, rs: str):
+        assert rs in doc_text, f"regression sample {rs} missing"
+
+
+# ---------------------------------------------------------------------------
+# Swap-in criteria (VAL-CROSS-003)
+# ---------------------------------------------------------------------------
+
+
+class TestSwapInCriteria:
+    def test_three_criteria_sections_present(self, doc_text: str):
+        for heading in ("### 7.1 判据一：门清单不变", "### 7.2 判据二：旧封印测试整套全过", "### 7.3 判据三：失败规范对位"):
+            assert heading in doc_text, f"swap-in criterion heading missing: {heading!r}"
+
+    @pytest.mark.parametrize("marker", FIXTURE["swap_in_markers"])
+    def test_swap_in_markers_stated(self, doc_text: str, marker: str):
+        assert marker in doc_text, f"swap-in marker missing: {marker!r}"
+
+
+# ---------------------------------------------------------------------------
+# Engine unclosed-item ban (VAL-MASTER-007)
+# ---------------------------------------------------------------------------
+
+
+class TestEngineBanDeclaration:
+    @pytest.mark.parametrize("marker", FIXTURE["ban_markers"])
+    def test_ban_declaration_stated(self, doc_text: str, marker: str):
+        assert marker in doc_text, f"engine ban marker missing: {marker!r}"
+
+    def test_two_gate_wording_only(self, doc_text: str):
+        # R-29 evolution: citations must use the ruled two-gate wording, and
+        # the ban section must name both forbidden citation forms explicitly.
+        ban = _section(doc_text, "## §0b 引擎未闭合项禁抄声明")
+        assert "两门" in ban
+        assert "quality-gate" in ban and "substrate-gate-suite" in ban
+
+
+# ---------------------------------------------------------------------------
+# Ruling list (VAL-MASTER-001: 待大哥裁决清单)
+# ---------------------------------------------------------------------------
+
+
+class TestRulingList:
+    def test_ruling_section_present_with_items(self, doc_text: str):
+        rulings = _section(doc_text, FIXTURE["sections"]["rulings"])
+        n_rows = len([ln for ln in rulings.splitlines() if re.match(r"^\| \d+ \|", ln)])
+        assert n_rows >= 8, f"expected ≥8 ruling items, got {n_rows}"
+        assert "呈大哥裁" in rulings or "大哥" in rulings
+
+    @pytest.mark.parametrize("marker", FIXTURE["ruling_markers"])
+    def test_known_ruling_topics_covered(self, doc_text: str, marker: str):
+        assert marker in doc_text, f"ruling topic marker missing: {marker!r}"
+
+
+# ---------------------------------------------------------------------------
+# Anchor resolvability (VAL-MASTER-003)
+# ---------------------------------------------------------------------------
+
+
+def _anchor_params() -> list:
+    return [
+        pytest.param(a, id=f"{a['repo']}:{a['file']}:{a.get('line', 'exists')}")
+        for a in FIXTURE["anchors"]
+    ]
+
+
+class TestAnchorResolvability:
+    @staticmethod
+    def _resolve(repo_root: Path, anchor: dict) -> str | None:
+        path = repo_root / anchor["file"]
+        if not path.is_file():
+            return f"file not found: {path}"
+        if anchor.get("exists"):
+            return None
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        line = anchor["line"]
+        if not (1 <= line <= len(lines)):
+            return f"line {line} out of range ({len(lines)} lines) in {anchor['file']}"
+        window = lines[line - 1 : line + anchor.get("window", 0)]
+        needle = anchor["contains"]
+        if not any(needle in ln for ln in window):
+            preview = lines[line - 1][:120]
+            return (
+                f"anchor miss: {anchor['file']}:{line} expected {needle!r}; "
+                f"got {preview!r}"
+            )
+        return None
+
+    @pytest.mark.parametrize("anchor", _anchor_params())
+    def test_anchor_resolves(self, anchor: dict):
+        if anchor["repo"] == "engine" and not ENGINE_REPO_ROOT.is_dir():
+            pytest.skip(f"engine repo not present at {ENGINE_REPO_ROOT}")
+        root = REPO_ROOT if anchor["repo"] == "test" else ENGINE_REPO_ROOT
+        error = self._resolve(root, anchor)
+        assert error is None, error
+
+    def test_engine_anchors_not_silently_skipped_locally(self):
+        # VAL-MASTER-003 gate: when the engine repo is available (local dev,
+        # validator runs), engine anchors must actually be exercised.
+        if not ENGINE_REPO_ROOT.is_dir():
+            pytest.skip(f"engine repo not present at {ENGINE_REPO_ROOT}")
+        engine_anchors = [a for a in FIXTURE["anchors"] if a["repo"] == "engine"]
+        assert engine_anchors, "fixture declares no engine anchors"
+        failures = [msg for a in engine_anchors if (msg := self._resolve(ENGINE_REPO_ROOT, a))]
+        assert not failures, "engine anchor failures:\n" + "\n".join(failures)
+
+    def test_runtime_state_anchor_excluded(self):
+        # memory/ is memory-core runtime state (untracked, off-contract):
+        # it must stay out of the machine-checked anchor set.
+        files = {a["file"] for a in FIXTURE["anchors"]}
+        assert not any(f.startswith("memory/") for f in files)
