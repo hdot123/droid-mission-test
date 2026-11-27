@@ -1,0 +1,21 @@
+{
+  "id": "abacheck",
+  "title": "abacheck.py — ABA 路由号校验位（难度 L）",
+  "state": "done",
+  "files": [
+    "abacheck.py",
+    "tests/test_abacheck.py",
+    "team/handoffs/abacheck.md",
+    "team/status/abacheck.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_abacheck.py -q",
+      "result": "6 passed in 0.02s (exit 0)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "348 passed, 2 skipped in 19.65s (exit 0)"
+    }
+  ]
+}
