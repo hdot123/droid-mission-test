@@ -1,0 +1,21 @@
+{
+  "id": "numwords",
+  "title": "numwords.py — 整数转英文词（美式、无 and）",
+  "state": "done",
+  "files": [
+    "numwords.py",
+    "tests/test_numwords.py",
+    "team/handoffs/numwords.md",
+    "team/status/numwords.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_numwords.py -q",
+      "result": "passed: 25 tests, exit 0 (run via .venv/bin/python -m pytest; system python has no pytest)"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 162 passed, 1 skipped (pre-existing unrelated skip), exit 0"
+    }
+  ]
+}
