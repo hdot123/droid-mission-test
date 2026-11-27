@@ -1,0 +1,19 @@
+{
+  "id": "tapcode",
+  "title": "Tap code 敲击码组件 tapcode.py",
+  "state": "done",
+  "files": [
+    "tapcode.py",
+    "tests/test_tapcode.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_tapcode.py -q",
+      "result": "exit 0 — 19 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "exit 0 — 156 passed, 1 skipped in 14.93s"
+    }
+  ]
+}

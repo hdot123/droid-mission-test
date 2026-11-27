@@ -1,0 +1,21 @@
+{
+  "id": "decimaltime",
+  "title": "十进制时间互转组件 decimaltime.py",
+  "state": "done",
+  "files": [
+    "decimaltime.py",
+    "tests/test_decimaltime.py",
+    "team/handoffs/decimaltime.md",
+    "team/status/decimaltime.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_decimaltime.py -q",
+      "result": "passed: 32 passed in 0.03s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "passed: 169 passed, 1 skipped in 14.82s (1 skip is pre-existing)"
+    }
+  ]
+}
