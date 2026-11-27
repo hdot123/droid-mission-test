@@ -66,7 +66,7 @@
     "extra": ["根治", "第 3 层", "不可施工"]
   },
   "invariants": ["INV-1", "INV-2", "INV-3", "INV-4", "INV-5", "INV-6", "INV-7"],
-  "sla_samples": ["SL-1", "SL-2", "SL-3", "SL-4", "SL-5", "SL-6", "SL-7", "SL-8", "SL-9", "SL-10", "SL-11", "SL-12"],
+  "sla_samples": ["SL-1", "SL-2", "SL-3", "SL-4", "SL-5", "SL-6", "SL-7", "SL-8", "SL-9", "SL-10", "SL-11", "SL-12", "SL-13"],
   "live_evidence_markers": [
     "没有活验数字不算建成",
     "必死样本全红率",
@@ -292,5 +292,28 @@
   ],
   "excluded_from_anchors": [
     "memory/log/2026-11-27-sessions.md:586 —— memory-core 运行态（untracked，非契约面），设计稿只作证据指针引用，不入锚解析清单"
+  ],
+  "ledger_anchor_sources": [
+    {
+      "_comment": "out-of-graph-artifacts.md §3.2 [[key]] consumes 锚行（台账行锚随批登记，round-3 起与 §3.3 表 consumes 列同批增删——防台账锚单边漂移）",
+      "file": "docs/wall-v3/out-of-graph-artifacts.md",
+      "contains_prefix": ".github/workflows/"
+    },
+    {
+      "_comment": "同一台账 consumes 锚行内引用的测试仓 workflow 行（file:line 拆出后逐条解析）",
+      "file": ".github/workflows/team.yml",
+      "lines": [4431, 4441],
+      "contains": ["PROJECTS_STATE_PAT", "project_state_write"]
+    },
+    {
+      "file": ".github/workflows/env-check.yml",
+      "lines": [86, 195],
+      "contains": ["S_PROJECTS_STATE_PAT"]
+    },
+    {
+      "file": ".github/workflows/i8-zero-escape-live-orchestrator.yml",
+      "lines": [100, 182, 256, 308, 345],
+      "contains": "I8_TEAM_TRIGGER_PAT"
+    }
   ]
 }

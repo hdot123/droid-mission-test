@@ -520,6 +520,7 @@ class TestSeatProbeExplicitMapping:
         ("D-2 封章粘滞负例", "SL-13c"),
         ("human_stop 消费探针", "SL-13d"),
         ("pick fail-closed 变体探针", "SL-13e"),
+        ("droid 会话禁入探针", "SL-13"),
     ]
 
     def test_seat_gates_probe_clauses_name_sl_carrier(self):
@@ -576,6 +577,61 @@ class TestKeyLedgerFullTreeScan:
         assert "三者同边界" in oog or "三者口径一致" in doc_text, (
             "criterion/guard/site-set boundary alignment not declared"
         )
+
+    def test_sl7_scan_boundary_is_full_tree(self, doc_text: str):
+        """Round-3 RC-7: SL-7's injection scan face is the full production
+        workflow tree (12 files / 82 lines), not the legacy four-file set."""
+        assert "四文件集" not in doc_text or "四文件集」旧表述废止" in doc_text or "四文件集」旧口径废止" in doc_text, (
+            "stale four-file scan wording without deprecation note"
+        )
+        alm = (REPO_ROOT / "docs/wall-v3/acceptance-line-map.md").read_text(encoding="utf-8")
+        sl7 = alm[alm.index("### 2.7 SL-7"):alm.index("### 2.8")]
+        assert "12 文件全树边界" in sl7, "SL-7 scan face must name the full-tree boundary"
+
+    def test_repo_secret_roster_single_statement(self):
+        """Round-3 RC-3: the repo-secret roster is stated in one place
+        (out-of-graph §3.3); measured 2026-11-28 via `gh secret list`:
+        six names = in-service five + CI_KEY spare."""
+        oog = (REPO_ROOT / "docs/wall-v3/out-of-graph-artifacts.md").read_text(encoding="utf-8")
+        assert "repo-secret 名册六条一处陈述" in oog, "roster single-statement header missing"
+        assert "CI_KEY（备用件" in oog, "spare CI_KEY roster row missing"
+
+    def test_trigger_pat_nature_is_use(self):
+        """Round-3 RC-2: I8_TEAM_TRIGGER_PAT is a trigger credential (use),
+        not a capability-change key — aligned across ledger sample, §3.3
+        table and §3.4 verdict sentence."""
+        oog = (REPO_ROOT / "docs/wall-v3/out-of-graph-artifacts.md").read_text(encoding="utf-8")
+        sample = oog[oog.index("name = \"I8_TEAM_TRIGGER_PAT\""):]
+        assert 'nature = "use"' in sample, "ledger sample nature must be use"
+        assert "触发凭证" in sample, "trigger-credential rationale missing"
+
+    def test_ledger_sample_anchor_lines_resolve(self):
+        """Round-3 RC-1: ledger [[key]] consumes anchor lines must resolve
+        with matching content (env-check.yml:240 was a WORKER_CI_KEY line —
+        wrong-anchor class)."""
+        oog_text = (REPO_ROOT / "docs/wall-v3/out-of-graph-artifacts.md").read_text(encoding="utf-8")
+        ledger = oog_text[oog_text.index("### 3.2 台账 schema"):oog_text.index("### 3.3")]
+        forbidden = "env-check.yml:240"
+        assert forbidden not in ledger, (
+            "ledger carries env-check.yml:240 anchor — that line is wall-step "
+            "S_WORKER_CI_KEY expansion, not a PROJECTS_STATE_PAT consumption"
+        )
+        envcheck = (REPO_ROOT / ".github/workflows/env-check.yml").read_text(encoding="utf-8").splitlines()
+        assert "S_PROJECTS_STATE_PAT" in envcheck[194], "env-check.yml:195 anchor content mismatch"
+        assert "S_WORKER_CI_KEY" in envcheck[238], "env-check.yml:239 is the WORKER_CI_KEY wall-step line"
+
+    def test_ledger_anchor_roster_in_fixture(self):
+        """Round-3 RC-1 companion: the ledger anchor roster is registered in
+        the design-contract fixture (ledger_anchor_sources) so ledger anchors
+        cannot drift unilaterally."""
+        fixture = json.loads(
+            (REPO_ROOT / "tests/fixtures/wall-v3/design-contract.json").read_text(encoding="utf-8")
+        )
+        assert "ledger_anchor_sources" in fixture, "fixture lacks ledger_anchor_sources"
+        sources = fixture["ledger_anchor_sources"]
+        files = [s.get("file") for s in sources if isinstance(s, dict) and "file" in s]
+        assert "docs/wall-v3/out-of-graph-artifacts.md" in files, "ledger doc not registered"
+        assert ".github/workflows/i8-zero-escape-live-orchestrator.yml" in files, "orchestrator anchor set not registered"
 
 
 class TestLiveEvidenceGate:

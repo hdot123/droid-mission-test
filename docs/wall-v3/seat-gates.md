@@ -40,13 +40,13 @@
 | `foreman-caps.v1.toml`（**新增，施工时落 repo 根**） | **授权面**：席位能做什么（本件定义） | 现状不存在——59 轮「无授权能力」的 schema 层根因（锚件 2 §9.1：`schemas/foreman-run.v1.schema.json:146-157` 只记结局） |
 | `schemas/foreman-run.v1.schema.json` | **结局面**：席位做了什么（结局/产物/死因事实） | 现状在树（session_outcome 枚举 `:65`、by-pid 三映射 `:146-157`、human_stop `:33`） |
 
-ForemanRun 墌字段（结算/审计用）与门清单分离，一个记结局一个记授权——两文件各自 schema 一次定死，互不越界。
+ForemanRun 墌字段（结算/审计用）与门清单分离，一个记结局一个记授权——两文件各自 schema 一次定死，互不越界。键集清单含引擎 12 键全集（verification 在列——各席 `[seat.<id>.verification]` 段即其承载；round-2 版键块漏列该键系笔误，本批补正，与 §1.2 键集口径一致）。
 
 **1.2 键集一次定死**（form-basis 要点 2＋3）。每席位一段 `[seat.<id>]`，键集＝引擎 M-CAP **12 键**照抄（MODULE_KEYS 实测：entry/api/guard_test/events_consumed/events_produced/artifacts/state_reads/local_uses/probes/callers/authorization/verification，引擎仓 `tests/test_module_capabilities_contract.py:55-68`；「十键＋三锚」「协作五键＋v5 三键」为历史别名，均指此 12 键集）＋领班域扩展一键：
 
 ```
 entry / api / guard_test / events_consumed / events_produced / artifacts /
-state_reads / local_uses / probes / callers / authorization / budgets
+state_reads / local_uses / probes / callers / authorization / verification / budgets
 ```
 
 - `budgets` 是**唯一的域扩展键**（引擎键集之外）：承载会话墙预算与 job 墙预算，是 VAL-GATES-004「预算从门清单读」的承载面。扩展声明在此一次定死；增删键必须同批改契约测试（`tests/test_foreman_caps_contract.py`，目标态新增），禁止守卫或登记单边漂移（形制要点 3，铁律原文对位 `docs/specs/key-registry.toml:14-16`）。
@@ -72,11 +72,13 @@ state_reads / local_uses / probes / callers / authorization / budgets
 
 **1.4 CI 恒跑接线锁**（form-basis 要点 5）。caps-gate 接线进 foreman-wall-ci 恒跑（push 与 PR 两腿同面，零 if、零 continue-on-error）；「守卫确实接在 CI 上」由接线锁契约测试断言。**任何判词不落 CI＝显式未闭合，不冒充已执法**（form-basis §11.1 义务条款）。
 
-**1.5 放行门单源 ruleset**（form-basis 要点 6）。合并放行门唯一单源＝GitHub ruleset required_status_checks，代码不养第二套门表常量；引用引擎口径一律两门（quality-gate / substrate-gate-suite，R-29 已裁）。caps-gate 进门走同一正道：加进 ruleset，不在代码养门表。
+**1.5 CI 接线缺口与登记面升级闸（两事分称，round-3 术语裁决）**：全稿两处语境用词定死——**「接线缺口」**＝守卫判词存在但未接 CI 恒跑的形态（引擎 NEW-2 登记时点态，已上游闭合，禁复现；本件 §1.4 语境）；**「升级闸违例」**＝改登记面未带声明行的判词红（`mixed-registry-change`，本件 §1.6 语境）——两者不再混称「接线锁」。
 
-**1.6 登记面升级闸＋保护面**（form-basis 要点 7）。改 `foreman-caps.v1.toml`＋caps-gate 守卫本体的变更集必须带 `wall-registry-change: true` 声明行，否则 `mixed-registry-change` 红；登记面路径列入受保护面。**与引擎的差异（禁抄项义务）**：升级闸判词必须接 CI 恒跑、保护面必须是运行时执法——引擎 NEW-1/NEW-2 的未闭合态不得复现。
+**1.6 登记面升级闸＋保护面**（form-basis 要点 7）。改 `foreman-caps.v1.toml`＋caps-gate 守卫本体的变更集必须带 `wall-registry-change: true` 声明行，否则 `mixed-registry-change` 红；登记面路径列入受保护面。**与引擎的差异（禁抄项义务）**：升级闸判词必须接 CI 恒跑、保护面必须是运行时执法——引擎 NEW-1 现状＝enabled 在役执法、剩余真实缺口＝governance 门非 required status check 不阻断合并（不阻断≠停用，现状口径照 form-basis §11.1）；NEW-2 已上游闭合。两缺口态均不得在本件复现。
 
 **1.7 执法在体外**（form-basis §10 补遗 b）。任何门的执法通道不依赖被管进程配合：监督者写哨兵→SIGTERM 进程组→宽限→SIGKILL 进程组（引擎终止序列照抄，原物锚 `src/infra_core/engine/droid_review/run_lead.sh:282`（`kill -TERM "-$exec_pid"` 负 PID 组信号）与 `:286`（`kill -KILL` 同形态））。哨兵在案＝该席产物不采信（强制失败优先，对位 `run_lead.sh:10`）。
+
+**1.8 放行门单源 ruleset**（form-basis 要点 6；原 §1.5，round-3 起顺延——§1.5 改记术语裁决）。合并放行门唯一单源＝GitHub ruleset required_status_checks，代码不养第二套门表常量；引用引擎口径一律两门（quality-gate / substrate-gate-suite，R-29 已裁）。caps-gate 进门走同一正道：加进 ruleset，不在代码养门表。
 
 ---
 
@@ -188,7 +190,7 @@ note = "预算唯一来源=本段（§4 接线设计）；现状墙上账面值 
 
 [seat.worker.verification]
 contract_tests = ["tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "caps-gate 裸跑探针：workflow 文本出现 BARE_DROID 形态（timeout…droid exec 不经包装器）即红——lint_workflow_budgets.py:43-51 的 worker/900s 豁免分支废止后，本探针与 budgets lint 同判词双载体"
+probes = "caps-gate 裸跑探针：workflow 文本出现 BARE_DROID 形态（timeout…droid exec 不经包装器）即红——lint_workflow_budgets.py:43-51 的 worker/900s 豁免分支废止后，本探针与 budgets lint 同判词双载体；必死样本=SL-3/RS-2（acceptance-line-map §2.3/§5，工人席禁跑 probe 的独立载体行）"
 probe_notes = "worker 是 59 轮四问题②的所在席：900s 执法与会话同体（45B 实证孤儿子进程拖到 25m job 墙）——收口=§4 包装器＋体外执法"
 ```
 
@@ -218,7 +220,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙）", "worker 分支树"]
 local_uses = ["git（merge/ls-remote）", "pytest（全量 600s 超时）", "卡面 checks 复跑（300s 超时）"]
-probes = "补卷守卫四条件负例（任一不满足=不补卷）＋caps-gate：prep 出现 droid 会话=unregistered-tool-call 必红（纯脚本席禁 droid）"
+probes = "原子 probe 逐条登记（round-3 拆原子）：①补卷守卫四条件负例（任一不满足=不补卷，载体=SL-5）；②caps-gate droid 会话禁入探针：prep 出现 droid 会话=unregistered-tool-call 必红（纯脚本席禁 droid，载体=SL-13d 同族注入形态，acceptance-line-map §2.13 SL-13d 会话注入子面——零 droid 席探针复用其桩协议，席位换 prep）；③候选分支越权写探针（载体=SL-13b，round-2 已配行）"
 callers = { internal = ["validate（needs.prep.result）"], external = ["无"], workflow = [".github/workflows/team.yml:936"] }
 
 [seat.prep.authorization]
@@ -367,7 +369,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙，pick 权威源）"]
 local_uses = ["git（PR 面）", "gh（issue close/comment，:4659）"]
-probes = "caps-gate：assemble 出现 droid 会话=unregistered-tool-call 必红；板面写非 project_state_write 单点=token-scope-violation 必红；human_stop 消费探针：human_stop 在墙（schema :33）而 assemble 收口分支未消费（未走提前停路径、照常 pick/写板）->red（现状缺口：human_stop 不被 assemble 消费，锚件 2 §6——本探针即补齐；必死样本=SL-13d，acceptance-line-map §2.13）"
+probes = "原子 probe 逐条登记（round-3 拆原子，一子句一 probe 一载体）：①droid 会话禁入探针：assemble 出现 droid 会话=unregistered-tool-call 必红；②板面写单点性探针：板面写非 project_state_write 单点=token-scope-violation 必红；③human_stop 消费探针：human_stop 在墙（schema :33）而 assemble 收口分支未走提前停路径、照常 pick/写板->red（现状缺口：human_stop 已上墙且机器面有消费（墙 W6 判定 foreman_run_lib.py:232、replan 重试面 adopt_verdict.py:580-583），但 assemble 收口分支的提前停消费缺席——锚件 2 §6/§9 风险 13 现状句按此精化——本探针即补齐该缺口；必死样本=SL-13d，acceptance-line-map §2.13）。SL-13d 会话注入子面（droid 会话禁入的收口步桩化形态）：acceptance-line-map §2.13 SL-13d 的注入步将 fake-droid 桩以 assemble 收口步会话形态注入（桩走 droid exec 调用面冒充收口执行体），断言未消费 human_stop 的收口路径被禁入探针点名红＋消费正对照零板面写——会话注入设计锚 round-2 版 seat-gates probes 子句（git show 888fca0:docs/wall-v3/seat-gates.md :370 原文）与 acceptance-line-map §2.13 注入行"
 callers = { internal = ["无下游席（链尾）"], external = ["human（状态卡/板面消费者）"], workflow = [".github/workflows/team.yml:4389"] }
 
 [seat.assemble.authorization]
@@ -400,7 +402,7 @@ entry = [
 ]
 api = [
     { "scripts/team/salvage_verdict.py" = ["record_verdict", "read_salvage"] },
-    { "scripts/team/worker_salvage.py" = ["salvage_pack"] },
+    { "scripts/team/worker_salvage.py" = ["salvage_packs"] },
 ]
 guard_test = ["tests/test_salvage_verdict*.py（在树）", "tests/test_foreman_caps_contract.py（目标态新增）"]
 events_consumed = { session_events = ["逐件分析完成事件（每件分析完即写，52B fix 口径）"] }

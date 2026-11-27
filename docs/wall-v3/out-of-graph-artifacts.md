@@ -110,7 +110,7 @@
 1. **夹具仓化**：新建 `.github/workflows/i8-zero-escape-live-b-fixture.yml`，形态对位既有 C 型夹具（`i8-zero-escape-live-c-fixture.yml` 在树——I8 家族中 C 型已是独立 workflow 文件，B 型对齐同构）：`workflow_dispatch` 触发（inputs: issue_number），夹具假 PAT 经 repo variables `I8_LIVE_B_INVALID_GH_TOKEN` 注入**夹具文件内**（不在 team.yml）。工作流文件清单（含全部探针/夹具族：`probe.yml`、`probe3-6.yml`、`droid-probe*.yml`、`i8-zero-escape-live-*.yml`）登记进台账 `[[external_face]]` 参考面（§3.3）。
 2. **生产文本净化**：team.yml 删 `:418` 注释行、`:419` 变量行、`:429-432` 命中分支（`:429` 标题比较起、`:430` export、`:431` echo、`:432` 收尾 fi——fi 必须随分支整段删除，否则残留悬空 if 收尾使 workflow 语法失效）——「Post plan dispatch comment」步恢复为无条件 `GH_TOKEN: ${{ github.token }}`（`:415`）＋单一 `post_comment_hard` 调用；步内 `:414` env 块、`:425-428` foreman-run freshen 行不在删除集（均为生产步必需行）。
 3. **活验断言改道**：I8-B 的断言语义（无效令牌→评论 401/403→`post_comment_hard --hard-required` 退出 1→墙 patch 记录硬失败）改由**探针单**承载：探针 workflow（家族形态在树）内以无效令牌对探针 issue 调用同一 `post_comment_hard` 共享件断言硬失败传播。成立性说明：`post_comment_hard.py` 是全链单源共享件（`scripts/team/`），硬失败语义单源——探针红即生产该路径红，I8-B 证据效力不变且生产文本零夹具。
-4. **守卫负例（常驻）**：文本断言进 caps-gate 载体（`tests/test_foreman_caps_contract.py`，目标态新增）——生产 workflow 四文件（team.yml/droid.yml/env-check.yml/foreman-wall-ci.yml）正文出现 `I8_LIVE_B` 或 PAT 前缀族字面（`ghp_` 等）即红。此负例同时是 §3.6 对账判据 2（值泄漏扫描）的一个实例。
+4. **守卫负例（常驻）**：文本断言进 caps-gate 载体（`tests/test_foreman_caps_contract.py`，目标态新增）——生产 workflow 树（`.github/workflows/*.yml` 12 文件全树边界，对账判据 1 与位点集同一扫描面；件②判据行同此边界）正文出现 `I8_LIVE_B` 或 PAT 前缀族字面（`ghp_` 等）即红。此负例同时是 §3.6 对账判据 2（值泄漏扫描）的一个实例；扫描边界口径与件②判据的禁绝判据（生产 workflow 零 I8_LIVE_B＋零 PAT 前缀族）同面——「四文件集」旧表述自本批废止（实测：82 展开行中 37 行在四文件集之外，扫描面收窄会漏检）。
 
 **清零判据**：生产 workflow 零夹具分支与零 PAT 前缀族命中；B 夹具文件在树且探针改道后 I8-B 活验单全链红照旧；守卫负例常驻 CI。假 PAT 变量（repo variables）随拆除转 `[[dangling_name]]`（zombie），探针退役批回读验证后转 revoked（§3.6 判据 4 牺牲品链）。
 
@@ -241,7 +241,7 @@
 1. **零密钥值**：只记名与元数据；契约测试 value_leak_scan 以常见前缀族（`ghp_`/`gho_`/`fk-` 等）全文件扫描（铁律原文 `key-registry.toml:11-13`）。本稿清零前唯一例外位＝I8-B 夹具哑值（`team.yml:419`，显式登记例外，拆除批消除——§2.2）。
 2. **schema 一次定死＋同批改锁**：键集与词表硬编码在契约测试（`tests/test_foreman_keys_contract.py`，目标态新增）；增删键/词表须同批改契约测试（铁律原文 `key-registry.toml:14-16`）。
 3. **只登记不轮换**：在役钥匙「只盘不动」；作废/退役走施工单＋回读验证后改 status＋append-only 流水（铁律原文 `key-registry.toml:21-24` 口径）。
-4. **三轨归一参考**：领班侧轨道＝①repo secrets（五件）②runner 会话配置面（`~/.factory/settings.json`，`[[external_face]]`）③repo variables（I8-B 夹具假 PAT，zombie 轨）。
+4. **三轨归一参考**：领班侧轨道＝①repo secrets（在役五件＋备用一件 CI_KEY，gh secret list 六名口径，2026-11-28 实测）②runner 会话配置面（`~/.factory/settings.json`，`[[external_face]]`）③repo variables（I8-B 夹具假 PAT，zombie 轨）。
 
 ### 3.2 台账 schema（一次定死）
 
@@ -256,7 +256,7 @@ value_policy = "zero-values-names-and-metadata-only"
 change_ledger = "docs/wall-v3/key-ledger.md"   # append-only 动作流水（目标态）
 baseline = "564ce30"                  # 登记基线（R58-D 收尾态）
 inventory_date = "2026-11-27"
-repo_secret_source = "五在役（gh secret list 口径；CI 内 github.token 无列名单权限——对账载体见 §3.6 判据 5）"
+repo_secret_source = "在役五件＋备用一件 CI_KEY（gh secret list 六名口径，2026-11-28 实测；CI_KEY 零消费=zombie 轨备案，§3.3 备考行；CI 内 github.token 无列名单权限——对账载体见 §3.6 判据 5）"
 
 # 词表（硬编码进契约测试；增删须同批改 tests/test_foreman_keys_contract.py）
 # nature：use=使用钥匙（只消费既有能力）／cap_change=改能力钥匙（能改仓库/链上能力面：写板终态、建单关单、push、铸 PR）
@@ -276,7 +276,6 @@ consumes = [
     ".github/workflows/team.yml:4441",   # project_state_write 调用
     ".github/workflows/env-check.yml:86",# gate 步注入
     ".github/workflows/env-check.yml:195",# 板面探测真消费
-    ".github/workflows/env-check.yml:240",# wall 步注入（⑤收口施工后删此锚）
     ".github/workflows/i8-zero-escape-live-orchestrator.yml:102",  # I8 编排器探针注入（五组面之一）
 ]
 notes = "全链唯一板面写令牌； PAT 时间线演员定性=第 50 轮口径（docs/W-14-写板活验通过判据-修订.md）"
@@ -287,7 +286,7 @@ name = "I8_TEAM_TRIGGER_PAT"
 kind = "github_pat"
 holder = "repo secret（值源 1P；条目名施工盘点回填）"
 access = "read_write"
-nature = "cap_change"
+nature = "use"                          # 触发凭证（发 issue 评论点火链路），非改能力钥匙；消费侧选择权对位引擎 key-registry.toml:27-28 词表
 status = "active"
 opens = "I8 编排器触发面（五组 job 注入：i8-zero-escape-live-orchestrator.yml:100/:182/:256/:308/:345）；team.yml 生产链零消费"
 consumes = [
@@ -321,7 +320,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 
 **设计说明**：四表结构对位引擎五表（repo_secret/dangling_name/repo_variable/mac_face/onepassword_item）的归口逻辑：[[key]]＝在役与待处置钥匙正表；[[orphan]]＝本仓特有的链外产物面（引擎以封印指纹覆盖，本仓 verdict 孤儿是产物面孤儿）；[[external_face]]＝非钥匙的状态/配置面（memory 树、runner 会话配置、探针 workflow 族）；[[dangling_name]]＝防复活（牺牲品链载体，§3.6 判据 4）。
 
-### 3.3 现状登记面（八条，零值预填——round-2 全树口径补第 8 条 I8_TEAM_TRIGGER_PAT）
+### 3.3 现状登记面（repo-secret 名册六条一处陈述：①-⑤在役＋⑥备用 CI_KEY；⑦repo-variable 哑值与⑧I8_TEAM_TRIGGER_PAT 跨轨登记随表备考——round-3 实测 `gh secret list` 六名：①②③④⑤＋CI_KEY）
 
 | # | name | kind | access | nature | status | opens（消费面） | consumes 锚 |
 |---|---|---|---|---|---|---|---|
@@ -331,14 +330,15 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 | ④ | GO_GITHUB_RUN_TOKEN | github_pat（kind 初判，装配盘点回填） | read | use | active | BYOM `apiKey` 位（模型网关鉴权）＋probe 族 | 声明体位点（同②11 位点区段＋`droid-probe2.yml:16`＋`probe3.yml:39`）＋env-check.yml `:85/:239`＋I8 编排器 `:101/:183/:257/:309/:346`＋probe4.yml `:11`＋probe6.yml `:13` 区段——全树 20 行 |
 | ⑤ | PROJECTS_STATE_PAT | github_pat | read_write | cap_change | active | 板面写（装配席单点）＋板面探测＋漂移对账读＋I8 编排器探针注入 | `team.yml:4431/:4441`＋env-check.yml `:86/:195/:240`＋I8 编排器 `:102/:184/:258/:310/:347`（样例见 §3.2）——全树 8 行 |
 | ⑥ | GITHUB_TOKEN（github.token） | platform_builtin | read_write | use | active | per-run 临时令牌，按席 token_scope 面（seat-gates §2 逐席已登记：lead `:79/:241`、worker commit `:710`、prep `:1321`、replan 落单 `:2423`、assemble `:4448/:4659` 等） | 参考条目不占编号（照引擎 GITHUB_TOKEN 先例 `key-registry.toml:36-37`） |
+| ⑥ | CI_KEY（备用件，2026-11-28 实测在列） | gateway_key（族初判，装配盘点回填） | read | use | zombie | 零消费（grep 全树零展开零调用；probe4/probe5 的 `CI_KEY` env 名实为 WORKER_CI_KEY 展开，非此件——`probe4.yml:10`/`probe5.yml:10`） | 零锚；gh secret list 备考名，施工盘点批裁定退役或回役 |
 | ⑦ | I8_LIVE_B_INVALID_GH_TOKEN | github_pat（哑值） | read | use | zombie | I8-B 活验探针（改造后）；生产消费面=0 | 现生产位 `team.yml:419/:430`（②拆除批消除）→改道探针 workflow→退役批 revoked→[[dangling_name]] |
-| ⑧ | I8_TEAM_TRIGGER_PAT | github_pat（kind 初判，装配盘点回填） | read_write | cap_change | active | I8 编排器触发面（五组 job 注入：点火/编排/探针面）——team.yml 生产链零消费 | `i8-zero-escape-live-orchestrator.yml:100/:182/:256/:308/:345`——全树 5 行；零值登记（值不入稿）；scope 裁定随 §3.4 呈裁面 |
+| ⑧ | I8_TEAM_TRIGGER_PAT（跨轨备考：repo secret 名单 gh secret list 实测不含此名——仅 I8 编排器 env 展开登记，是否独立在役 secret 装配盘点回填） | github_pat（kind 初判，装配盘点回填） | read | use | active | I8 编排器触发面（五组 job 注入：点火/编排/探针面）——team.yml 生产链零消费 | `i8-zero-escape-live-orchestrator.yml:100/:182/:256/:308/:345`——全树 5 行；零值登记（值不入稿）；scope 裁定随 §3.4 呈裁面 |
 
 另登记非钥匙轨：`[[orphan]]` 一条（④）、`[[external_face]]` 四条（memory 树、runner 会话配置、探针/夹具 workflow 族、内联 BYOM 变体面 droid-probe2.yml/probe3.yml）、`[[dangling_name]]` 一条（⑦退役后落位）。BYOM 三件（②③④）的按席 scope 差异见 §3.4；⑧I8_TEAM_TRIGGER_PAT 的 scope 裁定随 §3.4 呈裁面一并处理。全树口径：12 workflow 文件/6 secret 名/82 展开行实测（`grep -n 'secrets\.' .github/workflows/*.yml`）。
 
 ### 3.4 use/cap_change 定性＋按席差异化 scope（对账基座）
 
-**定性判据**（照引擎词表 `key-registry.toml:25-28`）：只消费既有能力＝use；能改仓库/链上能力面（写终态权威面、建单/关单、push、铸 PR）＝cap_change。七条中唯⑤ PROJECTS_STATE_PAT 为 cap_change（板面 Status=链终态权威，`team.yml:4599`）；⑥ github.token 虽按席可写（issues/pull-requests/contents），其定性随席位 token_scope 已在 seat-gates 逐席登记（platform_builtin 轨不重复定性，参考条目注记）。
+**定性判据**（照引擎词表 `key-registry.toml:25-28`）：只消费既有能力＝use；能改仓库/链上能力面（写终态权威面、建单/关单、push、铸 PR）＝cap_change。台账 nature 字段八条中唯⑤ PROJECTS_STATE_PAT 为 cap_change（板面 Status=链终态权威，`team.yml:4599`——⑧的触发面消费与⑤同一令牌轨，三处定性一致）；⑥ CI_KEY 与⑧ I8_TEAM_TRIGGER_PAT 为 use——⑧是触发凭证（I8 编排器以 PAT 发 issue 评论点火，消费的是既有 issue-comment 能力）而非改能力钥匙，编排器消费侧的选择权住 `i8_select_gh_trigger_token.sh`（优先 PROJECTS_STATE_PAT，⑧为回退），领班侧不因持有触发凭证获得新能力；⑦ repo-variable 哑值沿旧表登记为 use（无真值即无改能力面）；github.token 虽按席可写（issues/pull-requests/contents），其定性随席位 token_scope 已在 seat-gates 逐席登记（platform_builtin 轨不重复定性，参考条目注记）。
 
 **按席差异化 scope 矩阵**（凭证面；席位面以 seat-gates §2 为准，本表是凭证维度的对账视图）：
 
@@ -356,7 +356,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 
 ### 3.5 消费锚体系（8→1 收口后的锚形态）
 
-- **锚定义**：consumes 字段逐条 `file:line`；锚判据＝该行含 secrets 展开（`${{ secrets.X }}`）、env 注入键、或声明体调用行。
+- **锚定义**：consumes 字段逐条 `file:line`；锚判据＝该行含 secrets 展开（`${{ secrets.X }}`）、env 注入键、或声明体调用行。台账行锚随批登记进设计契约 fixture（`tests/fixtures/wall-v3/design-contract.json` anchors 数组——round-3 起：台账 consumes 锚、§3.3 表 consumes 锚列、design-contract.json 三处同批增删，防台账锚单边漂移；round-3 实证：⑤行内 `env-check.yml:240` 锚实为 wall 步 `S_WORKER_CI_KEY` 展开行，内容不对应，已删——台账锚的内容核查与解析核查同纪律）。
 - **收口前后形态**：现状②③④三件各 11 展开锚（team.yml 8＋droid.yml 1＋droid-probe.yml 1＋probe6.yml 1；GW_TOKEN_KNOWN 实为 10——droid-probe.yml 双件形态）＋内联变体面锚（droid-probe2/probe3）＋probe 族散点锚＋2 presence 锚＋I8 编排器锚（⑤/⑧ 面）；③收口后变「1 声明体行锚＋全树调用位锚＋presence 锚」——调用位是消费锚（真实消费），声明体是登记锚（唯一展开点）；内联变体位收口为声明体调用并入调用位锚集。⑤收口后 env-check 消费锚从「5+3」变「5」（wall 步三锚删除）。
 - **锚执法**：锚集对账进 caps-gate（§3.6 判据 1/2）；锚漂移（行号漂移、锚定内容失配）即红（判词 anchor-drift）——施工单改凭证接线必须同批改台账（对位引擎「文件增删不改语义（点名 workflow 即消费面）」口径，`key-registry.toml:19-20`）。
 
@@ -366,7 +366,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 2. **值泄漏扫描**：常见前缀族全文件扫描（铁律对位 `key-registry.toml:11-13`）。清零前唯一登记例外位=`team.yml:419` 夹具哑值（②拆除批消除例外）；例外位采用「显式登记＋限期消除」纪律，禁止常驻例外。
 3. **旁路检出**（三面巡检）：环境面（`~/.factory/settings.json` 写入位点=声明体单点——③收口判据）；本地面（工作区顶层 verdict 孤儿=0——④判据）；板面（PAT 时间线演员=PAT 持有人单点，翻板演员=0——①判据）。
 4. **牺牲品样本（防幽灵复活）**：对位引擎 REVOCATION_TEST_KEY 牺牲品链——领班侧牺牲品＝I8-B 假 PAT（⑦，已是哑值样本）：走「登记（zombie）→探针改道→退役批回读验证（打不开）→revoked→[[dangling_name]]」全链演练；此后常驻 dangling 表，任何同名/同前缀复活即红。
-5. **名单对账**：在役 repo secrets 实测名单=5（①-⑤）。载体裁定（呈大哥裁二选一）：**a** 季度人工 `gh secret list` 对账留痕（CI 内 github.token 无列名单权限——平台边界，`env-check.yml` 已按「边界声明非通过」口径处理同类面）；**b** 若 PROJECTS_STATE_PAT 具 admin 读面则机器对账（施工时实测其权限后定）。对账输出落 append-only 流水（`docs/wall-v3/key-ledger.md`，对位引擎 key-ledger append-only 口径 `key-registry.toml:7-8`；动作行五元组对位引擎 gate-ledger 口径——时戳｜动作｜who｜which｜what｜evidence，且「无回读不得记完成」，`docs/governance/gate-ledger.md:4/:12` 原物）。
+5. **名单对账**：在役 repo secrets 实测名单=5（①-⑤），另实测在列备而无消费链的 CI_KEY 一件（zombie 轨备考，⑧I8_TEAM_TRIGGER_PAT 的在役定性随装配盘点回填）——repo-secret 名册六条一处陈述以本判据为口径。载体裁定（呈大哥裁二选一）：**a** 季度人工 `gh secret list` 对账留痕（CI 内 github.token 无列名单权限——平台边界，`env-check.yml` 已按「边界声明非通过」口径处理同类面）；**b** 若 PROJECTS_STATE_PAT 具 admin 读面则机器对账（施工时实测其权限后定）。对账输出落 append-only 流水（`docs/wall-v3/key-ledger.md`，对位引擎 key-ledger append-only 口径 `key-registry.toml:7-8`；动作行五元组对位引擎 gate-ledger 口径——时戳｜动作｜who｜which｜what｜evidence，且「无回读不得记完成」，`docs/governance/gate-ledger.md:4/:12` 原物）。
 
 **判词枚举（caps-gate 钥匙面初版，只增不改）**：`orphan-secret-expansion`／`anchor-drift`／`value-leak`／`unregistered-bypass-surface`（旁路面未登记）／`mixed-key-registry-change`（升级闸违例）。
 
@@ -385,7 +385,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 | # | 判据（可断言形态） | 负例/对账载体 | 施工/人工归属 |
 |---|---|---|---|
 | ① | 板面 timeline 零 `github-project-automation` 翻板事件；`board_drift` 对账步＋env-check 探测项在树 | F4 必死样本：翻板回归样本（59 轮四问题③） | 板侧=大哥人工；对账步=施工单（装配席步列） |
-| ② | 生产 workflow（team.yml/droid.yml/env-check.yml/foreman-wall-ci.yml）零 `I8_LIVE_B` 与 PAT 前缀族命中；B 夹具文件在树；探针单全链红照旧 | caps-gate 负例：生产文本夹具/值前缀必红 | 施工单（lead 席默认删行落地＋探针改道）＋大哥（退役批） |
+| ② | 生产 workflow 树（`.github/workflows/*.yml` 12 文件全树边界，round-3 起「四文件集」旧口径废止）零 `I8_LIVE_B` 与 PAT 前缀族命中；B 夹具文件在树；探针单全链红照旧 | caps-gate 负例：生产文本夹具/值前缀必红（扫描面=全树） | 施工单（lead 席默认删行落地＋探针改道）＋大哥（退役批） |
 | ③ | BYOM 写入=声明体单点（内联 heredoc 形态计数=0）；六名 secrets 展开位点=台账锚集（扫描边界=全生产 workflow 树：12 文件/6 名/82 行实测口径——判据、守卫、位点集三者同边界） | caps-gate 负例：多声明体/锚集失配必红 | 施工单（声明体）＋大哥（scope 裁定） |
 | ④ | 工作区顶层 verdict 孤儿=0（人工巡检）；repo 树内 verdict 件全在档案白名单 | caps-gate 负例：白名单外 verdict 落点必红 | 清理=大哥/人工；白名单+负例=施工单（写板席） |
 | ⑤ | env_check_wall 零 os.environ secret 读值；env-check.yml secrets 位点=登记集；墙切片布尔与 gate tsv 一致性测试绿 | caps-gate 负例：位点集失配必红＋一致性测试 | 施工单（env-check 文本＋env_check_wall） |
@@ -451,6 +451,10 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 | `.github/workflows/env-check.yml:194` | `S_PROJECTS_STATE_PAT`（板面探测消费） | ★ |
 | `.github/workflows/env-check.yml:238` | `S_FACTORY_API_KEY`（wall 步再展开） | ★ |
 | `.github/workflows/env-check.yml:240` | `S_PROJECTS_STATE_PAT`（wall 步再展开） | ★ |
+| `.github/workflows/probe4.yml:10` | `CI_KEY: ${{ secrets.WORKER_CI_KEY }}`（env 名 CI_KEY 的真实源=WORKER_CI_KEY 展开） | ★ |
+| `.github/workflows/probe5.yml:10` | `CI_KEY: ${{ secrets.WORKER_CI_KEY }}`（同上） | ★ |
+| `.github/workflows/probe4.yml:15` | `x-ci-key: $CI_KEY`（CI_KEY env 消费行；源为 WORKER_CI_KEY） | ★ |
+| `.github/workflows/probe5.yml:15` | `x-ci-key: $CI_KEY`（同上） | ★ |
 | `scripts/team/env_check_wall.py:65` | `FACTORY_API_KEY`（os.environ 布尔读值） | ★ |
 | `scripts/team/env_check_wall.py:67` | `PROJECTS_STATE_PAT`（同上） | ★ |
 | `schemas/foreman-run.v1.schema.json:210` | `closeout_slice` | ★ |

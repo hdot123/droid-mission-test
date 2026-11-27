@@ -22,11 +22,11 @@
 |---|---|---|
 | VAL-M4-004 之 NEW-1：governance owner 门（登记时点态＝停用，`evidence/step5-api-unification/closeout/01-closeout-pack.md:94`「显式未闭合（CI 执法面）」）——**round-2 事实重写：引擎现状已非停用** | 引擎实测口径（main@460922c 证据，`evidence/step6-u-closeout/04-governance-enforcement-verification.md:11/:17/:103-104`）：`EVOLUTION_GOVERNANCE_ENABLED=enabled`（2026-11-26T19:50Z 设定，实测读取在场）＋workflow 开关 active；非属主治理 run 已判 failure 双红帧（PR #880/#881，governance job conclusion=failure）。过期 R-18 行（`05-risk-register.md:47`）的「governance owner 门停用态」是历史登记，不得转抄为现状。剩余真实缺口如实登记：governance 门**非 required status check，不阻断合并**；保护面本体已扩（U-4：`src/infra_core/governance.py:26` DEFAULT_PROTECTED_PATTERNS 七模式，含 `docs/specs/**`＋`.github/workflows/**`＋守卫本体） | 领班域登记面（`foreman-caps.v1.toml`＋守卫本体＋CI 守卫段）的升级闸判词 `mixed-registry-change` **必须接 foreman-wall-ci 恒跑**（§1.4 接线锁），接线语义由契约测试锁住（对位引擎接线锁形制，引擎仓 `tests/test_module_wall_ci_wiring.py`）——「守卫判词存在但不接 CI」与「门在役但不阻断合并而无运行时执法」两种形态在领班域都按禁抄项处理 |
 | VAL-M4-007／NEW-2：`--changes` 专属判词（rename 改界、mixed-registry-change）不接 CI——**登记时点态，已上游闭合** | 引擎 main@460922c 已接线：`.github/workflows/ci.yml:439-458`「Module wall changeset guard (PR only)」步实跑 `check_module_wall.py --changes`（`:458`），声明通道在场（`:454-456` PR body `wall-registry-change: true` 注释行注入），接线语义由引擎接线锁测试钉住（`tests/test_module_wall_ci_wiring.py:99` `test_changes_guard_step_wired_pr_only`）；`ci.yml:425-427` 注释现文「已接线 PR 腿 changeset 步」。当年「本流水线未接线」注释（写作时点 09a82fb 前的旧文）已不存在 | 本稿全部判词（§2.0 十判词＋§3.6 钥匙面五判词）施工时一律落 CI 恒跑腿（形态对位引擎闭合后的两步面：恒跑步＋事件语境步各按其判据执行），无「CLI-only 判词」类目；任何判词不落 CI 即显式未闭合，不冒充已执法。**禁抄原则保留并改述**：上游用一次真接线闭合了此缺口——领班侧更不允许复刻任何「纸面有门、执法缺位」形态，包括引用引擎历史缺口文本冒充「引擎也这样」 |
-| R-29 两门口径演化史（契约三门 vs 实执法两门） | 引擎仓 `evidence/step5-api-unification/closeout/05-risk-register.md:70` | 本稿引用引擎放行门口径一律按 R-29 已裁**两门**（quality-gate / substrate-gate-suite，droid-review 已退；PR #870 收口）；领班面墙自身门数按其守卫面独立裁定（§1.5），不受两门/三门演化牵连，**任何挂名未执法的门都按本节禁抄项处理** |
+| R-29 两门口径演化史（契约三门 vs 实执法两门） | 引擎仓 `evidence/step5-api-unification/closeout/05-risk-register.md:70` | 本稿引用引擎放行门口径一律按 R-29 已裁**两门**（quality-gate / substrate-gate-suite，droid-review 已退；PR #870 收口）；领班面墙自身门数按其守卫面独立裁定（底稿 seat-gates §1.8），不受两门/三门演化牵连，**任何挂名未执法的门都按本节禁抄项处理** |
 
 ## §0c 换入总纲与全文导读
 
-**终局形态**：领班是候选模块，引擎层（hdot123/infraro-core）现有开发模块 M-CAP 占编排槽位；领班测过后**整模块换入**替换之。换入三判据（§7 详）：门清单不变、旧封印测试整套全过、失败规范对位。本文内「§1.4 接线锁／§1.5 放行门单源」指领班侧形制条款，承载与逐键形制细节见底稿 `docs/wall-v3/seat-gates.md` §1（该件 §1.4＝CI 恒跑接线锁、§1.5＝ruleset 单源、§3.5＝缺门补齐汇总）；「§3.6 钥匙面五判词」指钥匙台账对账判据节，承载见底稿 `docs/wall-v3/out-of-graph-artifacts.md` §3.6。
+**终局形态**：领班是候选模块，引擎层（hdot123/infraro-core）现有开发模块 M-CAP 占编排槽位；领班测过后**整模块换入**替换之。换入三判据（§7 详）：门清单不变、旧封印测试整套全过、失败规范对位。本文内「§1.4 接线锁／放行门单源」指领班侧形制条款，承载与逐键形制细节见底稿 `docs/wall-v3/seat-gates.md` §1（该件 §1.4＝CI 恒跑接线锁、§1.8＝ruleset 单源（round-3 顺延，旧记 §1.5）、§3.5＝缺门补齐汇总）；「§3.6 钥匙面五判词」指钥匙台账对账判据节，承载见底稿 `docs/wall-v3/out-of-graph-artifacts.md` §3.6。
 
 **十章结构**（三件套落位）：
 
@@ -72,7 +72,7 @@
 | 9 | 钥匙零值登记＋三态词表（use/cap_change；active/dormant/zombie/revoked） | `docs/specs/key-registry.toml:25`（词表）、`:38`（schema_version） |
 | 10 | 失败规范＝点位普查表（触发面/handler/三态定级/缺口/机器判据） | `docs/guides/exception-point-inventory.md:23`（18 点清单）、`:27`（表头） |
 
-**禁抄项**＝§0b 三行（VAL-M4-004/007 未闭合态、R-29 演化史），对应面已改为真实执法设计。
+**禁抄项**＝§0b 三行（VAL-M4-004/007 引擎登记缺口、R-29 演化史），对应面已改为真实执法设计。**NEW-1 现状口径（引用纪律）**：引擎 governance 门现状＝`EVOLUTION_GOVERNANCE_ENABLED=enabled` 在役执法（非属主治理 run 已判 failure 双红帧，引擎证据 `04-governance-enforcement-verification.md:11/:17/:103-104`）；过期 R-18 行「governance owner 门停用态」不得转抄为现状；剩余真实缺口＝governance 门非 required status check、不阻断合并——本稿对应面的接线义务照此口径（§0b 表 NEW-1 行、form-basis §11.1 更新版）。
 
 ### 1.3 十条硬规则逐条落位映射
 
@@ -83,7 +83,7 @@
 | ① | 逐席位门清单＋工人席收进包装器 | §2（七席门清单＋§2.5 包装器） | SL-3 恒挂＋孤儿桩；SL-10 缺登记面族（a-d）；SL-11b schema 漂移；RS-2 裸跑形态反转 |
 | ② | 交接物全结构化＋因果结论枚举化＋证据引用强制 | §2.6（四 schema＋构造权单源） | SL-9 枚举违约族（19 变体）；SL-2/SL-3b' 伪造叙事桩；SL-11a 构造权越权 |
 | ③ | 执法在体外 | §4（监督者＋进程组终止序列） | SL-1/SL-3 进程组整组收断言 |
-| ④ | 每墙配必死样本＋执法延迟实测 | §6.2（延迟口径）＋§6.1（活验四数字） | SL-1..SL-12 全族；延迟上界 CI 出实测数 |
+| ④ | 每墙配必死样本＋执法延迟实测 | §6.2（延迟口径）＋§6.1（活验四数字） | SL-1..SL-13 全族（含 SL-13a-f 席位 probe 载体）；延迟上界 CI 出实测数 |
 | ⑤ | 写入口收口（状态机单入口） | §3.1（写入口面）＋§2.2 各席 artifacts | SL-3b/SL-4b/SL-7 图外写口桩；SL-10b 未登记制品路径 |
 | ⑥ | 缺席即事件 | §5.2（INV-1..7 不变量） | SL-8 缺席注入族（a-e）；RS-4 recorder 缺席报警 |
 | ⑦ | 事故样本回归＋V-3 口径正样本门 | §6.3（RS-1..4 回归样本） | RS 族四样本；G-2 门登记 |
@@ -245,9 +245,9 @@ env-check 凭证面锚集以底稿 out-of-graph §2.5 为准，四个区段行�
 
 ### 3.4 钥匙总管理台账（硬规则⑨落位，引擎 M2 口径）
 
-**承载文件（目标态）**：`docs/specs/foreman-keys.toml`——形制照抄引擎 `docs/specs/key-registry.toml`：零密钥值（铁律原文 `key-registry.toml:11` 引擎仓）、schema 一次定死＋同批改锁（`:14` 引擎仓）、三态词表 use/cap_change × active/dormant/zombie/revoked（`:25` 引擎仓）。**现状登记面（七条＋I8 编排器条目，零值预填，全文见底稿 out-of-graph §3.3）**：①FACTORY_API_KEY（use，全树 16 行展开锚）②WORKER_CI_KEY（use，BYOM `x-ci-key` 位，全树 21 行）③GW_TOKEN_KNOWN（use，`cf-aig-authorization` 位，全树 12 行）④GO_GITHUB_RUN_TOKEN（use，BYOM `apiKey` 位，全树 20 行）⑤PROJECTS_STATE_PAT（**cap_change**——板面 Status 是链终态权威面，写板=改终态能力；锚 `team.yml:4431`/`:4441`＋env-check `:86`/`:195`/`:240`＋I8 编排器 5 行，全树 8 行）⑥github.token（platform_builtin 参考条目，按席 token_scope 已在 §2.2 登记）⑦I8_LIVE_B_INVALID_GH_TOKEN（**zombie**——件②拆除后消费面=0，探针退役批回读验证后转 revoked，防幽灵复活牺牲品样本）⑧I8_TEAM_TRIGGER_PAT（use——I8 编排器五组注入面专用，`i8-zero-escape-live-orchestrator.yml:100/:182/:256/:308/:345`，全树 5 行，零值登记）。另登记 `[[orphan]]`（件④）、`[[external_face]]`（memory 树／runner 会话配置／探针 workflow 族＋内联 BYOM 变体面 droid-probe2.yml/probe3.yml）、`[[dangling_name]]`（⑦退役落位）。全树口径：12 workflow 文件/6 secret 名/82 展开行（`grep -n 'secrets\.' .github/workflows/*.yml` 实测）。
+**承载文件（目标态）**：`docs/specs/foreman-keys.toml`——形制照抄引擎 `docs/specs/key-registry.toml`：零密钥值（铁律原文 `key-registry.toml:11` 引擎仓）、schema 一次定死＋同批改锁（`:14` 引擎仓）、三态词表 use/cap_change × active/dormant/zombie/revoked（`:25` 引擎仓）。**现状登记面（repo-secret 名册六条一处陈述：①-⑤在役＋⑥备用 CI_KEY，gh secret list 六名口径 2026-11-28 实测；⑦repo-variable 哑值与⑧I8 编排器触发凭证跨轨随表备考，零值预填，全文见底稿 out-of-graph §3.3）**：①FACTORY_API_KEY（use，全树 16 行展开锚）②WORKER_CI_KEY（use，BYOM `x-ci-key` 位，全树 21 行）③GW_TOKEN_KNOWN（use，`cf-aig-authorization` 位，全树 12 行）④GO_GITHUB_RUN_TOKEN（use，BYOM `apiKey` 位，全树 20 行）⑤PROJECTS_STATE_PAT（**cap_change**——板面 Status 是链终态权威面，写板=改终态能力；锚 `team.yml:4431`/`:4441`＋env-check `:86`/`:195`＋I8 编排器 5 行，全树 8 行）⑥CI_KEY（**zombie**——备用件，gh secret list 在列而全树零消费；probe4/probe5 的 `CI_KEY` env 名实为 WORKER_CI_KEY 展开，非此件）⑦I8_LIVE_B_INVALID_GH_TOKEN（**zombie**——repo variables 件②拆除后消费面=0，探针退役批回读验证后转 revoked，防幽灵复活牺牲品样本）⑧I8_TEAM_TRIGGER_PAT（**use**——触发凭证非改能力钥匙：I8 编排器以 PAT 发 issue 评论点火、消费既有 issue-comment 能力，消费侧选择权住 `i8_select_gh_trigger_token.sh`（优先 PROJECTS_STATE_PAT、⑧回退）；五组注入面专用，`i8-zero-escape-live-orchestrator.yml:100/:182/:256/:308/:345`，全树 5 行，零值登记；gh secret list 实测不含此名，在役定性随装配盘点回填）。另登记 `[[orphan]]`（件④）、`[[external_face]]`（memory 树／runner 会话配置／探针 workflow 族＋内联 BYOM 变体面 droid-probe2.yml/probe3.yml）、`[[dangling_name]]`（⑦退役落位）。全树口径：12 workflow 文件/6 secret 名/82 展开行（`grep -n 'secrets\.' .github/workflows/*.yml` 实测）。
 
-**对账判据（五判＋牺牲品链）**：①展开位点对账（`${{ secrets.* }}` 展开行集合=台账 consumes 锚集——位点扫描边界＝**全生产 workflow 树**（`.github/workflows/*.yml` 12 文件 82 展开行 6 secret 名实测，含 `droid.yml`/`droid-probe.yml`/`probe6.yml`/`droid-probe2.yml`/`probe3.yml`/probe 族/I8 编排器＋c-fixture 非领班席工作流，硬规则⑨「全部凭证」全树口径；与 §3.2 守卫面同一边界——判据、守卫、位点集三者口径一致），多出=orphan-secret-expansion 红、失配=anchor-drift 红）②值泄漏扫描（前缀族全文件扫描，清零前唯一登记例外位=件②夹具哑值，限期消除）③旁路检出（声明体单点/顶层孤儿=0/PAT 时间线演员单点三面巡检）④牺牲品样本（件②假 PAT 走 zombie→回读→revoked→dangling 全链演练）⑤名单对账（在役 repo secrets=5＋I8 编排器在用第 6 件 I8_TEAM_TRIGGER_PAT 零值登记；载体呈大哥裁：季度人工 `gh secret list` 留痕 or PAT 权限实测后机器对账）。**升级闸**：改台账＋守卫本体的变更集须带 `key-registry-change: true` 声明行，否则 `mixed-key-registry-change` 红；钥匙面守卫与对账判据全部接 foreman-wall-ci 恒跑（§0b 禁抄项义务）。对账流水 append-only（`docs/wall-v3/key-ledger.md` 目标态；「无回读不得记完成」对位引擎 gate-ledger 口径，引擎仓 `docs/governance/gate-ledger.md:12`）。
+**对账判据（五判＋牺牲品链）**：①展开位点对账（`${{ secrets.* }}` 展开行集合=台账 consumes 锚集——位点扫描边界＝**全生产 workflow 树**（`.github/workflows/*.yml` 12 文件 82 展开行 6 secret 名实测，含 `droid.yml`/`droid-probe.yml`/`probe6.yml`/`droid-probe2.yml`/`probe3.yml`/probe 族/I8 编排器＋c-fixture 非领班席工作流，硬规则⑨「全部凭证」全树口径；与 §3.2 守卫面同一边界——判据、守卫、位点集三者口径一致——SL-7 注入样本的扫描面同此边界，round-3 起「四文件集」旧口径废止），多出=orphan-secret-expansion 红、失配=anchor-drift 红）②值泄漏扫描（前缀族全文件扫描，清零前唯一登记例外位=件②夹具哑值，限期消除）③旁路检出（声明体单点/顶层孤儿=0/PAT 时间线演员单点三面巡检）④牺牲品样本（件②假 PAT 走 zombie→回读→revoked→dangling 全链演练）⑤名单对账（在役 repo secrets=5＋备用无消费件 CI_KEY 一件（zombie 轨备考，gh secret list 六名口径）——repo-secret 名册六条以底稿 out-of-graph §3.3 表为唯一陈述处；载体呈大哥裁：季度人工 `gh secret list` 留痕 or PAT 权限实测后机器对账）。**升级闸**：改台账＋守卫本体的变更集须带 `key-registry-change: true` 声明行，否则 `mixed-key-registry-change` 红；钥匙面守卫与对账判据全部接 foreman-wall-ci 恒跑（§0b 禁抄项义务）。对账流水 append-only（`docs/wall-v3/key-ledger.md` 目标态；「无回读不得记完成」对位引擎 gate-ledger 口径，引擎仓 `docs/governance/gate-ledger.md:12`）。
 
 ### 3.4a 零号门（env-check）门清单——零 GitHub 权限位与凭证最小面
 
@@ -321,7 +321,7 @@ env-check 是零号门（非席位），其门清单随本稿总装单列如下�
 
 ### 6.2 必死样本设计与执法延迟口径（硬规则①③④⑤⑥⑨⑩的验收面）
 
-**必死样本三要素**：确定性注入（fake-droid 桩——恒挂/吞 TERM/fork 孤儿/越界写/伪造叙事，零网络零真树污染）；守卫在岗断言（真跑守卫本体，断言退出态不是源码存在性）；必杀断言（执法类墙断言违约会话进程组真死＋产物不采信）。桩协议与十二族样本（SL-1..SL-12）逐样本六要素设计全文见底稿 `docs/wall-v3/acceptance-line-map.md` §1-§2；SL 族与 59 轮回归样本（RS-1..4）互锁表见其附B。族一览：
+**必死样本三要素**：确定性注入（fake-droid 桩——恒挂/吞 TERM/fork 孤儿/越界写/伪造叙事，零网络零真树污染）；守卫在岗断言（真跑守卫本体，断言退出态不是源码存在性）；必杀断言（执法类墙断言违约会话进程组真死＋产物不采信）。桩协议与十三族样本（SL-1..SL-13）逐样本六要素设计全文见底稿 `docs/wall-v3/acceptance-line-map.md` §1-§2；SL 族与 59 轮回归样本（RS-1..4）互锁表见其附B。族一览：
 
 | 样本族 | 对象墙/门 | 注入→断言（要点） |
 |---|---|---|
@@ -332,12 +332,13 @@ env-check 是零号门（非席位），其门清单随本稿总装单列如下�
 | SL-4 族 | lead 图外写口＋令牌 scope 门 | 图外写口/越权令牌注入→caps-gate 判词红＋现状树干净对照绿（守卫不冤枉现状） |
 | SL-5 | 补卷守卫（根治 1 倒影） | 四条件逐条违约（merged=false/F-1 越界/红 checks/exit-0+ok control）→全部不补卷；exit-0+ok 永不翻案（在树先例 `tests/test_worker_salvage.py:293`） |
 | SL-6 | 板面终态门 | 漂移态注入（板面读桩）→board_drift 必产＋重写板一次＋仍漂移硬评论＋零漂移对照不误报 |
-| SL-7 | 图外写口（文本层） | 四注入（PAT 前缀族字面/I8_LIVE_B 残留/verdict 白名单外落点/secrets 位点失配）→判词点名红＋现状树绿 |
+| SL-7 | 图外写口（文本层） | 四注入（PAT 前缀族字面/I8_LIVE_B 残留/verdict 白名单外落点/secrets 位点失配）→判词点名红＋现状树绿；扫描面=12 文件全树边界（82 行中 37 行在旧「四文件集」之外，旧口径废止） |
 | SL-8a-e | 缺席即事件门 | 五缺席变体（recorder 零调用/delta 缺席/封章缺席/收口 patch 缺席/evidence manifest 缺席）→告警必产＋字段可定位＋墙字段在 |
 | SL-9 | 交接口枚举门 | 四 schema 违约表 19 变体→全拒＋合法对照全绿 |
 | SL-10a-d | caps-gate 判词负例门（工具/制品/事件/状态读面） | 四注入（会话调用未登记工具/产出未登记制品路径/消费未登记事件/读未登记状态树）→各判词点名红＋干净对照绿（文本层注入，形制照既有 SL-4/SL-7 族） |
 | SL-11a-c | 登记面与钥匙面升级闸门 | 三注入（非核查环节构造证据对象/门清单 schema 键集漂移未同批改契约/登记面变更无 wall-registry-change 声明）→evidence-construct-violation/caps-schema-drift/mixed-registry-change 判词红 |
 | SL-12a/b | 钥匙面判词负例门 | 两注入（旁路面未登记入台账/钥匙台账变更无 key-registry-change 声明）→unregistered-bypass-surface/mixed-key-registry-change 红 |
+| SL-13a-f | 席位 probe 专属门（逐 probe 一载体，round-3 拆原子） | 七 probe 六载体：lead 接线锁（SL-13a）/prep 候选分支越权（SL-13b）/validator D-2 封章粘滞（SL-13c）/assemble droid 会话禁入＋human_stop 消费（SL-13d 两变体，现状句经实读精化＝assemble 收口分支提前停消费缺席）/assemble pick fail-closed 变体（SL-13e）/prep droid 会话禁入（SL-13f）；worker 裸跑 probe 由 SL-3/RS-2 双载体承载 |
 
 **执法延迟实测口径**（逐字对位任务书）：延迟 = **超时点到进程组真死的时间差**。三时点机器可测：T0=预算到期（包装器注入预算 epoch，桩读单调钟差）；T1=哨兵写入时刻；T2=进程组最后成员退出（wait 收尸＋exit-stamp）。**上界口径**：L=T2−T0 ≤ **宽限＋SIGKILL 完成期**（T0 后包装器立即走哨兵→TERM→宽限→KILL 序列，只有哨兵写入＋宽限等待＋KILL 传播三段耗时；400s 软超时余量是「哨兵先于 job 硬杀」的作业窗口——引擎 `droid-review-lead.yml:35-37` margin 口径——不是执法延迟上界）。**多次采样取上界**：每面执法墙每次 CI 跑 N≥5 采样会话（立即死/TERM 后拖延/吞 TERM 靠 KILL 三种抗死形态各≥1＋普通≥2），取最大值为该墙本次延迟报告值；实测数落 CI 报告段＋逐采样行落 artifact（`wall-v3-latency.json` 目标态）；实测超设计上界（全样本 ≤ 宽限 10s＋SIGKILL 完成期 10s 采样护栏，宽限对位引擎 `run_lead.sh:55`）=墙建成失败。缺席类事件延迟口径=告警事件产出时延（同采样纪律）。诚实声明：延迟实测对象是包装器执法路径（桩进程组），生产会话死亡面由墙 patch 字段承载——两者是不同测量对象，上界护栏对两者同构成立的前提（组信号整组收）正是桩要证明的。
 
@@ -360,7 +361,7 @@ env-check 是零号门（非席位），其门清单随本稿总装单列如下�
 | ①门清单＋包装器 | SL-3＋SL-10a-d（缺登记面族）＋SL-11b＋RS-2 |
 | ②交接物结构化 | SL-9＋SL-2/SL-3b'＋SL-11a（构造权越权） |
 | ③执法体外 | SL-1/SL-3（进程组整组收=体外性行为证明） |
-| ④必死样本＋延迟实测 | 全 SL 族（SL-1..SL-12）＋§6.1 四数字＋§6.2 延迟口径 |
+| ④必死样本＋延迟实测 | 全 SL 族（SL-1..SL-13）＋§6.1 四数字＋§6.2 延迟口径 |
 | ⑤写入口收口 | SL-3b/SL-4b/SL-7＋SL-10b |
 | ⑥缺席即事件 | SL-8 族（a-e）＋INV-1..7 |
 | ⑦事故回归＋V-3 正样本门 | RS-1..4＋G-2 门登记 |
@@ -414,7 +415,7 @@ env-check 是零号门（非席位），其门清单随本稿总装单列如下�
 | 3 | BYOM 按席 scope 裁定两条＋非领班面凭证位去留（件③，全树口径） | 声明体位点 11 个：team.yml 8 位点 `:120/:531/:1463/:1883/:2178/:2725/:3705/:4115`＋`droid.yml:25`、`droid-probe.yml:13`、`probe6.yml:10`；内联变体面 `droid-probe2.yml:15-17`、`probe3.yml:15/:38-40`；I8 编排器五组注入面（含第 6 secret I8_TEAM_TRIGGER_PAT）；全树实测 12 文件/6 名/82 行 | ①validator 族 BYOM 三件最小集（尤其 `cf-aig-authorization`/`apiKey` 位对该席会话必要性）；②FACTORY_API_KEY 与 BYOM `apiKey` 位（GO_GITHUB_RUN_TOKEN）双轨冗余裁定——裁前保守登记现状全量（82 行全树锚），裁后收窄＋caps-gate 对账同步收紧；probe/I8 族（droid.yml/droid-probe*.yml/probe*.yml/i8-zero-escape-live-*）的凭证面去留随裁定一并处理 |
 | 4 | I8-B 夹具退役批（件②收尾） | `team.yml:419`/`:418`/`:429-432`；假 PAT 变量台账条目⑦ | 探针改道+夹具仓化施工（lead 席默认删行落地，§2.4 表 2）后，回读验证（哑值打不开）→revoked→dangling 表；退役批时点大哥定 |
 | 5 | verdict.json/md 顶层孤儿件清理（件④） | mission 工作区顶层两件（非 repo 树；本 mission 边界条款禁动） | 移入证据档案面或删除（人工一次）；防复活负例施工后常驻 |
-| 6 | secrets 名单对账载体（§3.4 判据 5） | 在役 repo secrets=5＋I8 编排器在用第 6 件 I8_TEAM_TRIGGER_PAT（CI 内 github.token 无列名单权限；全树台账口径 6 名 82 行） | a=季度人工 `gh secret list` 对账留痕；b=PROJECTS_STATE_PAT 权限实测后若具 admin 读面则机器对账——建议先 a 后实测定 b |
+| 6 | secrets 名单对账载体（§3.4 判据 5） | 在役 repo secrets=5＋备用无消费件 CI_KEY 一件（gh secret list 六名口径 2026-11-28 实测，CI_KEY 零消费=zombie 轨备考；CI 内 github.token 无列名单权限；全树台账口径 6 名 82 行） | a=季度人工 `gh secret list` 对账留痕；b=PROJECTS_STATE_PAT 权限实测后若具 admin 读面则机器对账——建议先 a 后实测定 b；CI_KEY 退役或回役随装配盘点批裁定 |
 | 7 | **交接物 schema 兼容窗口**（§2.6 演进规则） | schema v1→v2 演进 | 旧版本读取兼容窗口一次裁定期，窗口外旧版本拒收——不做无限兼容；建议单 run 窗口（同批切换） |
 | 8 | caps-gate 门归属（进 ruleset 时点） | foreman-wall-ci 恒跑面（两门口径 §0b） | caps-gate 施工落地后加进 ruleset required_status_checks（单源正道，不在代码养门表）；时点与门名大哥定 |
 
