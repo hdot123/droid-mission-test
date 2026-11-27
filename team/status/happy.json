@@ -1,0 +1,21 @@
+{
+  "id": "happy",
+  "title": "实现 happy.py 快乐数（难度 L）与 tests/test_happy.py",
+  "state": "done",
+  "files": [
+    "happy.py",
+    "tests/test_happy.py",
+    "team/handoffs/happy.md",
+    "team/status/happy.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_happy.py -q",
+      "result": "20 passed in 0.05s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "362 passed, 2 skipped in 21.78s"
+    }
+  ]
+}

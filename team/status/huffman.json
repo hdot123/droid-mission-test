@@ -1,0 +1,21 @@
+{
+  "id": "huffman",
+  "title": "实现 huffman.py 规范 Huffman 编码与 tests/test_huffman.py",
+  "state": "done",
+  "files": [
+    "huffman.py",
+    "tests/test_huffman.py",
+    "team/handoffs/huffman.md",
+    "team/status/huffman.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_huffman.py -q",
+      "result": "20 passed in 0.04s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "362 passed, 2 skipped in 21.34s"
+    }
+  ]
+}
