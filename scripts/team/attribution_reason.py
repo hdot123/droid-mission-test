@@ -30,7 +30,14 @@ def blocked_reason(pid: str, missing: list[str], wall: dict[str, Any] | None = N
     outcome maps, as the merge steps load it) — the single machine-recorded
     death-fact source, never a heuristic on the missing list.
 
-    Wall-killed pid -> neutral attribution carrying the death facts.
+    Wall-killed pid -> neutral attribution carrying the death facts,
+    branched on the exit code (strict mirror of
+    worker_salvage._death_cause_narrative, UT-M3-001): only 124/137 are the
+    GNU timeout kill signature the machine can prove, so only those carry
+    the 900s wall-kill sentence; any other code — catch-all codes
+    (first-class since 642ee66) and an unrecorded one alike — states the
+    code (rendered as recorded, ``None`` included, matching the M2 writer)
+    and that the death family is not machine-determined.
     Any other shape  -> the current wording, unchanged (fail-closed).
     """
     base = _LEGACY_PREFIX + ", ".join(missing)
@@ -39,12 +46,19 @@ def blocked_reason(pid: str, missing: list[str], wall: dict[str, Any] | None = N
     if outcome == "wall_killed":
         exit_code = (workers.get("droid_exit_code_by_pid") or {}).get(pid)
         exit_part = f"，droid exit {exit_code}" if exit_code is not None else ""
-        tail = (
-            "（中性归因：worker 会话被 900s 墙杀、未能在被杀前写出这些证据文件"
-            f"（session_outcome={outcome}{exit_part}），"
-            "归因以墙上机器记录的死因事实为准，分型交由领班裁定）"
-        )
-        return f"{base}{tail}"
+        if exit_code in (124, 137):
+            head = (
+                "（中性归因：worker 会话被 900s 墙杀、未能在被杀前写出这些证据文件"
+                f"（session_outcome={outcome}{exit_part}），"
+            )
+        else:
+            head = (
+                "（中性归因："
+                f"worker 会话以退出码 {exit_code} 异常终结"
+                f"（session_outcome={outcome}{exit_part}），"
+                "未能在被终结前写出这些证据文件——死族非机器判定，本面不宣称墙杀；"
+            )
+        return f"{base}{head}归因以墙上机器记录的死因事实为准，分型交由领班裁定）"
     return f"{base}（{BLAME_SUFFIX}）"
 
 
@@ -62,13 +76,27 @@ def neutral_attribution(*, pid: str, missing: list[str] | None = None, exit_code
     """One machine-fact line for the replan prompt's outcome panel: the
     death fact, what the kill prevented, and the neutral attribution
     instruction — no judge language, the redispatch/revise call stays
-    with the foreman."""
+    with the foreman.
+
+    Exit-code branch is the strict mirror of
+    worker_salvage._death_cause_narrative (UT-M3-001): 124/137 are the
+    machine-proven timeout kill family and keep the 900s wall-kill
+    sentence; any other code — catch-all (first-class since 642ee66) or
+    unrecorded (rendered as recorded, ``None`` included) — states the code
+    and that the death family is not machine-determined."""
     facts = ["session_outcome=wall_killed"]
     if exit_code is not None:
         facts.append(f"droid exit {exit_code}")
     missing_part = f" The pack is still missing: {', '.join(missing)}." if missing else ""
+    if exit_code in (124, 137):
+        death_part = " — the worker session was killed by the 900s wall before it could write its evidence files."
+    else:
+        death_part = (
+            f" — the worker session ended with exit code {exit_code} before it could "
+            "write its evidence files; the death family is not machine-determined "
+            "and no wall kill is claimed."
+        )
     return (
-        f"process `{pid}`: {', '.join(facts)} — the worker session was killed by "
-        "the 900s wall before it could write its evidence files." + missing_part +
+        f"process `{pid}`: {', '.join(facts)}{death_part}" + missing_part +
         " Attribute this neutrally (machine-recorded death, not a worker-compliance failure)."
     )

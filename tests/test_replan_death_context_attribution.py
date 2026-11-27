@@ -458,6 +458,164 @@ def test_blocked_report_line_without_death_fact_matches_current_wording():
 
 
 # ---------------------------------------------------------------------------
+# UT-M3-001 closeout: the wall_killed branch splits on the exit code.
+# Since 642ee66 a positive exit outside {0,1} with no completion event is a
+# first-class wall_killed; only 124/137 (the GNU timeout TERM/SIGKILL
+# signature, mirroring worker_salvage._death_cause_narrative) may carry the
+# 900s wall-kill sentence. Catch-all codes state the exit code and that the
+# death family is not machine-determined — never the 900s arithmetic.
+# ---------------------------------------------------------------------------
+
+SIGKILL_DELTA = dict(WALL_KILLED_DELTA, droid_exit_code=137, stream_tail_marker=False)
+CATCHALL_DELTA = dict(WALL_KILLED_DELTA, droid_exit_code=2, stream_tail_marker=False)
+
+# Frozen 124/137 wording (unchanged): the kill family the machine proves.
+KILL_BLOCKED_TAIL = (
+    "（中性归因：worker 会话被 900s 墙杀、未能在被杀前写出这些证据文件"
+    "（session_outcome=wall_killed，droid exit {exit_code}），"
+    "归因以墙上机器记录的死因事实为准，分型交由领班裁定）"
+)
+KILL_PANEL_SENTENCE = (
+    " — the worker session was killed by the 900s wall before it could write "
+    "its evidence files."
+)
+# Frozen catch-all wording (new): the exit code stated, no wall-kill claim.
+CATCHALL_BLOCKED_TAIL = (
+    "（中性归因：worker 会话以退出码 {exit_code} 异常终结"
+    "（session_outcome=wall_killed，droid exit {exit_code}），"
+    "未能在被终结前写出这些证据文件——死族非机器判定，本面不宣称墙杀；"
+    "归因以墙上机器记录的死因事实为准，分型交由领班裁定）"
+)
+CATCHALL_PANEL_SENTENCE = (
+    " — the worker session ended with exit code {exit_code} before it could "
+    "write its evidence files; the death family is not machine-determined "
+    "and no wall kill is claimed."
+)
+
+
+def test_wall_killed_124_keeps_900s_wall_sentence():
+    wall = _wall_from_delta(WALL_KILLED_DELTA)
+    assert blocked_reason("hslconv", MISSING, wall=wall) == (
+        "料不齐（没料不验收）：缺 handoff, status"
+        + KILL_BLOCKED_TAIL.format(exit_code=124)
+    )
+
+
+@pytest.mark.parametrize(
+    ("delta", "exit_code", "kill_family"),
+    [
+        (SIGKILL_DELTA, 137, True),
+        (CATCHALL_DELTA, 2, False),
+        (dict(WALL_KILLED_DELTA, droid_exit_code=143, stream_tail_marker=False), 143, False),
+    ],
+)
+def test_wall_killed_reason_branches_on_exit_code(delta, exit_code, kill_family):
+    wall = _wall_from_delta(delta)
+    reason = blocked_reason("hslconv", MISSING, wall=wall)
+    assert f"droid exit {exit_code}" in reason
+    assert DEATH_FACT in reason
+    if kill_family:
+        assert reason == (
+            "料不齐（没料不验收）：缺 handoff, status"
+            + KILL_BLOCKED_TAIL.format(exit_code=exit_code)
+        )
+    else:
+        assert "900s" not in reason
+        assert "死族非机器判定" in reason
+        assert reason == (
+            "料不齐（没料不验收）：缺 handoff, status"
+            + CATCHALL_BLOCKED_TAIL.format(exit_code=exit_code)
+        )
+
+
+def test_reason_missing_exit_code_states_recorded_none_not_kill_claim():
+    """Strict M2 mirror: a wall_killed record with no exit code renders the
+    code as recorded (None) into the catch-all shape — absence of a code
+    is not a kill-family verdict either."""
+    wall = _wall_from_delta(
+        {k: v for k, v in WALL_KILLED_DELTA.items() if k != "droid_exit_code"}
+    )
+    assert blocked_reason("hslconv", MISSING, wall=wall) == (
+        "料不齐（没料不验收）：缺 handoff, status"
+        + "（中性归因：worker 会话以退出码 None 异常终结"
+        "（session_outcome=wall_killed），"
+        "未能在被终结前写出这些证据文件——死族非机器判定，本面不宣称墙杀；"
+        "归因以墙上机器记录的死因事实为准，分型交由领班裁定）"
+    )
+
+
+@pytest.mark.parametrize("exit_code", [124, 137])
+def test_neutral_attribution_124_137_panel_keeps_900s_kill_sentence(exit_code):
+    panel = neutral_attribution(pid="hslconv", exit_code=exit_code)
+    assert panel == (
+        "process `hslconv`: session_outcome=wall_killed, "
+        f"droid exit {exit_code}{KILL_PANEL_SENTENCE} "
+        "Attribute this neutrally (machine-recorded death, not a "
+        "worker-compliance failure)."
+    )
+    assert "900s wall" in panel
+    assert "not a worker-compliance failure" in panel
+
+
+@pytest.mark.parametrize("exit_code", [2, 143])
+def test_neutral_attribution_catchall_codes_state_exit_no_900s_claim(exit_code):
+    """Catch-all wall_killed codes must not narrate a 900s kill the machine
+    never established — the panel states the exit code and the non-judgment."""
+    panel = neutral_attribution(pid="hslconv", exit_code=exit_code)
+    assert "900s" not in panel
+    assert f"droid exit {exit_code}" in panel
+    assert "death family is not machine-determined" in panel
+    assert panel == (
+        "process `hslconv`: session_outcome=wall_killed, "
+        f"droid exit {exit_code}{CATCHALL_PANEL_SENTENCE.format(exit_code=exit_code)} "
+        "Attribute this neutrally (machine-recorded death, not a "
+        "worker-compliance failure)."
+    )
+
+
+def test_neutral_attribution_missing_exit_code_states_recorded_none_not_kill_claim():
+    """Strict M2 mirror on the panel face: wall_killed with no recorded
+    exit code renders the code as recorded (None) into the catch-all
+    sentence — no wall kill is claimed without a machine-proven family."""
+    panel = neutral_attribution(pid="hslconv")
+    assert "900s" not in panel
+    assert "exit code None" in panel
+    assert "death family is not machine-determined" in panel
+    assert panel == (
+        "process `hslconv`: session_outcome=wall_killed"
+        + CATCHALL_PANEL_SENTENCE.format(exit_code="None") +
+        " Attribute this neutrally (machine-recorded death, not a "
+        "worker-compliance failure)."
+    )
+
+
+def test_replan_panel_catchall_exit_states_exit_code_without_900s_claim(
+    tmp_path, monkeypatch
+):
+    """Rendering-level sync: the workflow's own replan heredoc must carry
+    the catch-all wording, not the 900s sentence (UT-M3-001's reported
+    defect was measured on this panel)."""
+    wall = _wall_with_outcome(CATCHALL_DELTA)
+    prompt = _exec_replan_prompt(tmp_path, monkeypatch, wall=wall)
+    assert "session_outcome=wall_killed" in prompt
+    assert "droid exit 2" in prompt
+    assert "Attribute this neutrally" in prompt
+    assert "death family is not machine-determined" in prompt
+    assert "900s" not in prompt
+    assert BLAME_SUFFIX not in prompt
+
+
+def test_replan_panel_sigkill_137_keeps_900s_kill_sentence(tmp_path, monkeypatch):
+    wall = _wall_with_outcome(SIGKILL_DELTA)
+    prompt = _exec_replan_prompt(tmp_path, monkeypatch, wall=wall)
+    assert "session_outcome=wall_killed" in prompt
+    assert "droid exit 137" in prompt
+    assert "killed by the 900s wall" in prompt
+    assert "Attribute this neutrally" in prompt
+    assert BLAME_SUFFIX not in prompt
+
+
+# ---------------------------------------------------------------------------
 # Wiring: all four merge steps and their report-line twins use the module
 # ---------------------------------------------------------------------------
 

@@ -6,7 +6,7 @@
 
 **口径原文（issue #929 关单评注，第 398 行段）：**
 
-> 第 58 轮关单（交付层验收通过、run 层死亡入账，两层并记）：主 run 45812793849 终局 Failure。过程全程披露：第一轮 hslconv 工人会话被 900s 会话墙杀死于最后 checks 步（两回合单回合推理膨胀 203s＋376s，死于会话墙而非实现——实现完整、checks 全绿、384 passed），handoff/status 未及落盘、证据包缺件，verdict1 判 fail；replan 触发后第二轮只重跑 hslconv 全绿（391 passed, 2 skipped），validator 二轮 pass、assemble 成功、候选 PR #949 开出（按活验口径不合并）。交付层终局机器判定全过（verdict2 pass、validation overall=pass），板面已由流水线写为已验收，故本单关单＋已验收，不改标失败；run 层 Failure 后果入账：整单死亡 +1（死亡账整单 46/93）、持续进化计数按规则清零。
+> 第 58 轮关单（交付层验收通过、run 层死亡入账，两层并记）：主 run 45812793849 终局 Failure。过程全程披露：第一轮 hslconv 工人会话被 900s 会话墙杀死于最后 checks 步（两回合单回合推理膨胀 203s＋376s，死于会话墙而非实现——实现完整、checks 全绿、384 passed），handoff/status 未及落盘、证据包缺件，verdict1 判 fail；replan 触发后第二轮只重跑 hslconv 全绿（391 passed, 2 skipped），validator 二轮 pass、assemble 成功、候选 PR #949 开出（按活验口径不合并）。交付层终局机器判定全过（verdict2 pass、validation overall=pass），板面已由流水线写为已验收，故本单关单＋已验收，不改标失败；run 层 Failure 后果入账：整单死亡 +1（死亡账整单 46/93）、持续进化计数按规则清零。……
 
 **追认口径分解（本登记的裁定留痕）：**
 
@@ -15,6 +15,8 @@
 3. **处置：关单＋已验收，不改标失败。** 追认依据是交付层终局机器判定全过，且死亡后果已在 run 层单独入账——不因 run 层 Failure 回改交付层板面。
 4. **台账侧执行：** 关单评注与板面翻板由大哥在台账侧执行收档（工单写操作不在本 mission 边界内，issue #929 全程只读）。
 5. **结构根治：** 本型死亡的后果链由本 mission 三层根治（补卷器/死亡上墙/归责根治）。verifier 步 `if: always()` 守卫与补卷闸的连锁交互（scrutiny round-1 BLK-1/2）已按「marker 按内容判定红、取消路径排除」修复并钉死（`tests/test_verify_prep_salvage_chain.py` / `tests/test_verify_marker_interaction.py`），后续同类死法在结构上不再产生「已全绿工作作废＋二轮重做」。
+
+（时间线注记：上节第 5 条与下节「修复面」表为**裁定后的修复完成态**；缺陷立号在引用口径写成时（第 58 轮关单评注原文尾句）为「立号待裁」，其裁定落在本件第二节。）
 
 ## 二、replan 归责缺陷立号
 
