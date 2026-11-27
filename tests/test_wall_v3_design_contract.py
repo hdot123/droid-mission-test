@@ -507,6 +507,77 @@ class TestEnforcementLatency:
         assert "实测" in acceptance
 
 
+class TestSeatProbeExplicitMapping:
+    """Round-2 discipline: every per-seat probe clause carries an explicit
+    probe->SL mapping row (the blanket sentence was deleted). The five
+    previously-unsampled probes must each name their SL carrier and the
+    acceptance-line map must carry an explicit mapping table."""
+
+    PROBE_CLAUSES = [
+        # (seat-gates probe substring, SL carrier the clause must name)
+        ("接线锁探针", "SL-13a"),
+        ("候选分支越权写探针", "SL-13b"),
+        ("D-2 封章粘滞负例", "SL-13c"),
+        ("human_stop 消费探针", "SL-13d"),
+        ("pick fail-closed 变体探针", "SL-13e"),
+    ]
+
+    def test_seat_gates_probe_clauses_name_sl_carrier(self):
+        gates = (REPO_ROOT / "docs/wall-v3/seat-gates.md").read_text(encoding="utf-8")
+        for clause, sl in self.PROBE_CLAUSES:
+            region = next(
+                (seg for seg in gates.split("probes = ")
+                 if clause in seg.split("\n", 1)[0]),
+                None,
+            )
+            assert region is not None, f"probe clause not found in seat-gates.md: {clause!r}"
+            assert sl in region, f"probe clause {clause!r} does not name {sl}"
+
+    def test_acceptance_map_has_explicit_probe_table(self):
+        alm = (REPO_ROOT / "docs/wall-v3/acceptance-line-map.md").read_text(encoding="utf-8")
+        assert "席位 probe→SL 显式映射表" in alm, "explicit probe mapping table missing"
+        table = alm[alm.index("席位 probe→SL 显式映射表"):]
+        # blanket folded sentence must be gone
+        assert "不再另立族号" not in table, "blanket probe-coverage sentence survived"
+        for _, sl in self.PROBE_CLAUSES:
+            assert f"| {sl}" in table or f"| {sl} " in table, f"{sl} has no explicit mapping row"
+
+
+class TestKeyLedgerFullTreeScan:
+    """Round-2 orchestrator ruling: hard rule 9 covers the whole production
+    workflow tree; criterion 1, the guard face, and the ledger site set must
+    share one boundary (measured: 12 files / 6 secret names / 82 expansions)."""
+
+    def test_workflow_tree_secret_scan_baseline(self):
+        wf_dir = REPO_ROOT / ".github/workflows"
+        files = sorted(wf_dir.glob("*.yml"))
+        expansions = []
+        names = set()
+        for f in files:
+            for i, ln in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+                if "secrets." in ln:
+                    expansions.append((f.name, i))
+                    names.update(
+                        part.split("}")[0].strip()
+                        for part in ln.split("secrets.")[1:]
+                    )
+        with_secrets = [f for f in files if "secrets." in f.read_text(encoding="utf-8")]
+        assert len(with_secrets) == 12, (
+            f"expected 12 workflow files carrying secrets, got {len(with_secrets)}"
+        )
+        assert len(expansions) == 82, f"expected 82 expansion lines, got {len(expansions)}"
+        assert len(names) == 6, f"expected 6 secret names, got {sorted(names)}"
+        assert "I8_TEAM_TRIGGER_PAT" in names, "6th secret missing from scan"
+
+    def test_ledger_design_states_full_tree_scope(self, doc_text: str):
+        oog = (REPO_ROOT / "docs/wall-v3/out-of-graph-artifacts.md").read_text(encoding="utf-8")
+        for marker in ("12 个 workflow 文件", "82 条展开行", "I8_TEAM_TRIGGER_PAT"):
+            assert marker in oog, f"full-tree marker missing in ledger doc: {marker!r}"
+        assert "三者同边界" in oog or "三者口径一致" in doc_text, (
+            "criterion/guard/site-set boundary alignment not declared"
+        )
+
+
 class TestLiveEvidenceGate:
     @pytest.mark.parametrize("marker", FIXTURE["live_evidence_markers"])
     def test_no_number_no_build_criteria(self, doc_text: str, marker: str):

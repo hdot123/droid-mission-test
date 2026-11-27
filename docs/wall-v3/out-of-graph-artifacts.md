@@ -8,7 +8,7 @@
 >
 > **零密钥值铁律**：本件只记 secret 名与元数据。唯一涉及值位形态的是 I8-B 夹具假 PAT（前缀族 `ghp_` 的哑值，非真凭证），本稿记名与位点不转录值本体。
 >
-> **禁抄项**（form-basis §11）：引擎墙未闭合态（governance owner 门停用、`--changes` 判词不接 CI）不抄入本件——本件所有守卫与对账都是**须执法的门**（接 CI 恒跑，见 §3.7）。引用引擎放行门口径一律按 R-29 已裁**两门**（quality-gate / substrate-gate-suite）。
+> **禁抄项**（form-basis §11）：引擎墙未闭合缺口中**仍在册的缺口态**（`--changes` 判词不接 CI 的登记时点态已于 main@460922c 上游闭合，引用引擎接线口径一律按闭合后形态；NEW-1 governance 门现状＝enabled 在役执法——见本件 §3.7 与 form-basis §11.1 更新口径）不抄入本件——本件所有守卫与对账都是**须执法的门**（接 CI 恒跑，见 §3.7）。引用引擎放行门口径一律按 R-29 已裁**两门**（quality-gate / substrate-gate-suite）。
 >
 > **版本口径**：本件属设计稿 v3.0 体系，作废 v2.7~v2.10 账面墙口径；现状 team.yml:7 标 v2.7.0、README 交付段另标 v2.9/v2.10 的漂移（锚件 2 §0）由 v3.0 统一收口。
 >
@@ -26,7 +26,7 @@
 |---|---|---|
 | 图外自动化 | 触发面或执行体在流水线编排之外，且其写目标落在链上权威面（板面/issue/凭证） | 图外件①板面 Item closed 自动化 |
 | 图外载荷 | 活验/探针载荷内嵌生产文本，生产消费面为零，或值本体违反零值登记 | 图外件②I8-B 标题键控假 PAT 夹具 |
-| 图外凭证面 | 凭证展开位点、消费关系、暴露面未登记未对账，或多席位重复展开无 scope 差异 | 图外件③BYOM 11 位点展开（team.yml 8＋droid.yml 1＋droid-probe.yml 1＋probe6.yml 1）、图外件⑤env-check 五 secrets 全量入环境 |
+| 图外凭证面 | 凭证展开位点、消费关系、暴露面未登记未对账，或多席位重复展开无 scope 差异 | 图外件③BYOM 全树位点展开（声明体 11 位点＋内联变体面，全树口径 12 文件/6 secret 名/82 展开行实测）、图外件⑤env-check 五 secrets 全量入环境、第 6 secret I8_TEAM_TRIGGER_PAT（I8 编排器 5 行展开） |
 | 图外产物 | 链上语义命名（verdict 系）出现在链外位置，生成演员未登记 | 图外件④verdict.json/md 顶层孤儿件 |
 | 图外会话面 | 运行态会话记录/记忆面在墙外运行、不进墙、不承载判定却可能被误用为证据源 | 图外件⑥memory/ 运行态会话面 |
 
@@ -45,7 +45,7 @@
 |---|---|---|---|---|---|---|
 | ① | 板面 Item closed 自动化（关单翻板） | 图外自动化 | 板侧 Projects #33 内建工作流；证据 `docs/板面关单翻板-最小操作指引.md:12-14` | 禁绝（板侧 Disable/终态选项改造）＋收编（图内漂移对账与再同步） | 大哥（板侧）＋装配席（再同步）＋env-check（探测项） | §2.1/§4 |
 | ② | I8-B 标题键控假 PAT 夹具 | 图外载荷 | `team.yml:419`、`:412-432` 区段（命中分支 `:429-432`） | 禁绝（夹具仓化＋生产文本净化＋探针改道） | lead 席默认删行＋大哥退役批（workflow 文本编辑权属施工批，见 §2.2 责任席位行）＋验收席面（活验编排改道） | §2.2/§4 |
-| ③ | BYOM 三件＋FACTORY_API_KEY 11 位点重复展开 | 图外凭证面 | team.yml 8 个 Write BYOM settings 步（`team.yml:117/:529/:1460/:1880/:2176/:2723/:3702/:4113`）＋droid.yml 1 步（`droid.yml:25`）＋droid-probe.yml 1 步（`droid-probe.yml:13`）＋probe6.yml 1 步（`probe6.yml:10`） | 收编（单点声明体＋按席差异化 scope 矩阵＋台账对账；对账锚集含非领班面 3 锚） | 写板席（声明体）＋大哥（scope 裁定）＋caps-gate（对账） | §2.3/§3.4/§4 |
+| ③ | BYOM 三件＋FACTORY_API_KEY 全树位点重复展开 | 声明体位点 11 个，跨 4 个 workflow 文件：team.yml 8 个 Write BYOM settings 步（`team.yml:117/:529/:1460/:1880/:2176/:2723/:3702/:4113`，名称行）＋`droid.yml:25`（replica pattern）＋`droid-probe.yml:13`＋`probe6.yml:10`；内联变体面 `droid-probe2.yml`（`:15-17` env 注入＋`:37` 内联 settings.json 写位）＋`probe3.yml`（`:15`＋`:38-40` env 注入＋`:51/:60` 内联写位）；其余探针面 probe/probe4/probe5 与 I8 编排器＋c-fixture 注入面同树入账。**全树口径（对账判据 1 与守卫面 §3.6 与位点集三者同边界）**：`grep -n 'secrets\.' .github/workflows/*.yml` 实测＝12 个 workflow 文件、6 个 secret 名、82 条展开行 | 收编（单点声明体＋全树消费锚＋按席差异化 scope 矩阵呈裁＋台账 1 登记多锚；probe/I8/内联变体族纳入裁定面与对账锚集） | 写板席（声明体）＋大哥（scope 裁定）＋caps-gate（对账） | §2.3/§3.4/§4 |
 | ④ | verdict.json/md 顶层孤儿件 | 图外产物 | mission 工作区顶层两件（2026-11-27T08:07 生成，非 repo 树、非 git tracked） | 禁绝（清理）＋收编（命名空间合法落点＋防复活负例） | 写板席（命名空间）＋大哥/人工（清理） | §2.4/§4 |
 | ⑤ | env-check 五 secrets 全量入环境 | 图外凭证面 | `env-check.yml:82-86`（gate 步 5 件）、`:238-240`（wall 步 3 件重复） | 收编（按消费分离注入：wall 步归零＋台账登记暴露面） | env-check 零号门＋写板席（施工）＋caps-gate（对账） | §2.5/§3.5/§4 |
 | ⑥ | memory/ 运行态图外会话面 | 图外会话面 | `memory/log/2026-11-27-sessions.md`（会话记录面）；untracked 运行态树 | 收编（接口收口：证据入库单点＋门清单禁写＋台账登记） | 改计划席（输入面）＋写板席（入库规范）＋领班席（编排声明） | §2.6/§4 |
@@ -114,35 +114,35 @@
 
 **清零判据**：生产 workflow 零夹具分支与零 PAT 前缀族命中；B 夹具文件在树且探针改道后 I8-B 活验单全链红照旧；守卫负例常驻 CI。假 PAT 变量（repo variables）随拆除转 `[[dangling_name]]`（zombie），探针退役批回读验证后转 revoked（§3.6 判据 4 牺牲品链）。
 
-### 2.3 图外件③：BYOM 三件＋FACTORY_API_KEY 的 11 位点重复展开
+### 2.3 图外件③：BYOM 三件＋FACTORY_API_KEY 的全树位点重复展开（12 文件/6 名/82 行实测口径）
 
 **四要素速览**
 
 | 要素 | 内容 |
 |---|---|
-| 现位置 | **11 个「Write BYOM settings」步，跨 4 个 workflow 文件**：team.yml 8 个会话步（`:117/:529/:1460/:1880/:2176/:2723/:3702/:4113`，名称行）＋`droid.yml:25`（replica pattern，caller-side gateway auth）＋`droid-probe.yml:13`（same as droid.yml v5）＋`probe6.yml:10`（replica pattern）；每步 env 注入两到三件＋写文件 heredoc（如 team.yml lead `:131-149` 区段：headers 键位 `:133-135`、`x-opencode-session` 头 `:134`、apiKey 位 `:141`；droid.yml 同构块 `:25-60` 区段）；FACTORY_API_KEY 独立步注 team.yml 8 处（`:157/:568/:1501/:1916/:2209/:2757/:3738/:4147`）＋`droid.yml:62`＋`droid-probe.yml:46`＋`probe6.yml:44` |
-| 图外性判定 | 重复展开≠登记（同一能力面 11 份平行配置、零登记零对账）＋无席位差异声明（四角色同拿三件＋同模型条目，多发票证=图外能力）＋写文件位图外（`~/.factory/settings.json` 是 runner 会话外配置面，生命周期无登记，session 结束即弃）＋**收口面完整性**：硬规则⑨「全部凭证」口径下，凭证收口不因 workflow 文件归属（非领班席生产/探针面）而遗漏——`droid.yml`（@droid 触发的生产 workflow）与 probe 族（workflow_dispatch 探针）的 BYOM 写入面与领班席同构，不收编则位点对账判据（§3.6 判据 1）在全生产 workflow 树上必然失配 |
-| 收编/禁绝 | 收编（单点声明体＋11 调用位变消费锚＋按席差异化 scope 矩阵呈裁＋台账 1 登记多锚；probe 族纳入裁定面与对账锚集） |
+| 现位置 | **全树实测口径（对账判据 1 与守卫面同边界）**：`grep -n 'secrets\.' .github/workflows/*.yml` ＝ 12 个 workflow 文件、6 个 secret 名、82 条展开行。其中「Write BYOM settings」声明体位点 11 个，跨 4 个 workflow 文件：team.yml 8 个会话步（`:117/:529/:1460/:1880/:2176/:2723/:3702/:4113`，名称行）＋`droid.yml:25`（replica pattern，caller-side gateway auth）＋`droid-probe.yml:13`（same as droid.yml v5）＋`probe6.yml:10`（replica pattern）；每步 env 注入两到三件＋写文件 heredoc（如 team.yml lead `:131-149` 区段：headers 键位 `:133-135`、`x-opencode-session` 头 `:134`、apiKey 位 `:141`；droid.yml 同构块 `:25-60` 区段）；FACTORY_API_KEY 独立步注 team.yml 8 处（`:157/:568/:1501/:1916/:2209/:2757/:3738/:4147`）＋`droid.yml:62`＋`droid-probe.yml:46`＋`probe6.yml:44`。**内联变体面（同构写位、无命名步）**：`droid-probe2.yml`（`:15-17` env 三件注入＋`:37` 内联 settings.json 写位）与 `probe3.yml`（`:15` 单件注入＋`:38-40` 三件注入＋`:51/:60` 内联写位）。**同树其余凭证位点**：probe.yml `:16/:22`（WORKER_CI_KEY）、probe4.yml `:10-11`（WORKER_CI_KEY＋GO_GITHUB_RUN_TOKEN）、probe5.yml `:10-11`（WORKER_CI_KEY＋GW_TOKEN_KNOWN）、env-check.yml（`:82-86` gate 步五件＋`:238-240` wall 步三件——件⑤分账）、I8 编排器 `i8-zero-escape-live-orchestrator.yml` 五组三件注入（`:100-102`/`:182-184`/`:256-258`/`:308-310`/`:345-347`，含**第 6 secret `I8_TEAM_TRIGGER_PAT` 5 行**——全树唯一使用面）、c-fixture `:41-42`（两件探针面）。六名清单：FACTORY_API_KEY 16 行／WORKER_CI_KEY 21 行／GW_TOKEN_KNOWN 12 行／GO_GITHUB_RUN_TOKEN 20 行／PROJECTS_STATE_PAT 8 行／I8_TEAM_TRIGGER_PAT 5 行 |
+| 图外性判定 | 重复展开≠登记（同一能力面多份平行配置、零登记零对账）＋无席位差异声明（四角色同拿三件＋同模型条目，多发票证=图外能力）＋写文件位图外（`~/.factory/settings.json` 是 runner 会话外配置面，生命周期无登记，session 结束即弃）＋**收口面完整性（round-2 全树口径）**：硬规则⑨「全部凭证」口径下，凭证收口不因 workflow 文件归属（非领班席生产/探针/I8 面）而遗漏——`droid.yml`（@droid 触发的生产 workflow）、probe 族（workflow_dispatch 探针）与 I8 编排器/c-fixture/内联变体面的凭证位点与领班席同树同构，不收编则位点对账判据（§3.6 判据 1）在全生产 workflow 树上必然失配 |
+| 收编/禁绝 | 收编（单点声明体＋全树调用位变消费锚＋按席差异化 scope 矩阵呈裁＋台账 1 登记多锚；probe/I8/内联变体族纳入裁定面与对账锚集） |
 | 责任席位 | 声明体与收口＝写板席；scope 裁定＝大哥（本稿给呈裁清单，probe 族一并呈裁）；对账执行＝caps-gate；台账登记＝钥匙面（§3.3 条目①-④） |
 
-**现状与锚**：team.yml 8 个 droid 会话步（lead/worker/validate/revalidate/replan/worker2/validate2/revalidate2）各自把 `WORKER_CI_KEY`/`GO_GITHUB_RUN_TOKEN`/`GW_TOKEN_KNOWN` 写进 `~/.factory/settings.json` 的 BYOM 模型条目（headers 键位 `x-ci-key`/`x-opencode-session`/`cf-aig-authorization`＋`apiKey` 位），机制块逐位点重复（lead 形态 `team.yml:131-149` 区段）。会话头已按席位 pin：`SESSION_NAME`（`:123` lead=team-lead、`:534` worker=team-worker-<pid>、`:1466` validator=team-validator、`:1886` revalidate 同名、`:2181` replan=team-lead-replan、`:2728` worker2=…-r2）——**席位可区分性已存在，只是 scope 未差异化**。FACTORY_API_KEY 另在每席位独立 env 注入（team.yml 8 锚）。**非领班面同构 3 步**（锚经实读核实）：`droid.yml:25`（@droid 触发的生产 workflow，BYOM 条目 model=dynamic/droid-review、headers 三键位齐全，`:62` FACTORY_API_KEY 注入）、`droid-probe.yml:13`（workflow_dispatch 探针，`WORKER_CI_KEY`/`GO_GITHUB_RUN_TOKEN` 双件、`:46` FACTORY_API_KEY）、`probe6.yml:10`（workflow_dispatch 探针，三件齐全、`:44` FACTORY_API_KEY）——三步与 team.yml 机制块同构（同一 `~/.factory/settings.json` 写位、同一模型条目族）。同族还有 `droid-probe2.yml`（baseUrl 变体探针，`:15-17` env 注入＋`:37` 内联 settings.json 写位）与 `probe3.yml`（`:15/:38-40` env 注入＋`:51/:60` 内联写位）两个变体面——本次收口以 4 文件 11 个「Write BYOM settings」命名步为准入账，两个内联变体面（droid-probe2/probe3）登记进 `[[external_face]]` 参考面（§3.3 注），收口施工时一并核对。
+**现状与锚**：team.yml 8 个 droid 会话步（lead/worker/validate/revalidate/replan/worker2/validate2/revalidate2）各自把 `WORKER_CI_KEY`/`GO_GITHUB_RUN_TOKEN`/`GW_TOKEN_KNOWN` 写进 `~/.factory/settings.json` 的 BYOM 模型条目（headers 键位 `x-ci-key`/`x-opencode-session`/`cf-aig-authorization`＋`apiKey` 位），机制块逐位点重复（lead 形态 `team.yml:131-149` 区段）。会话头已按席位 pin：`SESSION_NAME`（`:123` lead=team-lead、`:534` worker=team-worker-<pid>、`:1466` validator=team-validator、`:1886` revalidate 同名、`:2181` replan=team-lead-replan、`:2728` worker2=…-r2）——**席位可区分性已存在，只是 scope 未差异化**。FACTORY_API_KEY 另在每席位独立 env 注入（team.yml 8 锚）。**非领班面同构 3 步**（锚经实读核实）：`droid.yml:25`（@droid 触发的生产 workflow，BYOM 条目 model=dynamic/droid-review、headers 三键位齐全，`:62` FACTORY_API_KEY 注入）、`droid-probe.yml:13`（workflow_dispatch 探针，`WORKER_CI_KEY`/`GO_GITHUB_RUN_TOKEN` 双件、`:46` FACTORY_API_KEY）、`probe6.yml:10`（workflow_dispatch 探针，三件齐全、`:44` FACTORY_API_KEY）——三步与 team.yml 机制块同构（同一 `~/.factory/settings.json` 写位、同一模型条目族）。**内联变体两件（round-2 全树口径入账）**：`droid-probe2.yml`（`:15-17` env 三件注入、`:37` 内联 `~/.factory/settings.json` 写位——BYOM 机制同构但无「Write BYOM settings」命名步）与 `probe3.yml`（`:15` 步 1 单件注入、`:38-40` 步 2 三件注入、`:51-60` 两处内联 settings.json 写位（:60 为 json.dump 写文件行））——**两件并入本件收口面**（不再只登记 `[[external_face]]` 参考面）：收口施工时与 11 声明体位点同批核对/改写，或显式禁改登记。**第 6 secret**：`I8_TEAM_TRIGGER_PAT` 仅在 I8 编排器展开（5 行：`:100/:182/:256/:308/:345`），生产 team.yml 零消费——按全树口径入台账（§3.3 条目⑧）。全树总账（实测）：12 个 workflow 文件、6 个 secret 名、82 条展开行；位点对账判据（§3.6 判据 1）、守卫负例扫描面（§2.3 收编方式 4）、本位点集三者边界一致＝全生产 workflow 树。
 
 **图外性判定（三条成立）**：
 
-1. **重复展开≠登记**：台账口径下应为「1 条登记＋N 条消费锚」；现状是 11 份平行声明体（跨 4 文件）、零登记、零对账——任何一件的用途/暴露面变化都无从发现。
-2. **无席位差异声明**：lead/worker/validator/replan 四角色拿完全相同的三件＋同模型条目；probe/droid 面（非领班席）同拿同构三件无任何登记。各面三件是否都必要无声明无对账——席位用不到的钥匙=无授权能力（59 轮问题类的凭证面变体）。
-3. **写文件位图外**：`~/.factory/settings.json` 不进墙、不进台账、不进 artifact；其内容由 heredoc 在 11 个位点各自生成，无单源。
+1. **重复展开≠登记**：台账口径下应为「1 条登记＋N 条消费锚」；现状是多份平行声明体（跨 4 文件）＋内联变体面＋散点探针/I8 注入位、零登记、零对账——任何一件的用途/暴露面变化都无从发现。
+2. **无席位差异声明**：lead/worker/validator/replan 四角色拿完全相同的三件＋同模型条目；probe/droid/I8 面（非领班席）同拿同构件无任何登记。各面三件是否都必要无声明无对账——席位用不到的钥匙=无授权能力（59 轮问题类的凭证面变体）。
+3. **写文件位图外**：`~/.factory/settings.json` 不进墙、不进台账、不进 artifact；其内容由 heredoc 在各声明体位点与内联变体位各自生成，无单源。
 
 **收编方式（单点声明＋按席差异化 scope）**：
 
-1. **单点声明体**：BYOM 写入逻辑收敛为一个单源脚本 `scripts/team/write_byom_settings.py`（目标态新增；参数化 role/session_name），**11 个位点全部改为单行调用**（team.yml 8 步＋droid.yml/probe6.yml 两步——两文件均在生产 workflow 树，收口后声明体对其同形可用；droid-probe.yml 双件形态以参数化子集承载）——对位本仓脚本单源化先例（`write_worker_delta.py`／`validator_prompt_template.py` 单源，锚件 2 §2/§3）。声明体是**登记面**，11 个调用行是**消费锚**（台账 consumes 字段）。
+1. **单点声明体**：BYOM 写入逻辑收敛为一个单源脚本 `scripts/team/write_byom_settings.py`（目标态新增；参数化 role/session_name），**11 个声明体位点全部改为单行调用**（team.yml 8 步＋droid.yml/probe6.yml 两步——两文件均在生产 workflow 树，收口后声明体对其同形可用；droid-probe.yml 双件形态以参数化子集承载），**内联变体面（droid-probe2.yml/probe3.yml 的 3 处内联写位）同批收口**为声明体调用或显式禁改登记——对位本仓脚本单源化先例（`write_worker_delta.py`／`validator_prompt_template.py` 单源，锚件 2 §2/§3）。声明体是**登记面**，调用行是**消费锚**（台账 consumes 字段，锚集边界=全生产 workflow 树）。
 2. **按席差异化 scope 矩阵**（与 seat-gates §2 各席 `authorization.token_scope` 对齐，本件不重复定义席位面，只给凭证面的裁定程序）：
    - 判定程序：逐席列出三件各自的消费键位（`x-ci-key`/`cf-aig-authorization`/`apiKey`），从「该席会话是否产生需要该键位的请求」推导最小集；推导不出的保守登记现状全量。
-   - **呈大哥裁两条建议**：①validator/revalidate 席（会话零 GitHub 写权已成立）的 BYOM 三件最小集裁定——尤其 `cf-aig-authorization` 头位与 `apiKey` 位对该席会话的必要性；②`FACTORY_API_KEY` 与 BYOM `apiKey` 位（`GO_GITHUB_RUN_TOKEN`）是否双轨冗余（同一会话面两把模型钥匙）——冗余则按席收窄到单轨。裁定结果回填 seat-gates 对应席 `token_scope` 与本件 §3.4 矩阵。**probe/droid 面（`droid.yml`/`droid-probe.yml`/`probe6.yml`）的凭证面去留随裁定一并处理**——三面非领班席 job，但同写 `~/.factory/settings.json`、同消费四件 secrets，属同一凭证最小化裁定的对象面。
-3. **台账收口形态**：三件＋FACTORY_API_KEY 各 1 条 `[[key]]`（§3.3 条目①-④），consumes=收口后「1 声明体行锚＋11 调用位锚＋env-check presence 位锚」（11 锚含非领班面 3 锚——`droid.yml:25`/`droid-probe.yml:13`/`probe6.yml:10`）；暴露面登记（写文件位 `~/.factory/settings.json` 入 `[[external_face]]`）。
-4. **守卫负例（常驻）**：文本断言——生产 workflow 树（team.yml/droid.yml/droid-probe.yml/probe6.yml）内「Write BYOM settings」**内联 heredoc 形态**出现次数>0 即红（收口后只允许声明体调用形态）；`secrets.WORKER_CI_KEY`/`GO_GITHUB_RUN_TOKEN`/`GW_TOKEN_KNOWN`/`FACTORY_API_KEY` 的 `${{ secrets.* }}` 展开位点集合≠台账 consumes 预期集即红（对账判据 1 的文本层，位点扫描覆盖全生产 workflow 树）。
+   - **呈大哥裁两条建议**：①validator/revalidate 席（会话零 GitHub 写权已成立）的 BYOM 三件最小集裁定——尤其 `cf-aig-authorization` 头位与 `apiKey` 位对该席会话的必要性；②`FACTORY_API_KEY` 与 BYOM `apiKey` 位（`GO_GITHUB_RUN_TOKEN`）是否双轨冗余（同一会话面两把模型钥匙）——冗余则按席收窄到单轨。裁定结果回填 seat-gates 对应席 `token_scope` 与本件 §3.4 矩阵。**probe/droid/I8 面（`droid.yml`/`droid-probe*.yml`/`probe*.yml`/`i8-zero-escape-live-*`）的凭证面去留随裁定一并处理**——各面非领班席 job，但同写 `~/.factory/settings.json`（droid/probe 族）或注入 secrets（I8 编排器，含第 6 件 I8_TEAM_TRIGGER_PAT），属同一凭证最小化裁定的对象面。
+3. **台账收口形态**：三件＋FACTORY_API_KEY＋I8_TEAM_TRIGGER_PAT 各 1 条 `[[key]]`（§3.3 条目①-④＋⑧），consumes=收口后「1 声明体行锚＋全树调用位锚＋env-check presence 位锚」（锚集边界=全生产 workflow 树——12 文件 82 行实测，含内联变体面与 I8 编排器面）；暴露面登记（写文件位 `~/.factory/settings.json` 入 `[[external_face]]`）。
+4. **守卫负例（常驻）**：文本断言——**全生产 workflow 树**（`.github/workflows/*.yml`，12 文件实测边界）内「Write BYOM settings」**内联 heredoc 形态**出现次数>0 即红（收口后只允许声明体调用形态）；`secrets.WORKER_CI_KEY`/`GO_GITHUB_RUN_TOKEN`/`GW_TOKEN_KNOWN`/`FACTORY_API_KEY`/`PROJECTS_STATE_PAT`/`I8_TEAM_TRIGGER_PAT` 六名的 `${{ secrets.* }}` 展开位点集合≠台账 consumes 预期集即红（对账判据 1 的文本层，位点扫描边界=全生产 workflow 树——与判据、位点集三者同边界，round-2 口径）。
 
-**清零判据**：11 位点全部变为单行调用；三件＋FACTORY_API_KEY 的 secrets 展开只存在于声明体 env 区块（或 env 直传单区块）；scope 矩阵获大哥裁定并回填两件（seat-gates token_scope＋本件 §3.4）；守卫负例常驻 CI。
+**清零判据**：11 声明体位点全部变为单行调用＋内联变体面（droid-probe2/probe3）收口或禁改登记；六名 secrets 展开只存在于声明体 env 区块（或 env 直传单区块）；scope 矩阵获大哥裁定并回填两件（seat-gates token_scope＋本件 §3.4）；守卫负例常驻 CI（扫描边界=全生产 workflow 树）。
 
 ### 2.4 图外件④：verdict.json/md 顶层孤儿件
 
@@ -277,9 +277,28 @@ consumes = [
     ".github/workflows/env-check.yml:86",# gate 步注入
     ".github/workflows/env-check.yml:195",# 板面探测真消费
     ".github/workflows/env-check.yml:240",# wall 步注入（⑤收口施工后删此锚）
+    ".github/workflows/i8-zero-escape-live-orchestrator.yml:102",  # I8 编排器探针注入（五组面之一）
 ]
 notes = "全链唯一板面写令牌； PAT 时间线演员定性=第 50 轮口径（docs/W-14-写板活验通过判据-修订.md）"
 track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.1/§2.5"
+
+[[key]]
+name = "I8_TEAM_TRIGGER_PAT"
+kind = "github_pat"
+holder = "repo secret（值源 1P；条目名施工盘点回填）"
+access = "read_write"
+nature = "cap_change"
+status = "active"
+opens = "I8 编排器触发面（五组 job 注入：i8-zero-escape-live-orchestrator.yml:100/:182/:256/:308/:345）；team.yml 生产链零消费"
+consumes = [
+    ".github/workflows/i8-zero-escape-live-orchestrator.yml:100",
+    ".github/workflows/i8-zero-escape-live-orchestrator.yml:182",
+    ".github/workflows/i8-zero-escape-live-orchestrator.yml:256",
+    ".github/workflows/i8-zero-escape-live-orchestrator.yml:308",
+    ".github/workflows/i8-zero-escape-live-orchestrator.yml:345",
+]
+notes = "全树唯一使用面=I8 编排器（round-2 全树口径补条）；零值登记"
+track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.3/§3.4"
 
 [[orphan]]                             # 孤儿件表（④收编面）
 kind = "orphan-artifact"
@@ -290,8 +309,8 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.4"
 
 [[external_face]]                      # 图外状态面登记（非钥匙轨）
 kind = "external-state-face"
-name = "memory/ 运行态树（untracked）＋~/.memory-core/ hook 态根＋~/.factory/settings.json runner 会话配置"
-disposition = "接口收口（证据入库单点＋席位禁写）；不收编运行"
+name = "memory/ 运行态树（untracked）＋~/.memory-core/ hook 态根＋~/.factory/settings.json runner 会话配置＋内联 BYOM 变体面（droid-probe2.yml:37、probe3.yml:51/:60 写位——收口批改声明体调用或显式禁改）"
+disposition = "接口收口（证据入库单点＋席位禁写）；内联变体面随件③收口批处置；不收编运行"
 track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.3/§2.6"
 
 [[dangling_name]]                      # 防幽灵复活表
@@ -302,19 +321,20 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 
 **设计说明**：四表结构对位引擎五表（repo_secret/dangling_name/repo_variable/mac_face/onepassword_item）的归口逻辑：[[key]]＝在役与待处置钥匙正表；[[orphan]]＝本仓特有的链外产物面（引擎以封印指纹覆盖，本仓 verdict 孤儿是产物面孤儿）；[[external_face]]＝非钥匙的状态/配置面（memory 树、runner 会话配置、探针 workflow 族）；[[dangling_name]]＝防复活（牺牲品链载体，§3.6 判据 4）。
 
-### 3.3 现状登记面（七条，零值预填）
+### 3.3 现状登记面（八条，零值预填——round-2 全树口径补第 8 条 I8_TEAM_TRIGGER_PAT）
 
 | # | name | kind | access | nature | status | opens（消费面） | consumes 锚 |
 |---|---|---|---|---|---|---|---|
-| ① | FACTORY_API_KEY | factory_cli_key | read | use | active | droid CLI 会话模型面（team.yml 8 席位会话步 env 直传＋droid.yml/probe 探针族 3 位点） | team.yml `:157/:568/:1501/:1916/:2209/:2757/:3738/:4147`＋`droid.yml:62`＋`droid-probe.yml:46`＋`probe6.yml:44`＋env-check.yml `:82/:238` |
-| ② | WORKER_CI_KEY | worker_gateway_key | read | use | active | BYOM headers `x-ci-key` 位 | 11 声明位点：team.yml `:120/:531/:1463/:1883/:2178/:2725/:3705/:4115` 区段＋`droid.yml:25`＋`droid-probe.yml:13`＋`probe6.yml:10` 区段＋env-check.yml `:83`；③收口后=1 声明体锚＋11 调用锚 |
-| ③ | GW_TOKEN_KNOWN | cf_ai_gateway_run_token | read | use | active | BYOM headers `cf-aig-authorization` 位 | 同②11 位点（droid-probe.yml 无此件——双件形态）＋env-check.yml `:84` |
-| ④ | GO_GITHUB_RUN_TOKEN | github_pat（kind 初判，装配盘点回填） | read | use | active | BYOM `apiKey` 位（模型网关鉴权） | 同②11 位点＋env-check.yml `:85` |
-| ⑤ | PROJECTS_STATE_PAT | github_pat | read_write | cap_change | active | 板面写（装配席单点）＋板面探测＋漂移对账读 | `team.yml:4431/:4441`＋env-check.yml `:86/:195/:240`（样例见 §3.2） |
+| ① | FACTORY_API_KEY | factory_cli_key | read | use | active | droid CLI 会话模型面（team.yml 8 席位会话步 env 直传＋droid/droid-probe/probe3/probe6/droid-probe2 探针面＋env-check gate/wall＋c-fixture 探针） | team.yml `:157/:568/:1501/:1916/:2209/:2757/:3738/:4147`＋`droid.yml:62`＋`droid-probe.yml:46`＋`droid-probe2.yml:17`＋`probe3.yml:40`＋`probe6.yml:44`＋env-check.yml `:82/:238`＋c-fixture `:41`——全树 16 行 |
+| ② | WORKER_CI_KEY | worker_gateway_key | read | use | active | BYOM headers `x-ci-key` 位＋probe 族网关鉴权 | 声明体位点：team.yml `:120/:531/:1463/:1883/:2178/:2725/:3705/:4115` 区段＋`droid.yml:25`＋`droid-probe.yml:13`＋`droid-probe2.yml:15`＋`probe3.yml:15/:38`＋`probe6.yml:10` 区段＋env-check.yml `:83/:239`＋c-fixture `:42`＋probe.yml `:16/:22`＋probe4.yml `:10`＋probe5.yml `:10`——全树 21 行；③收口后=1 声明体锚＋全树调用锚 |
+| ③ | GW_TOKEN_KNOWN | cf_ai_gateway_run_token | read | use | active | BYOM headers `cf-aig-authorization` 位 | 声明体位点：team.yml 8 位点区段＋`droid.yml:25`＋`probe6.yml:10` 区段（droid-probe.yml/droid-probe2.yml 无此件）＋env-check.yml `:84`＋probe5.yml `:11`——全树 12 行 |
+| ④ | GO_GITHUB_RUN_TOKEN | github_pat（kind 初判，装配盘点回填） | read | use | active | BYOM `apiKey` 位（模型网关鉴权）＋probe 族 | 声明体位点（同②11 位点区段＋`droid-probe2.yml:16`＋`probe3.yml:39`）＋env-check.yml `:85/:239`＋I8 编排器 `:101/:183/:257/:309/:346`＋probe4.yml `:11`＋probe6.yml `:13` 区段——全树 20 行 |
+| ⑤ | PROJECTS_STATE_PAT | github_pat | read_write | cap_change | active | 板面写（装配席单点）＋板面探测＋漂移对账读＋I8 编排器探针注入 | `team.yml:4431/:4441`＋env-check.yml `:86/:195/:240`＋I8 编排器 `:102/:184/:258/:310/:347`（样例见 §3.2）——全树 8 行 |
 | ⑥ | GITHUB_TOKEN（github.token） | platform_builtin | read_write | use | active | per-run 临时令牌，按席 token_scope 面（seat-gates §2 逐席已登记：lead `:79/:241`、worker commit `:710`、prep `:1321`、replan 落单 `:2423`、assemble `:4448/:4659` 等） | 参考条目不占编号（照引擎 GITHUB_TOKEN 先例 `key-registry.toml:36-37`） |
 | ⑦ | I8_LIVE_B_INVALID_GH_TOKEN | github_pat（哑值） | read | use | zombie | I8-B 活验探针（改造后）；生产消费面=0 | 现生产位 `team.yml:419/:430`（②拆除批消除）→改道探针 workflow→退役批 revoked→[[dangling_name]] |
+| ⑧ | I8_TEAM_TRIGGER_PAT | github_pat（kind 初判，装配盘点回填） | read_write | cap_change | active | I8 编排器触发面（五组 job 注入：点火/编排/探针面）——team.yml 生产链零消费 | `i8-zero-escape-live-orchestrator.yml:100/:182/:256/:308/:345`——全树 5 行；零值登记（值不入稿）；scope 裁定随 §3.4 呈裁面 |
 
-另登记非钥匙轨：`[[orphan]]` 一条（④）、`[[external_face]]` 三条（memory 树、runner 会话配置、探针/夹具 workflow 族）、`[[dangling_name]]` 一条（⑦退役后落位）。BYOM 三件（②③④）的按席 scope 差异见 §3.4。
+另登记非钥匙轨：`[[orphan]]` 一条（④）、`[[external_face]]` 四条（memory 树、runner 会话配置、探针/夹具 workflow 族、内联 BYOM 变体面 droid-probe2.yml/probe3.yml）、`[[dangling_name]]` 一条（⑦退役后落位）。BYOM 三件（②③④）的按席 scope 差异见 §3.4；⑧I8_TEAM_TRIGGER_PAT 的 scope 裁定随 §3.4 呈裁面一并处理。全树口径：12 workflow 文件/6 secret 名/82 展开行实测（`grep -n 'secrets\.' .github/workflows/*.yml`）。
 
 ### 3.4 use/cap_change 定性＋按席差异化 scope（对账基座）
 
@@ -337,12 +357,12 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 ### 3.5 消费锚体系（8→1 收口后的锚形态）
 
 - **锚定义**：consumes 字段逐条 `file:line`；锚判据＝该行含 secrets 展开（`${{ secrets.X }}`）、env 注入键、或声明体调用行。
-- **收口前后形态**：现状②③④三件各 11 展开锚（team.yml 8＋droid.yml 1＋droid-probe.yml 1＋probe6.yml 1；GW_TOKEN_KNOWN 实为 10——droid-probe.yml 双件形态）＋2 presence 锚；③收口后变「1 声明体行锚＋11 调用位锚＋presence 锚」——调用位是消费锚（真实消费），声明体是登记锚（唯一展开点）。⑤收口后 env-check 消费锚从「5+3」变「5」（wall 步三锚删除）。
+- **收口前后形态**：现状②③④三件各 11 展开锚（team.yml 8＋droid.yml 1＋droid-probe.yml 1＋probe6.yml 1；GW_TOKEN_KNOWN 实为 10——droid-probe.yml 双件形态）＋内联变体面锚（droid-probe2/probe3）＋probe 族散点锚＋2 presence 锚＋I8 编排器锚（⑤/⑧ 面）；③收口后变「1 声明体行锚＋全树调用位锚＋presence 锚」——调用位是消费锚（真实消费），声明体是登记锚（唯一展开点）；内联变体位收口为声明体调用并入调用位锚集。⑤收口后 env-check 消费锚从「5+3」变「5」（wall 步三锚删除）。
 - **锚执法**：锚集对账进 caps-gate（§3.6 判据 1/2）；锚漂移（行号漂移、锚定内容失配）即红（判词 anchor-drift）——施工单改凭证接线必须同批改台账（对位引擎「文件增删不改语义（点名 workflow 即消费面）」口径，`key-registry.toml:19-20`）。
 
 ### 3.6 对账判据（五判＋牺牲品样本）
 
-1. **展开位点对账**：生产 workflow 树的 `${{ secrets.* }}` 展开行集合=台账 consumes 锚集。多出=orphan-secret-expansion 红（图外凭证注入检出）；少了=anchor-drift 红。载体：caps-gate/契约测试（文本 grep 对账）。
+1. **展开位点对账**：生产 workflow 树的 `${{ secrets.* }}` 展开行集合=台账 consumes 锚集。**扫描边界＝全生产 workflow 树**（`.github/workflows/*.yml` 全集——round-2 裁定：判据 1、守卫负例（§2.3 收编方式 4）、本表位点集三者同边界，硬规则⑨「全部凭证」全树口径；现状实测 12 文件/6 名/82 行）。多出=orphan-secret-expansion 红（图外凭证注入检出）；少了=anchor-drift 红。载体：caps-gate/契约测试（文本 grep 对账）。
 2. **值泄漏扫描**：常见前缀族全文件扫描（铁律对位 `key-registry.toml:11-13`）。清零前唯一登记例外位=`team.yml:419` 夹具哑值（②拆除批消除例外）；例外位采用「显式登记＋限期消除」纪律，禁止常驻例外。
 3. **旁路检出**（三面巡检）：环境面（`~/.factory/settings.json` 写入位点=声明体单点——③收口判据）；本地面（工作区顶层 verdict 孤儿=0——④判据）；板面（PAT 时间线演员=PAT 持有人单点，翻板演员=0——①判据）。
 4. **牺牲品样本（防幽灵复活）**：对位引擎 REVOCATION_TEST_KEY 牺牲品链——领班侧牺牲品＝I8-B 假 PAT（⑦，已是哑值样本）：走「登记（zombie）→探针改道→退役批回读验证（打不开）→revoked→[[dangling_name]]」全链演练；此后常驻 dangling 表，任何同名/同前缀复活即红。
@@ -353,7 +373,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 ### 3.7 升级闸与治理（禁抄项对位声明）
 
 - **升级闸**：改台账文件＋守卫本体＋CI 守卫段的变更集须带显式声明行 `key-registry-change: true`（对位引擎 `REGISTRY_CHANGE_DECLARATION`，form-basis 要点 7 原物锚 `scripts/check_module_wall.py:131`），否则判 mixed-key-registry-change 红。
-- **治理执法声明（禁抄项对位）**：引擎墙的 governance owner 门停用态与「判词不接 CI」是显式未闭合缺口（form-basis §11），**本设计不抄**——钥匙面守卫与对账判据全部接 foreman-wall-ci 恒跑（接线语义有契约测试锁，对位要点 5）；登记面（docs/specs/**＋守卫本体）列入受保护路径面（运行时执法设计归主设计稿执法章，非页面开关）。
+- **治理执法声明（禁抄项对位，round-2 事实重写）**：引擎墙 governance owner 门**现状＝enabled 在役执法**——repo 变量 `EVOLUTION_GOVERNANCE_ENABLED=enabled`（2026-11-26T19:50Z 设定，实测读取在场）＋workflow 开关 active；非属主治理 run 已判 failure 双红帧（PR #880/#881，governance job conclusion=failure，引擎证据 `evidence/step6-u-closeout/04-governance-enforcement-verification.md:11`（总判读行）、`:17`（变量 enabled 实读行）、`:103-104`（双红帧行））。「governance owner 门停用态」是过期 R-18 行（`05-risk-register.md:47`）登记的历史态，不得转抄为本件禁抄项口径。**剩余真实缺口如实登记**：governance 门非 required status check，不阻断合并——本件对应义务因此更重：钥匙面守卫与对账判据全部接 foreman-wall-ci 恒跑（接线语义有契约测试锁，对位要点 5）；登记面（docs/specs/**＋守卫本体）列入受保护路径面（运行时执法设计归主设计稿执法章，非页面开关），不允许领班侧复刻「门在役但不阻断」的形制而不补运行时执法。
 - **CI 接线口径**：R-29 已裁两门（quality-gate / substrate-gate-suite，form-basis §11.2）——钥匙面守卫进 CI 的门归属按 foreman-wall-ci 既有恒跑面接线，不新设挂名门。
 
 ---
@@ -366,14 +386,14 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 |---|---|---|---|
 | ① | 板面 timeline 零 `github-project-automation` 翻板事件；`board_drift` 对账步＋env-check 探测项在树 | F4 必死样本：翻板回归样本（59 轮四问题③） | 板侧=大哥人工；对账步=施工单（装配席步列） |
 | ② | 生产 workflow（team.yml/droid.yml/env-check.yml/foreman-wall-ci.yml）零 `I8_LIVE_B` 与 PAT 前缀族命中；B 夹具文件在树；探针单全链红照旧 | caps-gate 负例：生产文本夹具/值前缀必红 | 施工单（lead 席默认删行落地＋探针改道）＋大哥（退役批） |
-| ③ | BYOM 写入=声明体单点（内联 heredoc 形态计数=0）；四件 secrets 展开位点=台账锚集 | caps-gate 负例：多声明体/锚集失配必红 | 施工单（声明体）＋大哥（scope 裁定） |
+| ③ | BYOM 写入=声明体单点（内联 heredoc 形态计数=0）；六名 secrets 展开位点=台账锚集（扫描边界=全生产 workflow 树：12 文件/6 名/82 行实测口径——判据、守卫、位点集三者同边界） | caps-gate 负例：多声明体/锚集失配必红 | 施工单（声明体）＋大哥（scope 裁定） |
 | ④ | 工作区顶层 verdict 孤儿=0（人工巡检）；repo 树内 verdict 件全在档案白名单 | caps-gate 负例：白名单外 verdict 落点必红 | 清理=大哥/人工；白名单+负例=施工单（写板席） |
 | ⑤ | env_check_wall 零 os.environ secret 读值；env-check.yml secrets 位点=登记集；墙切片布尔与 gate tsv 一致性测试绿 | caps-gate 负例：位点集失配必红＋一致性测试 | 施工单（env-check 文本＋env_check_wall） |
 | ⑥ | 席位门清单零 memory/ 写授权；replan 佐证字段=图内证据引用（schema 断言）；[[external_face]] 条目在台账 | 契约断言：佐证字段类型必红负例（F4 四问题①回归） | 施工单（门清单/replan 输入面）＋领班席（编排声明） |
 
 **三态纪律**（照引擎普查表口径，form-basis 要点 10）：每件清零状态只能取 **cleared**（判据全绿）／**cleared-with-declaration**（判据绿但带显式边界声明——如⑤的机制性最小暴露、⑥的「不收编运行」）／**blocked**（判据不可达，显式登记阻塞面——如①板侧动作待大哥）。禁止虚称 cleared；blocked 件保留图外登记不除名。
 
-**验收线归属声明**：本件只给判据与负例载体指针；必死样本桩设计（fake-droid 注入形态）与执法延迟口径归 F4 底稿 `docs/wall-v3/acceptance-line-map.md` 与主设计稿验收线章（`failure-specs.md` 承载逐席失败规范四字段格与判据侧，桩形态与延迟口径不在其重复面——详见其头注「必死样本设计见姊妹底稿 acceptance-line-map.md」分工声明）——两处的判据引用以本件 §4 表为准绳（VAL-CROSS-002 一致性：清零后的每件归宿都在对应席位门清单内——①归装配席/零号门、②归 lead 席默认删行＋大哥退役批（workflow 编辑是治理行为，非任何会话席门清单写面；recorder 门清单不含 workflow 文本）、④归写板席命名空间、③归各席 token_scope（收口面 11 位点）、⑤归零号门、⑥归改计划席/写板席）。
+**验收线归属声明**：本件只给判据与负例载体指针；必死样本桩设计（fake-droid 注入形态）与执法延迟口径归 F4 底稿 `docs/wall-v3/acceptance-line-map.md` 与主设计稿验收线章（`failure-specs.md` 承载逐席失败规范四字段格与判据侧，桩形态与延迟口径不在其重复面——详见其头注「必死样本设计见姊妹底稿 acceptance-line-map.md」分工声明）——两处的判据引用以本件 §4 表为准绳（VAL-CROSS-002 一致性：清零后的每件归宿都在对应席位门清单内——①归装配席/零号门、②归 lead 席默认删行＋大哥退役批（workflow 编辑是治理行为，非任何会话席门清单写面；recorder 门清单不含 workflow 文本）、④归写板席命名空间、③归各席 token_scope（收口面=全树口径：11 声明体位点改单行调用＋内联变体面同批收口）、⑤归零号门、⑥归改计划席/写板席）。
 
 ---
 
@@ -414,6 +434,13 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 | `.github/workflows/droid-probe.yml:46` | `FACTORY_API_KEY`（件③锚） | ★ |
 | `.github/workflows/probe6.yml:10` | `Write BYOM settings (replica pattern, caller-side gateway auth)`（件③非领班面锚 3/3） | ★ |
 | `.github/workflows/probe6.yml:44` | `FACTORY_API_KEY`（件③锚） | ★ |
+| `.github/workflows/droid-probe2.yml:15` | `WORKER_CI_KEY: ${{ secrets.WORKER_CI_KEY }}`（件③内联变体面锚；round-2 全树口径补） | ★ |
+| `.github/workflows/droid-probe2.yml:17` | `FACTORY_API_KEY`（件③内联变体面锚） | ★ |
+| `.github/workflows/droid-probe2.yml:37` | `~/.factory/settings.json`（内联写位） | ★ |
+| `.github/workflows/probe3.yml:15` | `WORKER_CI_KEY`（件③内联变体面锚） | ★ |
+| `.github/workflows/probe3.yml:38` | `WORKER_CI_KEY`（步 2 三件注入起，跨 :38-:40） | ★ |
+| `.github/workflows/probe3.yml:51` | `customModels` 条目起（内联 settings.json 写位块 :51-:60——:60 为 json.dump 写文件行） | ★ |
+| `.github/workflows/i8-zero-escape-live-orchestrator.yml:100` | `S_I8_TEAM_TRIGGER_PAT`（第 6 secret 展开首行；五组面 :100/:182/:256/:308/:345） | ★ |
 | `.github/workflows/env-check.yml:24` | `secrets:`（workflow_call 声明面） | ★ |
 | `.github/workflows/env-check.yml:82` | `S_FACTORY_API_KEY` | 锚件 2 §8（`:82-86` 区段） |
 | `.github/workflows/env-check.yml:83` | `S_WORKER_CI_KEY` | ★ |

@@ -150,8 +150,8 @@
 
 **三个具体缺口在 main@460922c 的当前态（2026-11-28 实读复验）**：
 
-- NEW-1＝governance owner 门停用态（evolution-governance workflow 变量门未设＋disabled_manually）——登记面保护面本体已扩：U-4 落地 DEFAULT_PROTECTED_PATTERNS 七模式（`src/infra_core/governance.py:26-34`，含 `docs/specs/**`＋`.github/workflows/**`＋守卫本体）；workflow 页面门态属引擎运营变量，不作为形制引用（编排器裁定口径：本项以证据文件登记的历史态为准，不按实况翻案）。
-- **NEW-2＝`--changes` 专属判词不接 CI——已上游闭合（main@460922c，PR #883，2026-11-28）**：`.github/workflows/ci.yml:439-458` 新增「Module wall changeset guard (PR only)」步实跑 `check_module_wall.py --changes`（`:458`），merge-base 三点 name-status diff 落盘 RUNNER_TEMP（`:445/:450/:452`）、声明通道在场（`:454-456` PR body 含 `wall-registry-change: true` 时向 changeset 首行注入声明注释行）；`ci.yml:425-427` 注释现文为「已接线 PR 腿 changeset 步」。接线语义由引擎接线锁测试钉住：`tests/test_module_wall_ci_wiring.py:99` `test_changes_guard_step_wired_pr_only`（恰一步 --changes 调用＋PR-only 条件门＋name-status 形态＋声明通道四语义锁）。历史自证文本「--changes 专属判词……本流水线未接线」（写作时点 09a82fb 前旧文）已不存在——**引用本缺口旧态的下游稿一律按本条更新口径改写**。
+- NEW-1＝governance owner 门——**round-2 事实重写（2026-11-28 实读裁决）：引擎现状＝enabled 在役执法，非停用态**。引擎实测证据（main@460922c 在树证据件 `evidence/step6-u-closeout/04-governance-enforcement-verification.md`）：repo 变量 `EVOLUTION_GOVERNANCE_ENABLED=enabled`（2026-11-26T19:50Z 设定，`:17` 单变量直取 HTTP 200 实读行）＋双因子在役总判读 passed（`:11`）；非属主治理 run 已判 failure——非 owner 本人创建的 PR #880/#881 governance job conclusion=failure 双红帧（`:103-104`）。风险登记面的 R-18 行（`05-risk-register.md:47`，登记时点 2026-11-26 前的历史态「变量门未设＋disabled_manually」）**已过期，不得转抄为现状口径**。**剩余真实缺口如实登记：governance 门非 required status check，不阻断合并**（执法在役但不挂合并门）。登记面保护面本体已扩：U-4 落地 DEFAULT_PROTECTED_PATTERNS 七模式（`src/infra_core/governance.py:26-34`，含 `docs/specs/**`＋`.github/workflows/**`＋守卫本体）。**引用纪律**：下游稿引用本缺口一律按本条更新口径——现状写 enabled 在役＋剩余缺口写「非 required check 不阻断合并」，禁止沿用「停用态」表述指称引擎现状。
+- **NEW-2＝`--changes` 专属判词不接 CI——已上游闭合（main@460922c，PR #883，2026-11-28）**：`.github/workflows/ci.yml:439-458` 新增「Module wall changeset guard (PR only)」步实跑 `check_module_wall.py --changes`（`:458`），merge-base 三点 name-status diff 落盘 RUNNER_TEMP（主分支路径 `:447`、base sha 回退路径 `:451`——round-2 锚修正：原记 `:450/:452` 实为注释行与 `fi` 收尾行，实读裁决）、声明通道在场（`:454-456` PR body 含 `wall-registry-change: true` 时向 changeset 首行注入声明注释行）；`ci.yml:425-427` 注释现文为「已接线 PR 腿 changeset 步」。接线语义由引擎接线锁测试钉住：`tests/test_module_wall_ci_wiring.py:99` `test_changes_guard_step_wired_pr_only`（恰一步 --changes 调用＋PR-only 条件门＋name-status 形态＋声明通道四语义锁）。历史自证文本「--changes 专属判词……本流水线未接线」（写作时点 09a82fb 前旧文）已不存在——**引用本缺口旧态的下游稿一律按本条更新口径改写**。
 - NEW-3＝登记面不在 governance 保护面——保护面扩展已随 U-4 落地（同 NEW-1 行）；整体闭合状态以引擎自身 closeout 台账为准，本件不再转抄中间态。
 
 **设计稿义务（更新后）**：领班面墙的登记面升级闸必须接 CI 恒跑判词；登记面保护必须是运行时执法（非页面开关）；不允许任何「守卫判词存在但不接 CI」的形制。**NEW-2 已闭合这件事本身入形制教训**：引擎用一次真接线（恒跑步＋PR 语境步分工＋接线锁测试三件套）闭合了「CLI-only 判词」缺口——领班侧更不允许复刻任何纸面门形态（含引用引擎历史缺口文本冒充「引擎也这样」）；对应面从第一天就按「须执法、禁纸面」设计。
@@ -189,6 +189,8 @@
 | `.github/workflows/ci.yml:425` | `--changes 专属判词`（全引句判据——该行含「已接线 PR 腿 changeset 步」语境，NEW-2 闭合态佐证；判据用全句防前缀漂移存活） |
 | `.github/workflows/ci.yml:426` | `已接线 PR 腿 changeset 步`（NEW-2 闭合态锚，main@460922c） |
 | `.github/workflows/ci.yml:439` | `Module wall changeset guard (PR only)` |
+| `.github/workflows/ci.yml:447` | `git diff --name-status "origin/..."（name-status diff 主分支路径行；round-2 锚修正） |
+| `.github/workflows/ci.yml:451` | `git diff --name-status "...base.sha"（name-status diff 回退路径行；round-2 锚修正） |
 | `.github/workflows/ci.yml:458` | `check_module_wall.py --changes`（changeset 守卫调用行） |
 | `scripts/board_sync_parse.py:97` | `放行门单源=ruleset` |
 | `scripts/board_sync_parse.py:114` | `GATE_TO_WORKFLOW` |

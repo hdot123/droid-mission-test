@@ -60,7 +60,7 @@
 
 **关联：recorder 职能现状（写板席承载点之一）**：validator prompt 单源内的逐件落盘纪律（salvage_verdict.py 逐件写 verdict-partial.json）是 prompt 文字纪律，无运行时效力；per-run 无 recorder 调用数墙字段、无报警（§9 风险 10，四问题④）。
 
-**镜像差异点**：revalidate `:1779`（哨兵面 `:1784-1788` 区段）、validate2 `:3618-3627`（BYOM `:3705`、FACTORY `:3738`、步 env 置空 `:3739-3740`、prompt `:3752`、会话 `:3771-3772`、adopt/flips `:3948`）、revalidate2 `:4010-4019`（BYOM `:4115`、FACTORY `:4147`、env 置空 `:4148-4149`、prompt `:4161`、会话 `:4180-4181`、adopt `:4338`）。
+**镜像差异点**：revalidate `:1779`（一次性哨兵面 `:1806-1816` 区段——「Refuse a second revalidate, stamp this run started (at most one, fail-closed)」步实读裁决修正：原记 `:1784-1788` 为 job 头区段 timeout/permissions/token env，非哨兵步）、validate2 `:3618-3627`（BYOM `:3705`、FACTORY `:3738`、步 env 置空 `:3739-3740`、prompt `:3752`、会话 `:3771-3772`、adopt/flips `:3948`）、revalidate2 `:4010-4019`（BYOM `:4115`、FACTORY `:4147`、env 置空 `:4148-4149`、prompt `:4161`、会话 `:4180-4181`、adopt `:4338`）。
 
 ---
 

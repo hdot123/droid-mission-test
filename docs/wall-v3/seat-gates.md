@@ -4,7 +4,7 @@
 >
 > **真源声明**：引擎形制以 `docs/wall-v3/form-basis.md`（锚件 1）为准；测试仓现状行号以 `docs/wall-v3/as-is-capability-inventory.md`（锚件 2）为准——本件引用 team.yml 现状一律转引锚件 2，不直查 team.yml 重数行号。本件全部 file:line 锚经实读核实（2026-11-27 快照，测试仓 R58-D 收尾态）。
 >
-> **禁抄项**（form-basis §11）：引擎墙未闭合态（governance owner 门停用、`--changes` 判词不接 CI）不抄入本件；本件所有门都是**须执法的门**，不允许纸面有门。引用引擎放行门口径一律按 R-29 已裁**两门**（quality-gate / substrate-gate-suite）。
+> **禁抄项**（form-basis §11，round-2 更新口径）：引擎墙未闭合缺口中仍在册的缺口态不抄入本件（`--changes` 判词不接 CI 的登记时点态已于引擎 main@460922c 上游闭合；NEW-1 governance 门现状＝enabled 在役执法、剩余真实缺口＝非 required status check 不阻断合并——禁止沿用过期 R-18 行「governance owner 门停用态」表述指称引擎现状）；本件所有门都是**须执法的门**，不允许纸面有门。引用引擎放行门口径一律按 R-29 已裁**两门**（quality-gate / substrate-gate-suite）。
 >
 > **版本口径**：本件属设计稿 v3.0 体系，作废 v2.7~v2.10 账面墙口径；现状 team.yml:7 标 v2.7.0、README 交付段另标 v2.9/v2.10 的三处漂移（锚件 2 §0）由 v3.0 统一收口。
 
@@ -111,7 +111,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙 artifact 下载面）"]
 local_uses = ["scripts/team/run_droid_session.py（包装器，FOREMAN_RUN_PATCH=1）"]
-probes = "caps-gate 负向三探针：会话写 team/lead-plan-segments/ 外文件->out-of-scope-write 必红；令牌越 token_scope->必红；未登记工具->必红（现状缺口：lead 会话写无机器 F-1 类守卫，锚件 2 §1——本门即补齐该缺口的执法设计）"
+probes = "caps-gate 负向三探针：会话写 team/lead-plan-segments/ 外文件->out-of-scope-write 必红；令牌越 token_scope->必红；未登记工具->必红（现状缺口：lead 会话写无机器 F-1 类守卫，锚件 2 §1——本门即补齐该缺口的执法设计）＋接线锁探针：包装器启动前置自检——会话配置生成时读门清单，键缺失（如 [seat.lead] 段缺席或 budgets 键不齐）即拒启（fail-loud exit 2，永不禁用默认放行）；必死样本=SL-13a（acceptance-line-map §2.13）"
 callers = { internal = ["workers-wall-merge（读 lead.outputs.processes，team.yml:851）"], external = ["无（领班席零仓外消费）"], workflow = [".github/workflows/team.yml:52"] }
 
 [seat.lead.authorization]
@@ -233,7 +233,7 @@ job_wall_min = 20
 
 [seat.prep.verification]
 contract_tests = ["tests/test_worker_salvage_*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "补卷守卫四条件逐条负例（在树）＋候选分支越权写探针"
+probes = "补卷守卫四条件逐条负例（在树）＋候选分支越权写探针：非 prep 席（worker 会话步/lead 步/assemble 步）push `team/issue-N/candidate-R` 形态即 F 类守卫红（候选分支 git-push 权只登记在本席 artifacts 面；未登记者写入=caps-gate `undeclared-artifact`/`out-of-scope-write` 判词红）；必死样本=SL-13b（acceptance-line-map §2.13）"
 probe_notes = "prep 是补卷器（根治第 1 层）与 evidence manifest 防篡改的承载席；注意规格明文：补卷覆盖面 != 中性归因覆盖面（worker_salvage.py docstring）"
 ```
 
@@ -281,17 +281,18 @@ job_wall_min = 15
 # （team.yml:1387 timeout-minutes: 15，与 lead/replan 同 15m 档）；口径同 lead/worker
 # 注释（引擎 run_lead.sh:6「timeout−400s」的 timeout 即 job timeout，
 # droid-review-lead.yml:35-37 margin 语义：哨兵先于 GitHub 硬杀）。
-# 与 budgets 键 480s 会话预算的关系（双 480 不混用）：droid_wall_sec=480 是包装器
-# 第一道墙（会话 T0 计时面，只杀 droid 会话进程组）；soft_timeout_sec=500 是体外
-# 监督者的外层哨兵线（job 预算口径，含 adopt 储备 120s 与收尾余量）。两条墙各守
-# 一层，禁止混同（对位 budget_resolve.py:57-59 注释纪律：ForemanRun 会话切片与
-# GitHub job envelope 两个口径不得互相冒充）。
+# 预算四键实名＋480/500 对偶（无「会话总预算键」面）：480（droid_wall_sec，
+# 包装器第一道墙——会话 T0 计时面，只杀 droid 会话进程组）vs 500（soft_timeout_sec，
+# 体外监督者的外层哨兵线——job 预算口径，含 adopt 储备 adopt_reserve_sec=120 与
+# 收尾余量；job 墙 job_wall_min=15 是公式基座）。两条墙各守一层，禁止混同（对位
+# budget_resolve.py:57-59 注释纪律：ForemanRun 会话切片与 GitHub job envelope
+# 两个口径不得互相冒充）。
 soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min*60；引擎口径）"
 soft_timeout_sec = 500
 
 [seat.validator.verification]
 contract_tests = ["tests/test_salvage_verdict*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "verdict schema 执法负例（枚举外值/无证据引用被拒，handoff-schemas §8）＋D-2 封章粘性负例（final 章不被晚期写翻掉，salvage_verdict.py:93-94 sealed 粘性）"
+probes = "verdict schema 执法负例（枚举外值/无证据引用被拒，handoff-schemas §8）＋D-2 封章粘滞负例：verdict 半套注入（final=true 章在而部分 judged[].evidence_refs 为空/被晚期写翻动 partial 文件）->封章拒过（sealed 粘性保证 final 章不被晚期写翻掉，salvage_verdict.py:93-94；半套不达 adoptable 判据 adopt 拒采，`salvage_verdict.py:45-47`）——必死样本=SL-13c（acceptance-line-map §2.13）"
 probe_notes = "validator 同时是证据对象构造权单源席（handoff-schemas §6）与 recorder 职能承载点①——v3.0 把 recorder 立为独立席（§2.7）后，本席保留核查与构造权，落盘执行面移交 recorder"
 ```
 
@@ -366,7 +367,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙，pick 权威源）"]
 local_uses = ["git（PR 面）", "gh（issue close/comment，:4659）"]
-probes = "caps-gate：assemble 出现 droid 会话=unregistered-tool-call 必红；板面写非 project_state_write 单点=token-scope-violation 必红；human_stop 在墙=提前停分支必须被消费（现状缺口：human_stop 不被 assemble 消费，锚件 2 §6——本探针即补齐）"
+probes = "caps-gate：assemble 出现 droid 会话=unregistered-tool-call 必红；板面写非 project_state_write 单点=token-scope-violation 必红；human_stop 消费探针：human_stop 在墙（schema :33）而 assemble 收口分支未消费（未走提前停路径、照常 pick/写板）->red（现状缺口：human_stop 不被 assemble 消费，锚件 2 §6——本探针即补齐；必死样本=SL-13d，acceptance-line-map §2.13）"
 callers = { internal = ["无下游席（链尾）"], external = ["human（状态卡/板面消费者）"], workflow = [".github/workflows/team.yml:4389"] }
 
 [seat.assemble.authorization]
@@ -379,7 +380,7 @@ job_wall_min = 10
 
 [seat.assemble.verification]
 contract_tests = ["tests/test_assemble_*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "墙权威 pick fail-closed 负例（缺 validation 切片=不写板）＋板面写单点性探针"
+probes = "墙权威 pick fail-closed 负例（缺 validation 切片=不写板）＋板面写单点性探针＋pick fail-closed 变体探针：墙 validation 切片存在但整片不可采认（adoptable=false：全部 partial 未封章）->pick 必拒=零板面写、零 PR、零关单（fail-closed 全链收口；必死样本=SL-13e，acceptance-line-map §2.13）"
 probe_notes = "assemble 是全链最强 GitHub 写面集中席（PAT 写板＋PR create＋issue close＋评论，锚件 2 §6）——v3.0 不削减其职能写面，但逐门登记＋令牌分面＋human_stop 消费门补齐"
 ```
 
