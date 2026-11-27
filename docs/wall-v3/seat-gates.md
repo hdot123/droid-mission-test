@@ -122,7 +122,13 @@ token_scope = "GH_TOKEN=github.token（issues: write / PR: read / contents: read
 [seat.lead.budgets]
 droid_wall_sec = 600
 job_wall_min = 15
-soft_timeout_formula = "droid_wall_sec - 400（软超时公式照引擎 run_lead.sh:6 timeout−400s 口径）"
+# 软超时公式基座＝budgets 键的 job timeout（job_wall_min 推成秒），非 droid 墙：
+# 引擎口径 run_lead.sh:6「workflow 按 timeout−400s 公式推导注入」的 timeout 即 job
+# timeout（droid-review-lead.yml:35-37：margin 400s 保证哨兵先于 GitHub 硬杀）。
+# 本键对平引擎口径：软超时 = job_timeout − 400 ≈ 900 − 400 = 500s（lead job 15min）；
+# droid 墙 600s 是包装器会话预算（T0 计时面），不进公式。
+soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min×60；引擎 run_lead.sh:6/droid-review-lead.yml:35-37 口径）"
+soft_timeout_sec ≈ 500
 
 [seat.lead.verification]
 contract_tests = ["tests/test_foreman_caps_contract.py（目标态新增）", "tests/test_wall_v3_design_contract.py"]
@@ -171,7 +177,12 @@ token_scope = "会话步零 GitHub 令牌（现状即最小，锚件 2 §2）；
 [seat.worker.budgets]
 droid_wall_sec = 900
 job_wall_min = 25
-soft_timeout_formula = "droid_wall_sec - 400"
+# 软超时公式基座＝budgets 键的 job timeout（job_wall_min=25 → 1500s）：
+# 软超时 = job_timeout_sec − 400 = 1100s（引擎 run_lead.sh:6「timeout−400s」的
+# timeout 即 job timeout，droid-review-lead.yml:35-37 margin 语义：哨兵先于
+# GitHub 硬杀）。droid 墙 900s 是包装器会话预算（T0 计时面），不进公式。
+soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min×60；引擎口径）"
+soft_timeout_sec = 1100
 verify_step_timeout_sec = 300
 note = "预算唯一来源=本段（§4 接线设计）；现状墙上账面值 foreman_run_lib.py:53-54 区段与裸跑硬编码 900s 数值偶合而不接线，v3.0 由本键取代两处"
 
@@ -265,7 +276,10 @@ token_scope = "**零 GitHub 令牌**：job 级与步级 GITHUB_TOKEN:\"\"/GH_TOK
 droid_wall_sec = 480
 adopt_reserve_sec = 120
 job_wall_min = 12
-soft_timeout_formula = "droid_wall_sec - 400"
+# 软超时基座=job timeout（720s−400=320s；口径同 lead/worker 注释，
+# 引擎 droid-review-lead.yml:36 LEAD_VALIDATOR_SOFT_TIMEOUT_SEC = validator_timeout−400s 同式）。
+soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min×60；引擎口径）"
+soft_timeout_sec = 320
 
 [seat.validator.verification]
 contract_tests = ["tests/test_salvage_verdict*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
@@ -308,7 +322,9 @@ token_scope = "会话步零 GitHub 令牌（GITHUB_TOKEN:\"\"/GH_TOKEN:\"\"，te
 [seat.replan.budgets]
 droid_wall_sec = 480
 job_wall_min = 15
-soft_timeout_formula = "droid_wall_sec - 400"
+# 软超时基座=job timeout（900s−400=500s；口径同 lead/worker 注释）。
+soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min×60；引擎口径）"
+soft_timeout_sec = 500
 
 [seat.replan.verification]
 contract_tests = ["tests/test_replan_*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
@@ -404,7 +420,7 @@ probes = "缺席即事件负例：桩会话全程零 recorder 调用→告警必
 probe_notes = "立席口径：recorder 的执法面=「必落字段与约定首步的机器可见性」，不是新增人类审批面；V-3 门（受控会话达标证明）保留为发版前置人工门，per-run 报警由本席 probes 承载"
 ```
 
-**default-deny 声明（recorder）**：本席可写面＝verdict-partial/status 骨架/补卷记录三路径；零跨席读、零 GitHub 写；**清单之外不存在**。缺席（该写不写）不是豁免，是告警事件。
+**default-deny 声明（recorder）**：本席可写面＝verdict-partial/status 骨架/补卷记录三路径；零跨席读、零 GitHub 写、**零 workflow 编辑权**（`.github/workflows/**` 属治理行为面，走 wall-registry-change 通道，任何席位门清单不含——图外件② I8-B 夹具的拆除因此派 lead 席默认删行＋大哥退役批，不派写板席，见主设计稿 §2.4 表 2 与 out-of-graph §2.2）；**清单之外不存在**。缺席（该写不写）不是豁免，是告警事件。
 
 ---
 
@@ -635,7 +651,9 @@ worker job（team.yml worker 步改造）
   └─ run_droid_session.py --role worker --caps foreman-caps.v1.toml
        ├─ caps load：读 [seat.worker.budgets]（droid_wall_sec=900 / job_wall_min=25）
        ├─ fail-loud 校验：schema 校验（键集/词表一次定死）→ 畸形即 exit 2（永不静默绿）
-       ├─ 预算推导：软超时 = droid_wall_sec − 400（公式照引擎 run_lead.sh:6 口径）
+       ├─ 预算推导：软超时 = job_timeout_sec − 400（基座=job timeout，引擎 run_lead.sh:6
+       │    「timeout−400s」的 timeout 即 job timeout——droid-review-lead.yml:35-37 margin
+       │    语义＝哨兵先于 GitHub 硬杀；droid 墙预算是 T0 计时面，不进公式）
        ├─ 执法启动：哨兵先行→SIGTERM 进程组→宽限（10s）→SIGKILL 进程组
        │    （终止序列照抄引擎 run_lead.sh:282/:286 负 PID 组信号形态）
        └─ 墙 patch：FOREMAN_RUN_PATCH=1 上墙 session_outcome 三字段（write_worker_delta 既有分类器复用）
@@ -734,7 +752,7 @@ worker2（`team.yml:2697`；裸跑 `:2784`）按本节同构收进；分支后�
 | `schemas/foreman-run.v1.schema.json:153` | droid_exit_code_by_pid |
 | `schemas/foreman-run.v1.schema.json:157` | stream_tail_marker_by_pid |
 | `tests/test_replan_context_and_skipped_outcome_r53c.py:190` | 钉子测试定义 |
-| `tests/test_replan_context_and_skipped_outcome_r53c.py:198` | F-1 文案逐字行 |
+| `tests/test_replan_context_and_skipped_outcome_r53c.py:201` | F-1 文案逐字行起（跨 :201-:202） |
 | `docs/板面关单翻板-最小操作指引.md` | Item closed 翻板专档 |
 | `docs/W-14-写板活验通过判据-修订.md` | PAT 时间线定性 |
 | 引擎：`module-capabilities.toml:574/579/588/596/598/601/604/618/623/630` | M-CAP 逐键（§3.1 表） |

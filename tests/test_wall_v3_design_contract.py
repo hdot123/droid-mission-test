@@ -20,6 +20,7 @@ import re
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 # Engine repo is a read-only reference checkout (mission environment); the
@@ -209,6 +210,193 @@ class TestHandoffSchemas:
     @pytest.mark.parametrize("marker", FIXTURE["handoff_markers"])
     def test_handoff_principles_stated(self, doc_text: str, marker: str):
         assert marker in doc_text, f"handoff principle marker missing: {marker!r}"
+
+
+# ---------------------------------------------------------------------------
+# Handoff schema instance validation (VAL-GATES-003, scrutiny round-1 BLK-1)
+#
+# Extracts the four JSON Schema samples from docs/wall-v3/handoff-schemas.md
+# itself (the draft is the source of truth, not a copy) and runs the doc's own
+# negative-case tables (W-1..W-6 worker-delta, V-1..V-6 verdict, P-1..P-4
+# plan-v2) plus green controls as real jsonschema instances, so a schema that
+# contradicts the doc's stated evidence rules fails here. Parser contract:
+# schemas live in ```json fenced blocks whose $id is foreman/<schema_id>;
+# case ids appear in table rows as `| <ID> |`.
+# ---------------------------------------------------------------------------
+
+HANDOFF_DRAFT_PATH = REPO_ROOT / "docs/wall-v3/handoff-schemas.md"
+
+
+def _extract_schema_samples() -> dict[str, dict]:
+    """Extract $id-keyed JSON Schema objects from the draft's ```json blocks."""
+    text = HANDOFF_DRAFT_PATH.read_text(encoding="utf-8")
+    schemas: dict[str, dict] = {}
+    for block in re.findall(r"```json\s*\n(.*?)```", text, re.DOTALL):
+        try:
+            obj = json.loads(block)
+        except json.JSONDecodeError:
+            continue
+        sid = obj.get("$id", "")
+        if sid.startswith("foreman/"):
+            schemas[sid.removeprefix("foreman/")] = obj
+    return schemas
+
+
+def _judged(cause: str, refs: list[str], verdict: str = "fail", reason: str = "narrative only") -> dict:
+    return {
+        "id": "p1",
+        "verdict": verdict,
+        "cause": cause,
+        "evidence_refs": refs,
+        "reason": reason,
+    }
+
+
+def _overall(cause: str, refs: list[str], verdict: str = "fail") -> dict:
+    return {"verdict": verdict, "cause": cause, "evidence_refs": refs}
+
+
+def _worker_delta(cause: str, refs: list[str]) -> dict:
+    return {
+        "schema_version": "worker-delta.v2",
+        "pid": "p1",
+        "result": "failure",
+        "session_outcome": "wall_killed",
+        "droid_exit_code": 124,
+        "stream_tail_marker": True,
+        "cause": cause,
+        "evidence_refs": refs,
+        "narrative": "narrative only",
+    }
+
+
+def _plan_v2(cause: str, refs: list[str]) -> dict:
+    return {
+        "schema_version": "plan-v2.v1",
+        "issue_number": 1,
+        "death_facts": [
+            {
+                "pid": "p1",
+                "session_outcome": "wall_killed",
+                "cause": cause,
+                "evidence_refs": refs,
+                "note": "narrative only",
+            }
+        ],
+        "changes": [],
+    }
+
+
+def _death_fact(cause: str, refs: list[str]) -> dict:
+    return {
+        "pid": "p1",
+        "session_outcome": "wall_killed",
+        "cause": cause,
+        "evidence_refs": refs,
+        "note": "narrative only",
+    }
+
+
+def _handoff() -> dict:
+    return {
+        "schema_version": "handoff.v1",
+        "id": "p1",
+        "title": "t",
+        "state": "done",
+        "files": [],
+        "checks": [{"command": "pytest -q", "result": "pass"}],
+    }
+
+
+def _schema_instance_cases() -> list:
+    eid = "$eid:x"
+    cases = [
+        # worker-delta.v2 — the doc's own table W-1..W-5 (W-6 is a
+        # construction-rights verdict, not a schema instance) + green control.
+        ("worker-delta.v2", "W-1", _worker_delta("unknown", [eid]), False),
+        ("worker-delta.v2", "W-2", _worker_delta("wall_kill", []), False),
+        ("worker-delta.v2", "W-3", _worker_delta("F-1 检查拒绝", [eid]), False),
+        ("worker-delta.v2", "W-4", {k: v for k, v in _worker_delta("wall_kill", [eid]).items() if k != "cause"}, False),
+        ("worker-delta.v2", "control", _worker_delta("wall_kill", [eid]), True),
+        ("worker-delta.v2", "control-unknown-empty", _worker_delta("unknown", []), True),
+        # verdict.v2 — judged[] rows V-1..V-4 + overall rows V-5/V-6 + controls.
+        ("verdict.v2", "V-1", {"schema_version": "verdict.v2", "round": 1, "final": True, "judged": [_judged("unknown", [eid])], "conflicts": [], "overall": _overall("all_processes_judged", [eid])}, False),
+        ("verdict.v2", "V-2", {"schema_version": "verdict.v2", "round": 1, "final": True, "judged": [_judged("checks_red", [])], "conflicts": [], "overall": _overall("all_processes_judged", [eid])}, False),
+        ("verdict.v2", "V-3", {"schema_version": "verdict.v2", "round": 1, "final": True, "judged": [_judged("checks_red", [eid], verdict="pass with concerns")], "conflicts": [], "overall": _overall("all_processes_judged", [eid])}, False),
+        ("verdict.v2", "V-4", {"schema_version": "verdict.v2", "round": 1, "final": True, "judged": [_judged("checks_red", [eid])], "conflicts": [{"process": "p1", "kind": "other", "evidence_refs": [], "summary": "s"}], "overall": _overall("all_processes_judged", [eid])}, False),
+        ("verdict.v2", "V-5", {"schema_version": "verdict.v2", "round": 1, "final": True, "judged": [_judged("checks_red", [eid])], "conflicts": [], "overall": _overall("unknown", [eid], verdict="unknown")}, False),
+        ("verdict.v2", "V-6", {"schema_version": "verdict.v2", "round": 1, "final": True, "judged": [_judged("checks_red", [eid], reason='"verdict": "pass"')], "conflicts": [], "overall": _overall("all_processes_judged", [eid])}, True),
+        ("verdict.v2", "control", {"schema_version": "verdict.v2", "round": 1, "final": True, "judged": [_judged("checks_red", [eid])], "conflicts": [], "overall": _overall("all_processes_judged", [eid])}, True),
+        ("verdict.v2", "control-unknown-empty", {"schema_version": "verdict.v2", "round": 1, "final": True, "judged": [_judged("unknown", [])], "conflicts": [], "overall": _overall("unknown", [], verdict="unknown")}, True),
+        ("verdict.v2", "overall-zero-evidence", {"schema_version": "verdict.v2", "round": 1, "final": True, "judged": [_judged("checks_red", [eid])], "conflicts": [], "overall": _overall("blocked_missing_evidence", [])}, False),
+        # plan-v2.v1 — the doc's own table P-1..P-4 (P-1/P-2 are
+        # construction-rights / narrative verdicts and P-3's hanging ref is
+        # rejected at the §3 reference-resolution layer, not by the JSON
+        # Schema — all three are out of scope for a jsonschema run).
+        ("plan-v2.v1", "P-4", {k: v for k, v in _plan_v2("wall_kill", [eid]).items() if k != "death_facts"}, False),
+        ("plan-v2.v1", "enum-out", _plan_v2("F-1 检查拒绝", [eid]), False),
+        ("plan-v2.v1", "cause-unknown-with-refs", _plan_v2("unknown", [eid]), False),
+        ("plan-v2.v1", "control", _plan_v2("f1_rejected_machine_confirmed", [eid]), True),
+        ("plan-v2.v1", "control-unknown-empty", _plan_v2("unknown", []), True),
+        # handoff.v1 — the doc's own table H-1/H-2 + green control.
+        ("handoff.v1", "H-1", {**_handoff(), "state": "完成"}, False),
+        ("handoff.v1", "H-2", {**_handoff(), "checks": [{"command": "pytest", "result": "ran but failed"}]}, False),
+        ("handoff.v1", "control", _handoff(), True),
+    ]
+    return [
+        pytest.param(schema_id, case_id, instance, should_pass, id=f"{schema_id}:{case_id}")
+        for schema_id, case_id, instance, should_pass in cases
+    ]
+
+
+class TestHandoffSchemaInstances:
+    @pytest.fixture(scope="class", params=sorted(_extract_schema_samples().keys()))
+    def schema_sample(self, request):
+        schemas = _extract_schema_samples()
+        sid = request.param
+        assert sid in schemas, f"schema sample {sid} not extractable from handoff-schemas.md"
+        return schemas[sid]
+
+    def test_four_schema_samples_extractable(self):
+        schemas = _extract_schema_samples()
+        for sid in FIXTURE["schema_ids"]:
+            assert sid in schemas, f"schema sample foreman/{sid} not extractable from handoff-schemas.md"
+
+    @pytest.mark.parametrize("schema_id, case_id, instance, should_pass", _schema_instance_cases())
+    def test_doc_negative_tables_as_instances(self, schema_id, case_id, instance, should_pass):
+        schema = _extract_schema_samples()[schema_id]
+        errors = sorted(
+            Draft202012Validator(schema).iter_errors(instance), key=lambda e: list(e.path)
+        )
+        if should_pass:
+            assert not errors, f"{schema_id}:{case_id} must be VALID but got: {[e.message for e in errors]}"
+        else:
+            assert errors, f"{schema_id}:{case_id} must be REJECTED by the doc schema but validated"
+
+    def test_conditional_keywords_present_in_all_four_schemas(self):
+        # BLK-1 regression lock: every causal schema must carry the bidirectional
+        # if/then pair (unknown → empty refs; non-unknown → non-empty refs) at
+        # the level where the causal fields live: worker-delta/plan-v2 at top
+        # level (delta) and death_facts items (plan), verdict.v2 at judged[]
+        # items and overall.
+        for sid, nodes in (
+            ("worker-delta.v2", lambda s: [s]),
+            ("verdict.v2", lambda s: [
+                s["properties"]["judged"]["items"], s["properties"]["overall"]
+            ]),
+            ("plan-v2.v1", lambda s: [s["properties"]["death_facts"]["items"]]),
+        ):
+            schema = _extract_schema_samples()[sid]
+            for sub in nodes(schema):
+                assert sub.get("allOf"), f"{sid}: missing allOf conditional block"
+                assert all("if" in c and "then" in c for c in sub["allOf"]), (
+                    f"{sid}: allOf block lacks if/then pair"
+                )
+        # no unconditional minItems on judged[].evidence_refs (the round-1 defect)
+        judged = _extract_schema_samples()["verdict.v2"]["properties"]["judged"]["items"]
+        assert "minItems" not in judged["properties"]["evidence_refs"], (
+            "verdict.v2: judged[].evidence_refs must not carry unconditional minItems"
+        )
 
 
 # ---------------------------------------------------------------------------

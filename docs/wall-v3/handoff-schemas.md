@@ -104,7 +104,7 @@
 
 ## §3 verdict v2 schema（验收席判定：枚举+证据强制+未明缺省）
 
-现状 verdict-partial（§0 行 2）的 pass|fail 保留；v2 每判定挂证据引用、冲突升级挂冲突枚举、整体结论带未明缺省：
+现状 verdict-partial（§0 行 2）的 pass|fail 保留；v2 每判定挂证据引用、冲突升级挂冲突枚举、整体结论带未明缺省。judged[] 与 overall 套用与 §2 worker-delta.v2 相同的 allOf/if/then 双向约束（round-1 修正：原稿缺失该对且 judged[].evidence_refs 带无条件 minItems:1，导致「未明缺省被拒、零证据因果结论放行」——与 §1 原则 2 相反）：cause=unknown → evidence_refs 必空（maxItems 0）；cause 取非 unknown 枚举 → evidence_refs 必非空（minItems 1）：
 
 ```json
 {
@@ -128,9 +128,15 @@
           "id": { "type": "string", "minLength": 1 },
           "verdict": { "enum": ["pass", "fail"] },
           "cause": { "enum": ["checks_red", "evidence_incomplete", "out_of_card_conflict", "aligned_pass", "unknown"] },
-          "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^\\$eid:" } },
+          "evidence_refs": { "type": "array", "items": { "type": "string", "pattern": "^\\$eid:" } },
           "reason": { "type": "string", "description": "自由文本，只给人看；引用证据用 $eid: 标记，机器判定不读本字段" }
-        }
+        },
+        "allOf": [
+          { "if": { "properties": { "cause": { "const": "unknown" } } },
+            "then": { "properties": { "evidence_refs": { "maxItems": 0 } } } },
+          { "if": { "properties": { "cause": { "enum": ["checks_red", "evidence_incomplete", "out_of_card_conflict", "aligned_pass"] } } },
+            "then": { "properties": { "evidence_refs": { "minItems": 1 } } } }
+        ]
       }
     },
     "conflicts": {
@@ -155,7 +161,17 @@
         "verdict": { "enum": ["pass", "fail", "unknown"] },
         "cause": { "enum": ["all_processes_judged", "blocked_missing_evidence", "machine_records_disagreement", "unknown"] },
         "evidence_refs": { "type": "array", "items": { "type": "string", "pattern": "^\\$eid:" } }
-      }
+      },
+      "allOf": [
+        { "if": { "properties": { "cause": { "const": "unknown" } } },
+          "then": { "properties": { "evidence_refs": { "maxItems": 0 } } } },
+        { "if": { "properties": { "cause": { "enum": ["all_processes_judged", "blocked_missing_evidence", "machine_records_disagreement"] } } },
+          "then": { "properties": { "evidence_refs": { "minItems": 1 } } } },
+        { "if": { "properties": { "verdict": { "const": "unknown" } } },
+          "then": { "properties": { "evidence_refs": { "maxItems": 0 } } } },
+        { "if": { "properties": { "verdict": { "enum": ["pass", "fail"] } } },
+          "then": { "properties": { "evidence_refs": { "minItems": 1 } } } }
+      ]
     }
   }
 }
@@ -175,6 +191,8 @@
 | | `evidence_tampering` | 证据篡改嫌疑（manifest sha 复验面） |
 | | `other` | 其他（summary 必填说明） |
 | overall.verdict | `pass`/`fail`/`unknown` | **unknown=验收席合法终局**：judgeable 集不可判时不得强行二值 |
+
+**双向约束语义**（与 §2/§4 同一形制）：judged[]/overall 的条件约束是双向的——`unknown`（cause 或 verdict 任一）⇒ `evidence_refs` 必空；非 `unknown` ⇒ 必非空。V-1/V-5 的「unknown 且 refs 非空」与 V-2 的「checks_red 且 refs 空」都由该 if/then 对拒绝，无需无条件 minItems。
 
 **约束继承现状执法面**：D-2 封章粘性（salvage_verdict.py:121 sealed 粘性沿用）；红章判死（:97）；冲突升级必录（:98）；pytest 计数单源 check-summary.json（:100）——四条纪律全部进入 v2 契约测试（§7）。
 

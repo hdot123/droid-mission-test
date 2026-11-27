@@ -197,7 +197,7 @@ state_reads / local_uses / probes / callers / authorization / verification / bud
 
 **废止对象**（现状）：裸跑形态 `timeout --signal=TERM --kill-after=30s 900s ~/.local/bin/droid exec --auto high …`（`team.yml:599`；worker2 同款 `:2784`）。三点不合规：①不经包装器（run_droid_session.py 的墙预算/心跳/patch 面对工人席不存在；budgets lint 明文豁免——`lint_workflow_budgets.py:17-18` BARE_DROID 正则、`:43-51` worker/900s 豁免分支）；②900s 硬编码在 workflow 文本，墙上账面值（`foreman_run_lib.py:53-54` worker droid_wall_sec=900）不被执行路径读取——预算是账面非执法；③执法与会话同体（45B 实证：孤儿子进程持管道拖到 25m job 墙，锚件 2 §10-②）。
 
-**接线设计**（目标态）：worker job 改经 `run_droid_session.py --role worker --caps foreman-caps.v1.toml`——caps load（schema 校验畸形即 exit 2）→预算推导（软超时 = droid_wall_sec − 400，公式照引擎 `run_lead.sh:6` timeout−400s 口径）→体外执法启动（§4 终止序列）→墙 patch（write_worker_delta 既有分类器复用，`team.yml:836` 上墙）。**预算从门清单读——预算唯一来源=门清单 `[seat.worker.budgets]`**，workflow 文本零预算字面量；裸跑字面量废止后，caps-gate BARE_DROID 探针与 budgets lint 同判词双载体执法，`lint_workflow_budgets.py:43-51` 豁免分支同批废止——裸跑形态对 7 席一律红，零豁免。
+**接线设计**（目标态）：worker job 改经 `run_droid_session.py --role worker --caps foreman-caps.v1.toml`——caps load（schema 校验畸形即 exit 2）→预算推导（软超时 = job_timeout_sec − 400，基座＝门清单 budgets 键的 job timeout——公式照引擎 `run_lead.sh:6` timeout−400s 口径，该口径的 timeout 即 job timeout：`droid-review-lead.yml:35-37` 明文 margin 400s 保证哨兵先于 GitHub 硬杀；droid 墙预算是包装器 T0 计时面，不进公式）→体外执法启动（§4 终止序列）→墙 patch（write_worker_delta 既有分类器复用，`team.yml:836` 上墙）。**预算从门清单读——预算唯一来源=门清单 `[seat.worker.budgets]`**，workflow 文本零预算字面量；裸跑字面量废止后，caps-gate BARE_DROID 探针与 budgets lint 同判词双载体执法，`lint_workflow_budgets.py:43-51` 豁免分支同批废止——裸跑形态对 7 席一律红，零豁免。
 
 **会话级配置从门清单生成**（确定性生成、可复演）：①工具白名单注入（api＋local_uses → 会话 tools 白名单；形制对位引擎 `run_lead.sh:67` LEAD_ENABLED_TOOLS 单行默认值）；②写目标预授权（artifacts workspace-write 面 → F-1 allowed 集合，越界写事中拒绝）；③令牌 scope 最小化（token_scope → 环境注入最小集）。生成物落 `session-config.json`（预算/白名单/写目标/令牌四节），caps-gate 对平测试断言「会话配置与门清单逐键一致」。**包装器即执法点**：四面执法动作都发生在包装器进程内，会话本体无自授途径。worker2 同构收进。
 
@@ -225,13 +225,13 @@ state_reads / local_uses / probes / callers / authorization / verification / bud
 | # | 图外件 | 现位置锚 | 图外性 | 收编/禁绝 | 责任席位 |
 |---|---|---|---|---|---|
 | ① | 板面 Item closed 自动化（关单翻板） | 板侧 Projects #33 内建规则（非 repo 树）；证据 `docs/板面关单翻板-最小操作指引.md:12-14`（演员 `github-project-automation`，三单实测） | 触发面/执行体/写目标三重图外（专档 `:20` 仓内零写入点、`:24` repo 不可拦截） | 禁绝（板侧 Disable 或终态选项改造，操作指引 `:26` 起；验收判据 `:37` timeline 零翻板）＋收编（装配席 board_drift 对账：漂移记账→PAT 单点重写→仍漂移硬评论报警；env-check 探测项 WARN 登记） | 板侧=大哥；对账=装配席；探测=零号门 |
-| ② | I8-B 标题键控假 PAT 夹具 | `team.yml:419`（`I8_LIVE_B_INVALID_GH_TOKEN` 变量，ghp_ 前缀族哑值——只记名不转录）、`:429`（标题命中）、`:430`（export 换 token） | 执行条件图外（issue 标题是活验编排信号非门面输入）＋生产消费为零＋值住生产文本违反零值登记 | 禁绝三步：夹具仓化（对位在树 C 型夹具 `.github/workflows/i8-zero-escape-live-c-fixture.yml` 独立文件形制）→生产文本净化（删夹具分支）→活验断言改道探针；守卫负例常驻（生产 workflow 出现 `I8_LIVE_B` 或 PAT 前缀族即红） | 写板席（文本拆除）＋验收席面（探针改道）＋大哥（退役批） |
+| ② | I8-B 标题键控假 PAT 夹具 | `team.yml:419`（`I8_LIVE_B_INVALID_GH_TOKEN` 变量，ghp_ 前缀族哑值——只记名不转录）、`:418`（夹具注释）、`:429-432`（标题命中→export 换 token→echo→收尾 fi） | 执行条件图外（issue 标题是活验编排信号非门面输入）＋生产消费为零＋值住生产文本违反零值登记 | 禁绝三步：夹具仓化（对位在树 C 型夹具 `.github/workflows/i8-zero-escape-live-c-fixture.yml` 独立文件形制）→生产文本净化（删 `:418`/`:419`/`:429-432`）→活验断言改道探针；守卫负例常驻（生产 workflow 出现 `I8_LIVE_B` 或 PAT 前缀族即红） | lead 席默认删行（§2.4 表 2）＋大哥退役批；探针改道=验收席面。workflow 文本编辑是治理行为（走 wall-registry-change 通道），不在任何会话席门清单——recorder 门清单（零 workflow 编辑权）不承接本件 |
 | ③ | BYOM 三件＋FACTORY_API_KEY 8 位点重复展开 | 8 个「Write BYOM settings」步（`team.yml:117/:529/:1460/:1880/:2176/:2723/:3702/:4113`）；FACTORY_API_KEY 独立注 8 处（`:157/:568/:1501/:1916/:2209/:2757/:3738/:4147`） | 重复展开≠登记（8 份平行配置零对账）＋无席位差异（四角色同拿三件）＋写文件位（`~/.factory/settings.json`）图外 | 收编：单点声明体 `write_byom_settings.py`（8 位点改单行调用）＋按席差异化 scope 矩阵（呈裁两条见 §8）＋台账「1 条登记＋N 条消费锚」（§3.4） | 写板席（声明体）＋大哥（scope 裁定）＋caps-gate（对账） |
 | ④ | verdict.json/md 顶层孤儿件 | mission 工作区顶层两件（非 repo 树、非 tracked；生成演员不在链内） | 位置孤儿（链上 verdict 有唯一语义与合法落点）＋生成演员未登记＋墙权威 pick 口径下的冒充风险 | 禁绝（清理，人工——本 mission 边界条款禁动）＋收编（recorder 席 verdict 合法落点白名单＋caps-gate 防复活负例：树内白名单外 verdict 落点即红；诚实边界：工作区顶层无 CI 执法点，人工巡检判据登记） | 写板席（命名空间）＋人工（清理） |
 | ⑤ | env-check 五 secrets 全量入环境 | `env-check.yml:82-86`（gate 步五注入 S_* 面）、`:238-240`（wall 步三件重复展开）、presence 布尔消费 `:155-163` 区段、板面探测 PAT 真消费 `:194-200`、`env_check_wall.py:65-67`（wall 步布尔重复取值） | wall 步重复展开（布尔与 gate 步重复）＋值在场暴露面未登记＋注入位点无对账 | 收编：wall 步归零（`env_check_wall.py` 改读 gate 步 tsv 继承，零 os.environ secret 读值）＋gate 步暴露面登记进台账＋位点对账守卫（`${{ secrets.* }}` 展开位点集合≠台账锚集即红） | 零号门＋写板席＋caps-gate |
 | ⑥ | memory/ 运行态图外会话面 | repo `memory/` untracked 运行态树＋`~/.memory-core/` hook 态根（memory-core 运行态，本 mission 不碰） | hook 进程图外运行＋会话记录不进墙不采认＋untracked 结构性图外 | 收编接口不收编运行：图外记录作死因佐证必须先入库转图内证据对象（§2.6 构造权单源）；全部席位门清单显式禁写 memory/；台账 `[[external_face]]` 登记 | 改计划席（输入面）＋写板席（入库规范）＋领班席（编排声明） |
 
-**清零判据汇总**（「图外=0」的机器定义，逐件负例载体与三态纪律 cleared／cleared-with-declaration／blocked）见底稿 out-of-graph §4 表：六件判据全部可断言；板侧动作（件①）按三态纪律登记 **blocked 待大哥**，不虚称 cleared。每件清零后的归宿都落在对应席位门清单内（①归装配席/零号门、②④归写板席、③归各席 token_scope、⑤归零号门、⑥归改计划席/写板席）。
+**清零判据汇总**（「图外=0」的机器定义，逐件负例载体与三态纪律 cleared／cleared-with-declaration／blocked）见底稿 out-of-graph §4 表：六件判据全部可断言；板侧动作（件①）按三态纪律登记 **blocked 待大哥**，不虚称 cleared。每件清零后的归宿都落在对应席位门清单内（①归装配席/零号门、②归 lead 席默认删行＋大哥退役批——workflow 编辑是治理行为，recorder 门清单不含 workflow 文本、④归写板席命名空间、③归各席 token_scope、⑤归零号门、⑥归改计划席/写板席）。
 
 ### 3.3 图外件⑤的凭证面锚集（凭证面唯一口径）
 
@@ -256,7 +256,7 @@ env-check 凭证面锚集以底稿 out-of-graph §2.5 为准，四个区段行�
 
 **终止序列**（照抄，执法通道与被管进程解耦）：预算到期（T0）→写哨兵（`session-terminated.reason`，T1）→SIGTERM 进程组→宽限（目标态 10s，对位引擎 `run_lead.sh:55` LEAD_KILL_GRACE_SEC 默认）→SIGKILL 进程组（T2 进程组真死）。**哨兵在案＝该席产物不采信**（delta/verdict/plan-v2 一律强制失败优先）。进程组整组收=45B 孤儿拖管道形态的根除：组信号不挑进程，孤儿子进程随组终结。
 
-**有界退出预算面**（照引擎 `run_lead.sh:5-6` 头注纪律）：轮数封顶＋软超时（droid_wall_sec−400 公式注入）＋心跳采样（纯观测不杀进程）；重试共享绝对墙钟预算（对位引擎 `run_lead.sh:318` LEAD_TOTAL_DEADLINE_EPOCH 绝对上限口径），最坏墙钟恒 ≤ soft＋宽限，不击穿 job timeout。**第 3 层回合熔断不可施工**（大哥已裁登记：droid CLI 无回合预算接口／外层早杀对工件保护更差／无续作能力——`docs/回合熔断上游特性需求登记-droidCLI.md:13-17`；上游三能力立项前置 `:19`）——v3.0 体外执法粒度上限=会话级进程组终止＋落盘产物机器回收，本稿任何章节不得把回合级执法表述为可施工承诺。
+**有界退出预算面**（照引擎 `run_lead.sh:5-6` 头注纪律）：轮数封顶＋软超时（job_timeout_sec−400 公式注入——基座＝**budgets 键的 job timeout**（`job_wall_min`×60），与引擎口径对应：`run_lead.sh:6`「workflow 按 timeout−400s 公式推导注入」的 timeout 即 job timeout，`droid-review-lead.yml:35-37` 明文「margin 400s 保证哨兵先于 GitHub 硬杀」；droid 墙预算（droid_wall_sec）是包装器 T0 计时面，不进公式）＋心跳采样（纯观测不杀进程）；重试共享绝对墙钟预算（对位引擎 `run_lead.sh:318` LEAD_TOTAL_DEADLINE_EPOCH 绝对上限口径），最坏墙钟恒 ≤ soft＋宽限，不击穿 job timeout。**第 3 层回合熔断不可施工**（大哥已裁登记：droid CLI 无回合预算接口／外层早杀对工件保护更差／无续作能力——`docs/回合熔断上游特性需求登记-droidCLI.md:13-17`；上游三能力立项前置 `:19`）——v3.0 体外执法粒度上限=会话级进程组终止＋落盘产物机器回收，本稿任何章节不得把回合级执法表述为可施工承诺。
 
 **CI 接线**：caps-gate 守卫接 foreman-wall-ci 恒跑（push 与 PR 两腿同面，零 if 零 continue-on-error）；放行门单源=ruleset required_status_checks（照引擎要点 6，两门口径 §0b），不在代码养第二套门表。
 
@@ -269,7 +269,7 @@ env-check 凭证面锚集以底稿 out-of-graph §2.5 为准，四个区段行�
 | 席 | 怎么死（主型） | 机器判据（主） | 现状定级 | v3.0 收口 |
 |---|---|---|---|---|
 | worker | A 墙杀（裸跑 900s，exit 124/137 机器杀印）；B 落盘未遂（58-D hslconv 主型）；C 自崩 | delta 三字段机器分类（`write_worker_delta.py:45` classify_session_outcome；124/137→wall_killed）；补卷守卫四条件 ALL-of（`worker_salvage.py:13` docstring，fail-closed） | 部分 | 收进包装器＋体外执法（§2.5）；必死样本 SL-3 |
-| lead | 墙杀/计划残缺/越权写/门未过 | 包装器墙 patch＋stitch 退出码＋caps-gate `out-of-scope-write` | 部分（③无信号面——lead 会话写无机器守卫） | caps-gate 三探针；SL-1/SL-4 |
+| lead | 墙杀/计划残缺/越权写/门未过 | 包装器墙 patch＋stitch 退出码＋caps-gate `out-of-scope-write` | 部分（③无信号面——lead 会话写无机器守卫） | caps-gate 三探针；SL-1/SL-4b |
 | validator | 墙杀（协议致延迟落盘主型）/停滞/证据包破/判定残缺 | D-2 封章粘性（`salvage_verdict.py:45-47` D-2 seal 语义＋adoptable；粘性实码 `:121` sealed）＋红章判死（`validator_prompt_template.py:97` HARD RULE）＋manifest sha 门 | 部分（③缺席报警无 per-run 载体） | recorder_call_count 入墙＋缺席告警；SL-2 |
 | replan | 墙杀/**叙事违约**（脚本内置推断，四问题①）/落单违约/归责错位 | 死因只能取枚举＋证据强制（f1_rejected_machine_confirmed 只能由机器守卫记录构造）；钉子反转（r53c `:190-205` 现状钉子逐字断言→条件断言）；落单机器闸（`team.yml:2420-2423`） | 部分（②③缺口） | 钉子反转＋plan-v2 schema；SL-3b' |
 | prep | 步级超时/merge 失败/守卫拒 | timeout 退出码 124＋git 退出码＋守卫四条件 | **有** | 守卫四条件接受失败矩阵测试（SL-5 倒影） |
@@ -318,7 +318,7 @@ env-check 凭证面锚集以底稿 out-of-graph §2.5 为准，四个区段行�
 | SL-8a-d | 缺席即事件门 | 四缺席变体（recorder 零调用/delta 缺席/封章缺席/收口 patch 缺席）→告警必产＋字段可定位＋墙字段在 |
 | SL-9 | 交接口枚举门 | 四 schema 违约表 19 变体→全拒＋合法对照全绿 |
 
-**执法延迟实测口径**（逐字对位任务书）：延迟 = **超时点到进程组真死的时间差**。三时点机器可测：T0=预算到期（包装器注入预算 epoch，桩读单调钟差）；T1=哨兵写入时刻；T2=进程组最后成员退出（wait 收尸＋exit-stamp）。**多次采样取上界**：每面执法墙每次 CI 跑 N≥5 采样会话（立即死/TERM 后拖延/吞 TERM 靠 KILL 三种抗死形态各≥1＋普通≥2），取最大值为该墙本次延迟报告值；实测数落 CI 报告段＋逐采样行落 artifact（`wall-v3-latency.json` 目标态）；实测超设计上界（软超时样本 ≤400s 余量；墙杀样本 ≤宽限 10s＋KILL 传播余量，宽限对位引擎 `run_lead.sh:55`）=墙建成失败。缺席类事件延迟口径=告警事件产出时延（同采样纪律）。诚实声明：延迟实测对象是包装器执法路径（桩进程组），生产会话死亡面由墙 patch 字段承载——两者是不同测量对象，上界护栏对两者同构成立的前提（组信号整组收）正是桩要证明的。
+**执法延迟实测口径**（逐字对位任务书）：延迟 = **超时点到进程组真死的时间差**。三时点机器可测：T0=预算到期（包装器注入预算 epoch，桩读单调钟差）；T1=哨兵写入时刻；T2=进程组最后成员退出（wait 收尸＋exit-stamp）。**上界口径**：L=T2−T0 ≤ **宽限＋SIGKILL 完成期**（T0 后包装器立即走哨兵→TERM→宽限→KILL 序列，只有哨兵写入＋宽限等待＋KILL 传播三段耗时；400s 软超时余量是「哨兵先于 job 硬杀」的作业窗口——引擎 `droid-review-lead.yml:35-37` margin 口径——不是执法延迟上界）。**多次采样取上界**：每面执法墙每次 CI 跑 N≥5 采样会话（立即死/TERM 后拖延/吞 TERM 靠 KILL 三种抗死形态各≥1＋普通≥2），取最大值为该墙本次延迟报告值；实测数落 CI 报告段＋逐采样行落 artifact（`wall-v3-latency.json` 目标态）；实测超设计上界（全样本 ≤ 宽限 10s＋SIGKILL 完成期 10s 采样护栏，宽限对位引擎 `run_lead.sh:55`）=墙建成失败。缺席类事件延迟口径=告警事件产出时延（同采样纪律）。诚实声明：延迟实测对象是包装器执法路径（桩进程组），生产会话死亡面由墙 patch 字段承载——两者是不同测量对象，上界护栏对两者同构成立的前提（组信号整组收）正是桩要证明的。
 
 ### 6.3 59 轮四问题回归样本（硬规则⑦落位）
 
@@ -376,7 +376,7 @@ env-check 凭证面锚集以底稿 out-of-graph §2.5 为准，四个区段行�
 | 1 | **多出的门逐条保留与否**（§2.4 表 8 项默认删门） | 各行现状锚见表 | 建议全数默认删（本稿立场）；任一项要保留须按 §2.4 呈裁口径单独呈裁（现状锚＋保留理由＋收窄执法设计＋判词） |
 | 2 | 板侧 Item closed 自动化处置（件①） | `docs/板面关单翻板-最小操作指引.md:26` 起（操作节）、`:37`（验收判据） | A=Disable 整条规则或删 Set Status 步；B=Set Status 目标改为「已验收」终态；「保留原样」不在可行集（与写板终态直接冲突，翻板实证）——建议 B（关单即终态，语义最贴链终态权威） |
 | 3 | BYOM 按席 scope 裁定两条（件③） | `team.yml:120/:531/:1463/:1883/:2178/:2725/:3705/:4115`（8 位点） | ①validator 族 BYOM 三件最小集（尤其 `cf-aig-authorization`/`apiKey` 位对该席会话必要性）；②FACTORY_API_KEY 与 BYOM `apiKey` 位（GO_GITHUB_RUN_TOKEN）双轨冗余裁定——裁前保守登记现状全量，裁后收窄＋caps-gate 对账同步收紧 |
-| 4 | I8-B 夹具退役批（件②收尾） | `team.yml:419`/`:429-431`；假 PAT 变量台账条目⑦ | 探针改道+夹具仓化施工后，回读验证（哑值打不开）→revoked→dangling 表；退役批时点大哥定 |
+| 4 | I8-B 夹具退役批（件②收尾） | `team.yml:419`/`:418`/`:429-432`；假 PAT 变量台账条目⑦ | 探针改道+夹具仓化施工（lead 席默认删行落地，§2.4 表 2）后，回读验证（哑值打不开）→revoked→dangling 表；退役批时点大哥定 |
 | 5 | verdict.json/md 顶层孤儿件清理（件④） | mission 工作区顶层两件（非 repo 树；本 mission 边界条款禁动） | 移入证据档案面或删除（人工一次）；防复活负例施工后常驻 |
 | 6 | secrets 名单对账载体（§3.4 判据 5） | repo secrets 五件（CI 内 github.token 无列名单权限） | a=季度人工 `gh secret list` 对账留痕；b=PROJECTS_STATE_PAT 权限实测后若具 admin 读面则机器对账——建议先 a 后实测定 b |
 | 7 | **交接物 schema 兼容窗口**（§2.6 演进规则） | schema v1→v2 演进 | 旧版本读取兼容窗口一次裁定期，窗口外旧版本拒收——不做无限兼容；建议单 run 窗口（同批切换） |

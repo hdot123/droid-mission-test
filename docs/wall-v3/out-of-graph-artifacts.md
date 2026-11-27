@@ -44,7 +44,7 @@
 | # | 图外件 | 型 | 现位置锚 | 收编/禁绝 | 责任席位 | 判据节 |
 |---|---|---|---|---|---|---|
 | ① | 板面 Item closed 自动化（关单翻板） | 图外自动化 | 板侧 Projects #33 内建工作流；证据 `docs/板面关单翻板-最小操作指引.md:12-14` | 禁绝（板侧 Disable/终态选项改造）＋收编（图内漂移对账与再同步） | 大哥（板侧）＋装配席（再同步）＋env-check（探测项） | §2.1/§4 |
-| ② | I8-B 标题键控假 PAT 夹具 | 图外载荷 | `team.yml:419`、`:412-431` 区段（命中分支） | 禁绝（夹具仓化＋生产文本净化＋探针改道） | 写板席（拆除）＋验收席面（活验编排改道）＋大哥（退役批） | §2.2/§4 |
+| ② | I8-B 标题键控假 PAT 夹具 | 图外载荷 | `team.yml:419`、`:412-432` 区段（命中分支 `:429-432`） | 禁绝（夹具仓化＋生产文本净化＋探针改道） | lead 席默认删行＋大哥退役批（workflow 文本编辑权属施工批，见 §2.2 责任席位行）＋验收席面（活验编排改道） | §2.2/§4 |
 | ③ | BYOM 三件＋FACTORY_API_KEY 8 位点重复展开 | 图外凭证面 | 8 个 Write BYOM settings 步（`team.yml:117/:529/:1460/:1880/:2176/:2723/:3702/:4113`） | 收编（单点声明体＋按席差异化 scope 矩阵＋台账对账） | 写板席（声明体）＋大哥（scope 裁定）＋caps-gate（对账） | §2.3/§3.4/§4 |
 | ④ | verdict.json/md 顶层孤儿件 | 图外产物 | mission 工作区顶层两件（2026-11-27T08:07 生成，非 repo 树、非 git tracked） | 禁绝（清理）＋收编（命名空间合法落点＋防复活负例） | 写板席（命名空间）＋大哥/人工（清理） | §2.4/§4 |
 | ⑤ | env-check 五 secrets 全量入环境 | 图外凭证面 | `env-check.yml:82-86`（gate 步 5 件）、`:238-240`（wall 步 3 件重复） | 收编（按消费分离注入：wall 步归零＋台账登记暴露面） | env-check 零号门＋写板席（施工）＋caps-gate（对账） | §2.5/§3.5/§4 |
@@ -91,12 +91,12 @@
 
 | 要素 | 内容 |
 |---|---|
-| 现位置 | `team.yml:419`（`I8_LIVE_B_INVALID_GH_TOKEN` 变量行，含 `ghp_` 前缀族哑值——值本体不转录）；命中分支内嵌于生产步「Post plan dispatch comment (B4/I4)」（`team.yml:412-431` 区段：`:414-415` 注释、`:427` 标题比较、`:430` export 换 token、`:431` echo 说明） |
+| 现位置 | `team.yml:419`（`I8_LIVE_B_INVALID_GH_TOKEN` 变量行，含 `ghp_` 前缀族哑值——值本体不转录）；命中分支内嵌于生产步「Post plan dispatch comment (B4/I4)」（`team.yml:412-432` 区段：`:418` 注释、`:429` 标题比较、`:430` export 换 token、`:431` echo 说明、`:432` 收尾 fi） |
 | 图外性判定 | 执行条件图外（issue 标题字符串是活验编排面信号，非流水线门面输入）＋生产消费面为零（只有 I8-B 活验单命中）＋夹具值内嵌违反零值登记（PAT 前缀族值住生产 workflow 文本，污染钥匙审计 grep 面） |
 | 收编/禁绝 | 禁绝（三步：夹具仓化→生产文本净化→活验断言改道探针）＋守卫负例常驻 |
-| 责任席位 | 写板席（workflow 文本拆除）；活验编排改道＝验收席面（validator 职能的 I8 编排，大哥批准另立施工单）；假 PAT 变量退役＝钥匙台账（zombie→revoked，§3.3 条目⑦） |
+| 责任席位 | 默认删行＝lead 席（门清单 §2.4 表 2 的多出的门默认删——workflow 文本编辑权不在任何会话席门清单内，default-deny 下由施工批按主设计稿 §2.4/§3.2 落地）＋大哥退役批（探针退役＋假 PAT 回读验证）；活验编排改道＝验收席面（validator 职能的 I8 编排，大哥批准另立施工单）；假 PAT 变量退役＝钥匙台账（zombie→revoked，§3.3 条目⑦）。**口径注**：recorder（写板席）门清单（seat-gates §2.7）不含 workflow 编辑权（artifacts 面仅 partial/status/补卷三路径），本件拆除不派写板席 |
 
-**现状与锚**：lead 派单评论步（生产步，每单执行）内嵌一段标题键控分支：`ISSUE_TITLE == "[I8] API墙活验 B 评论硬失败"` 时把 `GH_TOKEN` 换成假 PAT 变量（`team.yml:427` 比较、`:430` export、`:431` echo），变量默认值是 `ghp_` 前缀族哑值（`:419`）。该夹具属 I8 四类活验的 B 型（评论硬失败传播）证据链。
+**现状与锚**：lead 派单评论步（生产步，每单执行）内嵌一段标题键控分支：`ISSUE_TITLE == "[I8] API墙活验 B 评论硬失败"` 时把 `GH_TOKEN` 换成假 PAT 变量（`team.yml:429` 比较、`:430` export、`:431` echo、`:432` 收尾 fi），变量默认值是 `ghp_` 前缀族哑值（`:419`）。该夹具属 I8 四类活验的 B 型（评论硬失败传播）证据链。
 
 **图外性判定（四条成立）**：
 
@@ -108,7 +108,7 @@
 **禁绝方式（三步施工序＋守卫）**：
 
 1. **夹具仓化**：新建 `.github/workflows/i8-zero-escape-live-b-fixture.yml`，形态对位既有 C 型夹具（`i8-zero-escape-live-c-fixture.yml` 在树——I8 家族中 C 型已是独立 workflow 文件，B 型对齐同构）：`workflow_dispatch` 触发（inputs: issue_number），夹具假 PAT 经 repo variables `I8_LIVE_B_INVALID_GH_TOKEN` 注入**夹具文件内**（不在 team.yml）。工作流文件清单（含全部探针/夹具族：`probe.yml`、`probe3-6.yml`、`droid-probe*.yml`、`i8-zero-escape-live-*.yml`）登记进台账 `[[external_face]]` 参考面（§3.3）。
-2. **生产文本净化**：team.yml 删 `:414-415` 注释、`:419` 变量行、`:427-431` 命中分支——「Post plan dispatch comment」步恢复为无条件 `GH_TOKEN: ${{ github.token }}`＋单一 `post_comment_hard` 调用。
+2. **生产文本净化**：team.yml 删 `:418` 注释行、`:419` 变量行、`:429-432` 命中分支（`:429` 标题比较起、`:430` export、`:431` echo、`:432` 收尾 fi——fi 必须随分支整段删除，否则残留悬空 if 收尾使 workflow 语法失效）——「Post plan dispatch comment」步恢复为无条件 `GH_TOKEN: ${{ github.token }}`（`:415`）＋单一 `post_comment_hard` 调用；步内 `:414` env 块、`:425-428` foreman-run freshen 行不在删除集（均为生产步必需行）。
 3. **活验断言改道**：I8-B 的断言语义（无效令牌→评论 401/403→`post_comment_hard --hard-required` 退出 1→墙 patch 记录硬失败）改由**探针单**承载：探针 workflow（家族形态在树）内以无效令牌对探针 issue 调用同一 `post_comment_hard` 共享件断言硬失败传播。成立性说明：`post_comment_hard.py` 是全链单源共享件（`scripts/team/`），硬失败语义单源——探针红即生产该路径红，I8-B 证据效力不变且生产文本零夹具。
 4. **守卫负例（常驻）**：文本断言进 caps-gate 载体（`tests/test_foreman_caps_contract.py`，目标态新增）——生产 workflow 四文件（team.yml/droid.yml/env-check.yml/foreman-wall-ci.yml）正文出现 `I8_LIVE_B` 或 PAT 前缀族字面（`ghp_` 等）即红。此负例同时是 §3.6 对账判据 2（值泄漏扫描）的一个实例。
 
@@ -307,7 +307,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 | # | name | kind | access | nature | status | opens（消费面） | consumes 锚 |
 |---|---|---|---|---|---|---|---|
 | ① | FACTORY_API_KEY | factory_cli_key | read | use | active | droid CLI 会话模型面（8 席位会话步 env 直传） | team.yml `:157/:568/:1501/:1916/:2209/:2757/:3738/:4147`＋env-check.yml `:82/:238` |
-| ② | WORKER_CI_KEY | worker_gateway_key | read | use | active | BYOM headers `x-ci-key` 位 | 8 声明位点 `:120/:531/:1463/:1883/:2178/:2725/:3702/:4115` 区段＋env-check.yml `:83`；③收口后=1 声明体锚＋8 调用锚 |
+| ② | WORKER_CI_KEY | worker_gateway_key | read | use | active | BYOM headers `x-ci-key` 位 | 8 声明位点 `:120/:531/:1463/:1883/:2178/:2725/:3705/:4115` 区段＋env-check.yml `:83`；③收口后=1 声明体锚＋8 调用锚 |
 | ③ | GW_TOKEN_KNOWN | cf_ai_gateway_run_token | read | use | active | BYOM headers `cf-aig-authorization` 位 | 同②8 位点＋env-check.yml `:84` |
 | ④ | GO_GITHUB_RUN_TOKEN | github_pat（kind 初判，装配盘点回填） | read | use | active | BYOM `apiKey` 位（模型网关鉴权） | 同②8 位点＋env-check.yml `:85` |
 | ⑤ | PROJECTS_STATE_PAT | github_pat | read_write | cap_change | active | 板面写（装配席单点）＋板面探测＋漂移对账读 | `team.yml:4431/:4441`＋env-check.yml `:86/:195/:240`（样例见 §3.2） |
@@ -365,7 +365,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 | # | 判据（可断言形态） | 负例/对账载体 | 施工/人工归属 |
 |---|---|---|---|
 | ① | 板面 timeline 零 `github-project-automation` 翻板事件；`board_drift` 对账步＋env-check 探测项在树 | F4 必死样本：翻板回归样本（59 轮四问题③） | 板侧=大哥人工；对账步=施工单（装配席步列） |
-| ② | 生产 workflow（team.yml/droid.yml/env-check.yml/foreman-wall-ci.yml）零 `I8_LIVE_B` 与 PAT 前缀族命中；B 夹具文件在树；探针单全链红照旧 | caps-gate 负例：生产文本夹具/值前缀必红 | 施工单（写板席文本＋探针改道）＋大哥（退役批） |
+| ② | 生产 workflow（team.yml/droid.yml/env-check.yml/foreman-wall-ci.yml）零 `I8_LIVE_B` 与 PAT 前缀族命中；B 夹具文件在树；探针单全链红照旧 | caps-gate 负例：生产文本夹具/值前缀必红 | 施工单（lead 席默认删行落地＋探针改道）＋大哥（退役批） |
 | ③ | BYOM 写入=声明体单点（内联 heredoc 形态计数=0）；四件 secrets 展开位点=台账锚集 | caps-gate 负例：多声明体/锚集失配必红 | 施工单（声明体）＋大哥（scope 裁定） |
 | ④ | 工作区顶层 verdict 孤儿=0（人工巡检）；repo 树内 verdict 件全在档案白名单 | caps-gate 负例：白名单外 verdict 落点必红 | 清理=大哥/人工；白名单+负例=施工单（写板席） |
 | ⑤ | env_check_wall 零 os.environ secret 读值；env-check.yml secrets 位点=登记集；墙切片布尔与 gate tsv 一致性测试绿 | caps-gate 负例：位点集失配必红＋一致性测试 | 施工单（env-check 文本＋env_check_wall） |
@@ -373,7 +373,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 
 **三态纪律**（照引擎普查表口径，form-basis 要点 10）：每件清零状态只能取 **cleared**（判据全绿）／**cleared-with-declaration**（判据绿但带显式边界声明——如⑤的机制性最小暴露、⑥的「不收编运行」）／**blocked**（判据不可达，显式登记阻塞面——如①板侧动作待大哥）。禁止虚称 cleared；blocked 件保留图外登记不除名。
 
-**验收线归属声明**：本件只给判据与负例载体指针；必死样本桩设计（fake-droid 注入形态）与执法延迟口径归 F4 底稿 `docs/wall-v3/failure-specs.md` 与主设计稿验收线章——两处的判据引用以本件 §4 表为准绳（VAL-CROSS-002 一致性：清零后的每件归宿都在对应席位门清单内——①归装配席/零号门、②④归写板席、③归各席 token_scope、⑤归零号门、⑥归改计划席/写板席）。
+**验收线归属声明**：本件只给判据与负例载体指针；必死样本桩设计（fake-droid 注入形态）与执法延迟口径归 F4 底稿 `docs/wall-v3/failure-specs.md` 与主设计稿验收线章——两处的判据引用以本件 §4 表为准绳（VAL-CROSS-002 一致性：清零后的每件归宿都在对应席位门清单内——①归装配席/零号门、②归 lead 席默认删行＋大哥退役批（workflow 编辑是治理行为，非任何会话席门清单写面；recorder 门清单不含 workflow 文本）、④归写板席命名空间、③归各席 token_scope、⑤归零号门、⑥归改计划席/写板席）。
 
 ---
 
@@ -393,10 +393,11 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 | `.github/workflows/team.yml:134` | `x-opencode-session` | ★ |
 | `.github/workflows/team.yml:157` | `FACTORY_API_KEY` | 锚件 2 §1 |
 | `.github/workflows/team.yml:412` | `Post plan dispatch comment (B4/I4)` | ★ |
-| `.github/workflows/team.yml:414` | `I8-B live only`（夹具注释行） | ★ |
+| `.github/workflows/team.yml:418` | `I8-B live only`（夹具注释行） | ★ |
 | `.github/workflows/team.yml:419` | `I8_LIVE_B_INVALID_GH_TOKEN`（夹具变量行；`ghp_` 哑值在场，不转录） | ★ |
-| `.github/workflows/team.yml:427` | `[I8] API墙活验 B 评论硬失败`（标题比较） | ★ |
+| `.github/workflows/team.yml:429` | `[I8] API墙活验 B 评论硬失败`（标题比较） | ★ |
 | `.github/workflows/team.yml:430` | `export GH_TOKEN="$I8_LIVE_B_INVALID_GH_TOKEN"` | ★ |
+| `.github/workflows/team.yml:432` | `fi`（命中分支收尾） | ★ |
 | `.github/workflows/team.yml:4431` | `PROJECTS_STATE_PAT` | 锚件 2 §6 |
 | `.github/workflows/team.yml:4441` | `project_state_write` | 锚件 2 §6 |
 | `.github/workflows/team.yml:4599` | 板面权威审计镜像声明 | 锚件 2 §6 |
@@ -441,7 +442,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 | 图外件 | 主责席位（清零后归宿） | 硬规则落位（architecture §8 映射） | 姊妹件引用 |
 |---|---|---|---|
 | ① 板面翻板 | 装配席（projects-write 单点＋board_drift 对账）＋env-check（探测项） | 规则⑤写入口收口（§写入口）＋规则⑩无兜底不留图外（§图外件清零） | seat-gates §2.6 assemble 门清单；F4 回归样本③ |
-| ② I8-B 夹具 | 写板席（workflow 文本面）＋验收席面（探针编排） | 规则⑩（图外件清零）＋规则④必死样本（探针负例） | seat-gates §2.7 recorder 门清单；F4 探针负例 |
+| ② I8-B 夹具 | lead 席（默认删行）＋大哥退役批（探针编排改道=验收席面） | 规则⑩（图外件清零）＋规则④必死样本（探针负例） | 主设计稿 §2.4 表 2（lead 多出的门默认删）；F4 探针负例 |
 | ③ BYOM 8 位点 | 写板席（声明体）＋各席 token_scope | 规则⑨钥匙总管理（§钥匙台账） | seat-gates §2 各席 authorization；本稿 §3.4 |
 | ④ verdict 孤儿 | 写板席（命名空间合法落点） | 规则⑩＋规则①（recorder 门清单 artifacts 面） | seat-gates §2.7；本稿 §3.2 [[orphan]] |
 | ⑤ env-check 五 secrets | env-check 零号门（门清单随总装单列） | 规则⑨（暴露面登记＋位点对账） | 本稿 §3.3/§3.6；seat-gates §0 辅助面口径 |

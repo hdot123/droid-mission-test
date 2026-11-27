@@ -30,7 +30,7 @@
 
 | 时点 | 定义 | 采样实现 |
 |---|---|---|
-| T0＝超时点 | 预算到期时刻：包装器预算计时器到期（软超时=droid_wall_sec−400 或墙=droid_wall_sec，由样本参数指定） | 桩会话内记录：包装器注入 `FAKE_DROID_BUDGET_EPOCH`，桩在收到 TERM 时读自身单调钟与该 epoch 差 |
+| T0＝超时点 | 预算到期时刻：包装器预算计时器到期（墙杀样本=droid_wall_sec；软超时样本=job_timeout_sec−400——基座=job timeout，与引擎 `run_lead.sh:6` 口径对应；由样本参数指定） | 桩会话内记录：包装器注入 `FAKE_DROID_BUDGET_EPOCH`，桩在收到 TERM 时读自身单调钟与该 epoch 差 |
 | T1＝终结发起 | 执法体发起终结：哨兵写入时刻（`lead-terminated.reason` 同形态哨兵，目标态 `session-terminated.reason`） | 包装器写哨兵时刻（哨兵文件 mtime 或哨兵内记录的单调钟值） |
 | T2＝进程组真死 | 被管进程组最后成员退出：waitpid(-pgid) 返回（对位引擎 `run_lead.sh:282` 负 PID 组信号→wait 收尸形态） | 监督者 wait 收尸时刻＋桩进程退出时向哨兵目录写 exit-stamp |
 
@@ -38,7 +38,7 @@
 
 - **多次采样取上界**：每类执法墙每次 CI 跑 **N≥5 个采样会话**（参数化桩：预算到期后分别以「立即死/TERM 后拖延/吞 TERM 靠 KILL」三种抗死形态各≥1 采样，另加 2 个普通采样），实测值取**最大值（上界）**为该墙本次执法延迟报告值——上界才暴露最坏抗死形态的执法成本，均值会掩埋 KILL 路径。
 - **CI 每次出实测数**：延迟报告落 CI 输出（pytest 报告段：`SL-x enforcement-latency upper-bound = <秒>`）＋可选落 artifact（目标态 `wall-v3-latency.json`：`{sample_id, wall, budget_sec, t0, t1, t2, latency_sec, kill_path: term|kill_after|grace}` 逐采样行）。**报告中数字必须来自本次运行的实测**，禁止常量断言（「延迟<10s」式断言只许作为 sanity 上限护栏，且必须与实测数同时报告）。
-- **上界预算护栏**：延迟实测值必须满足设计上界（软超时样本 L ≤ 400s 宽限余量；墙杀样本 L ≤ 宽限秒＋SIGKILL 传播余量，目标态宽限=10s 对位引擎 `LEAD_KILL_GRACE_SEC` 默认，`run_lead.sh:55`）。**实测超上界=墙建成失败**（判据 §1.3 第 3 条）。
+- **上界预算护栏**：延迟实测值必须满足设计上界。执法延迟 L=T2−T0 的正确上界是**「宽限＋SIGKILL 完成期」**——T0 之后包装器立即发起终止序列（写哨兵→TERM 组→宽限→KILL 组），序列耗时只有哨兵写入＋宽限等待＋KILL 传播三段，400s 的软超时余量是「哨兵先于 GitHub job 硬杀」的作业窗口（引擎 `droid-review-lead.yml:35-37` margin 口径），**不是执法延迟的上界**。故：**全部软超时与墙杀样本 L ≤ 宽限秒＋SIGKILL 完成期余量**（目标态宽限=10s 对位引擎 `LEAD_KILL_GRACE_SEC` 默认，`run_lead.sh:55`；KILL 完成期余量取 10s 采样护栏）。**实测超上界=墙建成失败**（判据 §1.3 第 3 条）。
 - **无真 droid 依赖**：延迟实测对象是**包装器执法路径**（哨兵→SIGTERM 组→宽限→SIGKILL 组），被杀者是桩进程组——桩表现抗死形态（忽略 TERM、睡眠、fork 孤儿持管道），执法通道特性（组信号整组收、不依赖被管进程配合）因此被真实 exercised。45B 孤儿拖管道形态（锚件 2 §10-②）在桩内复现：桩 fork 子进程继承管道后父吞 TERM，断言 KILL 后**整个进程组**（含孤儿）不存在。
 
 **缺席类事件的延迟口径**（§4）：缺席即事件无「超时点到真死」语义（没有可杀的对象），其延迟口径＝**告警事件产出时延**（窗口截止时点→告警事件上墙时点，同采样纪律：N≥5 取上界、CI 出实测数）。
@@ -131,7 +131,25 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 - **注入**：worker-delta v2 cause=「F-1 检查拒绝」自由文本（枚举外，W-3 注入）；plan-v2 death_facts[].cause=f1_rejected_machine_confirmed 而证据登记无 origin=f1 对象（P-1 注入）；narrative 含「F-1 check rejected」字样而 cause=unknown（P-2 注入）。
 - **执法体**：worker-delta/plan-v2 schema 校验＋证据登记解析器（悬挂引用拒）＋caps-gate `narrative-without-evidence`。
 - **断言**：①枚举外 cause 拒；②无机器证据的 f1 断言拒（构造权：origin=machine_guard_record/f1 白名单外即红，handoff-schemas §6）；③cause=unknown＋F-1 字样=narrative-without-evidence 红；④**钉子反转正样本**：存在合法 origin=f1 证据对象时，prompt 含 F-1 文案且恰好一次（反转后真值条件成立）。
-- **判据载体**：schema 校验＋证据解析＋反转后契约测试（目标态载体改造 `tests/test_replan_context_and_skipped_outcome_r53c.py:190` 测试语义——现状 :198-:202 逐字行、:205 count==1 断言反转为条件断言，施工时与 schema 演进同批，handoff-schemas §9.2）。
+- **判据载体**：schema 校验＋证据解析＋反转后契约测试（目标态载体改造 `tests/test_replan_context_and_skipped_outcome_r53c.py:190` 测试语义——现状 :201-:202 逐字行、:205 count==1 断言反转为条件断言，施工时与 schema 演进同批，handoff-schemas §9.2）。
+
+### 2.4b SL-4 族令牌 scope 注入桩＋SL-4b 领班图外写口桩（令牌 scope 门＋写入口收口门；对应 failure-specs §2 lead 判据③、§7 判据①）
+
+> SL-4 族＝越权令牌注入样本（令牌 scope 门），SL-4b＝领班席图外写口样本（写入口收口门）。两者注入面同为 workflow 文本层（SL-7 载体同面），执法体同为 caps-gate 判词，故设计共节——但对象门不同（token-scope-violation vs out-of-scope-write/orphan-secret-expansion），样本分立命名、断言分立点名。
+
+**SL-4 族（越权令牌注入）**：
+
+- **注入**：workflow 文本夹具注入两类令牌越界形态：①非授权席位步出现板面 PAT 展开位点（`${{ secrets.PROJECTS_STATE_PAT }}` 出现在 assemble PAT 单点之外）；②validator 族步出现 GH 写令牌展开（双置空面被新增 `${{ secrets.* }}` 令牌注入破坏）。
+- **执法体**：caps-gate 文本断言层（`token-scope-violation` 判词）＋secrets 位点对账（`${{ secrets.* }}` 展开位点集合≠台账锚集即红，out-of-graph §3.6 判据 1）。
+- **断言**：两类注入各自必红（判词点名）；干净对照（现状四文件原树）必绿——现状树本身必须过本守卫。
+- **判据载体**：caps-gate 退出码＋判词输出＋台账锚集失配点。
+
+**SL-4b（领班图外写口）**：
+
+- **注入**：workflow 文本夹具注入领班席图外写口形态——lead 会话步产物落点出现在 `team/lead-plan-segments/` 登记面之外（如 lead 步直写 `team/status/<pid>.json` 或工作区任意路径）。
+- **执法体**：caps-gate 文本断言层（`out-of-scope-write` 判词的 workflow 文本投影）＋包装器写预授权对平测试（session-config artifacts 面与门清单逐键一致，seat-gates §4.3）。
+- **断言**：图外落点注入必红（判词点名）；干净对照必绿。
+- **判据载体**：caps-gate 退出码＋判词输出。
 
 ### 2.5 SL-5 补卷守卫四条件违约矩阵（根治 1 倒影；对应 failure-specs §5 判据③）
 
@@ -157,7 +175,7 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 - **判据载体**：caps-gate 退出码＋判词输出。
 - **在树先例**：图外件守卫负例指针（out-of-graph §2.2 守卫负例、§3.6 五判据）。
 
-### 2.8 SL-8 缺席注入族（缺席即事件门；对应 failure-specs §7 判据①、§1 判据⑤、§3 判据③；59 轮四问题④回归）
+### 2.8 SL-8 缺席注入族（缺席即事件门；对应 failure-specs §7 判据①、§1 判据⑤、§3 判据③；59 轮四问题④回归；failure-specs §7 判据①引用的「缺席报警桩」＝本节 SL-8a）
 
 四变体（缺席面 × 承载席）：
 
@@ -173,6 +191,8 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 
 ### 2.9 SL-9 交接接口违约族（枚举门；handoff-schemas §2.1/§3.1/§4.1/§5.1 违约表的常驻化）
 
+> 实例级正/负断言已常驻 `tests/test_wall_v3_design_contract.py::TestHandoffSchemaInstances`（scrutiny round-1 BLK-1 修正：从本姊妹件提取四 schema 样本，把 W-1..W-6/V-1..V-6/P-1..P-4/H-1..H-3 表中可由 jsonschema 承载的行跑成正/负实例；构造权/悬挂引用/叙事判据类违约仍按本节登记，归施工面 caps-gate/解析器承载）。
+
 - **注入**：四 schema 违约表全量注入（W-1..W-6 / V-1..V-6 / P-1..P-4 / H-1..H-3，共 19 变体——内存对象构造，零文件面）。
 - **执法体**：四 schema jsonschema 校验（负对照与生产共用同一校验器实现，handoff-schemas §7.2 牙齿一致纪律）＋证据登记解析（悬挂引用）＋构造权校验（§6 白名单）。
 - **断言**：19 变体全拒＋合法对照件（四 schema 各一合法样本）全绿。
@@ -185,8 +205,8 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 
 | 执法墙 | 预算面 | 采样源样本 | 设计上界（护栏） | CI 报告形态 |
 |---|---|---|---|---|
-| lead 会话墙 | droid_wall_sec=600（软超时=200s 差值面） | SL-1 | 软超时样本 L≤400s＋宽限；墙杀样本 L≤宽限(10s)＋KILL 余量 | `SL-1 enforcement-latency upper-bound=<n>s` |
-| worker 会话墙（v3.0 包装器） | 900（软超时=500s 差值面） | SL-3（fork-orphan 主采样） | 同上＋**孤儿整组收断言**（L 上界含 KILL 传播） | `SL-3 enforcement-latency upper-bound=<n>s（kill_path 逐采样）` |
+| lead 会话墙 | droid_wall_sec=600（T0=会话预算到期；软超时=job_timeout−400≈500s 基座面） | SL-1 | 全样本 L ≤ 宽限(10s)＋SIGKILL 完成期(10s 采样护栏)=20s | `SL-1 enforcement-latency upper-bound=<n>s` |
+| worker 会话墙（v3.0 包装器） | 900（T0=会话预算到期） | SL-3（fork-orphan 主采样） | 同上＋**孤儿整组收断言**（L 上界含 KILL 传播） | `SL-3 enforcement-latency upper-bound=<n>s（kill_path 逐采样）` |
 | validator 会话墙 | 480＋adopt 储备 120（`foreman_run_lib.py:42-45`） | SL-3 同构参数化 | 同上 | 同形态报告 |
 | replan 会话墙 | 480（`foreman_run_lib.py:48-50`） | SL-3 同构参数化 | 同上 | 同形态报告 |
 | 缺席即事件告警面 | 窗口=budgets 键（§4） | SL-8a-d | 告警时延≤窗口宽限＋上墙余量 | `SL-8x alert-latency upper-bound=<n>s` |
@@ -228,7 +248,7 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 
 - **当年错误行为的钉子**：`tests/test_replan_context_and_skipped_outcome_r53c.py:190-205`——断言「F-1 检查拒绝」文案**必须逐字出现**于 replan prompt（分支缺席即推断 F-1 拒绝，无机器佐证；机制锚 `team.yml:2259` 起推断注释、`:2278-2279` 文案赋值，锚件 2 §10-①）。
 - **反转断言（三段，handoff-schemas §9.2 同批施工）**：
-  1. **无证据不出文案**：分支缺席＋无 origin=f1 机器证据 → prompt 死因面呈现「未明（无机器证据）」，F-1 文案零出现（反转 :198-:202 逐字断言为 count==0 条件断言）。
+  1. **无证据不出文案**：分支缺席＋无 origin=f1 机器证据 → prompt 死因面呈现「未明（无机器证据）」，F-1 文案零出现（反转 :201-:202 逐字断言为 count==0 条件断言）。
   2. **有证据才出文案**：构造合法机器证据对象（origin=f1 的 machine_guard_record，F-1 拒绝事件发生时登记）→ prompt 含 F-1 文案且恰好一次（:205 count==1 断言保留但条件化——文案从「无条件推断」变「机器证实才可说」）。
   3. **schema 面**：worker-delta v2/plan-v2 的 cause 枚举校验＋f1_rejected_machine_confirmed 构造权校验（SL-3b' 断言面复用）。
 - **归责面对位**：attribution_reason 分支（`attribution_reason.py:75` neutral_attribution）按 delta cause 枚举渲染——wall_kill↔中性归因措辞、self_crash↔非机器判定措辞、unknown↔缺料措辞（归责措辞与死亡事实对齐，根治第 4 层语义，`docs/第58轮-D单追认口径与replan归责缺陷立号.md:32` 表）。
@@ -308,7 +328,7 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 | `scripts/team/foreman_run_lib.py:42` | `"validator": {` | 转引 failure-specs 附A |
 | `scripts/team/foreman_run_lib.py:48` | `"replan": {` | 转引 failure-specs 附A |
 | `scripts/team/worker_salvage.py:13` | `The guard is machine-judged and fail-closed` | 转引 |
-| `scripts/team/worker_salvage.py:4` | 死亡链机器侧重建 docstring（hslconv 案） | ★ |
+| `scripts/team/worker_salvage.py:5` | 死亡链机器侧重建 docstring（hslconv 案；docstring 自 :5 起，:4 为空行） | ★ |
 | `scripts/team/salvage_verdict.py:18` | `PARTIAL_NAME` | 转引 |
 | `scripts/team/salvage_verdict.py:45` | `final` is the D-2 seal 语义行 | 转引 failure-specs 附A（本件快照核实） |
 | `scripts/team/salvage_verdict.py:47` | adoptable 语义行 | 转引 failure-specs 附A |
@@ -318,7 +338,7 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 | `scripts/team/lint_workflow_budgets.py:43` | worker/900s 豁免分支 | 转引 failure-specs 附A |
 | `scripts/team/worker_prompt_template.py:13` | `Incremental persistence guidance` | 转引 failure-specs 附A |
 | `tests/test_replan_context_and_skipped_outcome_r53c.py:190` | 钉子测试定义 | 转引 failure-specs 附A |
-| `tests/test_replan_context_and_skipped_outcome_r53c.py:198` | F-1 文案逐字行 | 转引 failure-specs 附A |
+| `tests/test_replan_context_and_skipped_outcome_r53c.py:201` | F-1 文案逐字行起（跨 :201-:202——:201 分支缺席行、:202 F-1 拒绝括注行；:198-:200 为桩调用与循环行） | 转引 failure-specs 附A |
 | `tests/test_replan_context_and_skipped_outcome_r53c.py:205` | `prompt.count(line) == 1` | 转引 failure-specs 附A |
 | `tests/test_worker_salvage.py:293` | exit-0+ok 墙不被补卷翻案守卫负例 | ★ |
 | `tests/fixtures/worker-r58d/worker-delta-wall-killed.json` | 墙杀夹具文件存在性 | ★ |
