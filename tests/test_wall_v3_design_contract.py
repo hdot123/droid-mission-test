@@ -17,6 +17,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import tomllib
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -614,3 +616,76 @@ class TestAnchorResolvability:
         # it must stay out of the machine-checked anchor set.
         files = {a["file"] for a in FIXTURE["anchors"]}
         assert not any(f.startswith("memory/") for f in files)
+
+
+# ---------------------------------------------------------------------------
+# TOML fence machine-parseability (BLK-2 / VAL-GATES-001 regression)
+# ---------------------------------------------------------------------------
+
+# ```toml fences across all wall-v3 docs must parse with stdlib tomllib.
+# Round-2 scrutiny caught a non-ASCII math operator (U+2248) breaking a
+# key/value line in seat-gates.md; comments and prose may keep such symbols,
+# key=value lines may not — this test is the regression gate for both modes.
+TOML_FENCE_RE = re.compile(r"^```toml[ \t]*$(.*?)^```[ \t]*$", re.M | re.S)
+MATH_SYMBOLS = "≈≤≥≠±×÷→←↔⇒"
+
+WALL_V3_DOC_DIR = REPO_ROOT / "docs/wall-v3"
+# The assembled master doc embeds seat-gate excerpts; its toml fence set must
+# also parse (currently empty, kept for future embeds).
+MASTER_DOC_PATH = REPO_ROOT / "docs/领班制-面墙API设计稿-v3.md"
+
+
+def _wall_v3_toml_fences() -> list[tuple[str, int, str]]:
+    docs = sorted(WALL_V3_DOC_DIR.glob("*.md")) + [MASTER_DOC_PATH]
+    fences: list[tuple[str, int, str]] = []
+    for path in docs:
+        text = path.read_text(encoding="utf-8")
+        for m in TOML_FENCE_RE.finditer(text):
+            lineno = text[: m.start()].count("\n") + 1
+            fences.append((str(path.relative_to(REPO_ROOT)), lineno, m.group(1)))
+    return fences
+
+
+def _math_symbol_hits(fence_body: str) -> list[str]:
+    hits = []
+    for lineno, line in enumerate(fence_body.split("\n"), start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue  # comments and blank lines may keep math symbols
+        hits.extend(
+            f"U+{ord(ch):04X} {unicodedata.name(ch, '?')} on line {lineno}"
+            for ch in stripped
+            if ch in MATH_SYMBOLS
+        )
+    return hits
+
+
+class TestWallV3TomlFencesParse:
+    @pytest.mark.parametrize(
+        "fence", _wall_v3_toml_fences(), ids=lambda f: f"{f[0]}:{f[1]}"
+    )
+    def test_fence_parses(self, fence: tuple[str, int, str]):
+        doc_rel, lineno, body = fence
+        try:
+            tomllib.loads(body)
+        except tomllib.TOMLDecodeError as exc:
+            pytest.fail(f"{doc_rel}:{lineno} toml fence unparseable: {exc}")
+
+    @pytest.mark.parametrize(
+        "fence", _wall_v3_toml_fences(), ids=lambda f: f"{f[0]}:{f[1]}"
+    )
+    def test_fence_no_math_symbols_on_key_value_lines(
+        self, fence: tuple[str, int, str]
+    ):
+        doc_rel, lineno, body = fence
+        hits = _math_symbol_hits(body)
+        assert not hits, (
+            f"{doc_rel}:{lineno} math symbols inside key=value lines "
+            f"(allowed only in comments/prose): {hits}"
+        )
+
+    def test_seat_gates_fences_present(self):
+        # Guard against the scan silently degrading to zero fences.
+        seat_fences = [f for f in _wall_v3_toml_fences() if "seat-gates" in f[0]]
+        assert seat_fences, "seat-gates.md lost its toml fences — scan is vacuous"
+

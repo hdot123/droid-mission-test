@@ -111,7 +111,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙 artifact 下载面）"]
 local_uses = ["scripts/team/run_droid_session.py（包装器，FOREMAN_RUN_PATCH=1）"]
-probes = "caps-gate 负向三探针：会话写 team/lead-plan-segments/ 外文件→out-of-scope-write 必红；令牌越 token_scope→必红；未登记工具→必红（现状缺口：lead 会话写无机器 F-1 类守卫，锚件 2 §1——本门即补齐该缺口的执法设计）"
+probes = "caps-gate 负向三探针：会话写 team/lead-plan-segments/ 外文件->out-of-scope-write 必红；令牌越 token_scope->必红；未登记工具->必红（现状缺口：lead 会话写无机器 F-1 类守卫，锚件 2 §1——本门即补齐该缺口的执法设计）"
 callers = { internal = ["workers-wall-merge（读 lead.outputs.processes，team.yml:851）"], external = ["无（领班席零仓外消费）"], workflow = [".github/workflows/team.yml:52"] }
 
 [seat.lead.authorization]
@@ -127,8 +127,8 @@ job_wall_min = 15
 # timeout（droid-review-lead.yml:35-37：margin 400s 保证哨兵先于 GitHub 硬杀）。
 # 本键对平引擎口径：软超时 = job_timeout − 400 ≈ 900 − 400 = 500s（lead job 15min）；
 # droid 墙 600s 是包装器会话预算（T0 计时面），不进公式。
-soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min×60；引擎 run_lead.sh:6/droid-review-lead.yml:35-37 口径）"
-soft_timeout_sec ≈ 500
+soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min*60；引擎 run_lead.sh:6/droid-review-lead.yml:35-37 口径）"
+soft_timeout_sec = 500
 
 [seat.lead.verification]
 contract_tests = ["tests/test_foreman_caps_contract.py（目标态新增）", "tests/test_wall_v3_design_contract.py"]
@@ -181,7 +181,7 @@ job_wall_min = 25
 # 软超时 = job_timeout_sec − 400 = 1100s（引擎 run_lead.sh:6「timeout−400s」的
 # timeout 即 job timeout，droid-review-lead.yml:35-37 margin 语义：哨兵先于
 # GitHub 硬杀）。droid 墙 900s 是包装器会话预算（T0 计时面），不进公式。
-soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min×60；引擎口径）"
+soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min*60；引擎口径）"
 soft_timeout_sec = 1100
 verify_step_timeout_sec = 300
 note = "预算唯一来源=本段（§4 接线设计）；现状墙上账面值 foreman_run_lib.py:53-54 区段与裸跑硬编码 900s 数值偶合而不接线，v3.0 由本键取代两处"
@@ -234,7 +234,7 @@ job_wall_min = 20
 [seat.prep.verification]
 contract_tests = ["tests/test_worker_salvage_*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
 probes = "补卷守卫四条件逐条负例（在树）＋候选分支越权写探针"
-probe_notes = "prep 是补卷器（根治第 1 层）与 evidence manifest 防篡改的承载席；注意规格明文：补卷覆盖面 ≠ 中性归因覆盖面（worker_salvage.py docstring）"
+probe_notes = "prep 是补卷器（根治第 1 层）与 evidence manifest 防篡改的承载席；注意规格明文：补卷覆盖面 != 中性归因覆盖面（worker_salvage.py docstring）"
 ```
 
 **default-deny 声明（prep）**：本席零 droid 会话、零 BYOM；可写面＝候选分支＋补卷器 packs 缺失件；**清单之外不存在**。
@@ -256,7 +256,7 @@ api = [
 ]
 guard_test = ["tests/test_salvage_verdict*.py（在树）", "tests/test_foreman_caps_contract.py（目标态新增）"]
 events_consumed = { wall_outputs = ["prep 切片", "workers by-pid 死因三映射"], evidence = ["evidence.tar.gz（manifest sha 门）"] }
-events_produced = { wall_patch = ["validation 切片（run_adopt_step.py 采认，team.yml:1721）"], files = ["verdict-partial.json → verdict-droid.json/md → verdict.json/md"] }
+events_produced = { wall_patch = ["validation 切片（run_adopt_step.py 采认，team.yml:1721）"], files = ["verdict-partial.json -> verdict-droid.json/md -> verdict.json/md"] }
 artifacts = [
     { name = "verdict-partial", op = "workspace-write", path = "work/verdict-partial.json（salvage_verdict.py:18 PARTIAL_NAME）", consumers = ["recorder", "replan"] },
     { name = "verdict-final", op = "workspace-write", path = "verdict-droid.json / verdict-droid.md", consumers = ["assemble", "replan"] },
@@ -278,7 +278,7 @@ adopt_reserve_sec = 120
 job_wall_min = 12
 # 软超时基座=job timeout（720s−400=320s；口径同 lead/worker 注释，
 # 引擎 droid-review-lead.yml:36 LEAD_VALIDATOR_SOFT_TIMEOUT_SEC = validator_timeout−400s 同式）。
-soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min×60；引擎口径）"
+soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min*60；引擎口径）"
 soft_timeout_sec = 320
 
 [seat.validator.verification]
@@ -323,13 +323,13 @@ token_scope = "会话步零 GitHub 令牌（GITHUB_TOKEN:\"\"/GH_TOKEN:\"\"，te
 droid_wall_sec = 480
 job_wall_min = 15
 # 软超时基座=job timeout（900s−400=500s；口径同 lead/worker 注释）。
-soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min×60；引擎口径）"
+soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min*60；引擎口径）"
 soft_timeout_sec = 500
 
 [seat.replan.verification]
 contract_tests = ["tests/test_replan_*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "死因叙事三负例：①无机器记录佐证的 F-1 推断文案→红；②evidence_ref 指向不存在锚→红；③blocked_cause 枚举外值→红（handoff-schemas §2 违约表）"
-probe_notes = "replan 是 59 轮四问题①所在席：死因叙事含脚本内置推断（分支缺席→F-1 检查拒绝，team.yml:2259-2282，文案落 :2278-2279）且被 tests/test_replan_context_and_skipped_outcome_r53c.py:190-206 逐字钉住——v3.0 反转该钉子（handoff-schemas §9.2），死因只能挂证据对象或取「未明」"
+probes = "死因叙事三负例：①无机器记录佐证的 F-1 推断文案->红；②evidence_ref 指向不存在锚->红；③blocked_cause 枚举外值->红（handoff-schemas §2 违约表）"
+probe_notes = "replan 是 59 轮四问题①所在席：死因叙事含脚本内置推断（分支缺席->F-1 检查拒绝，team.yml:2259-2282，文案落 :2278-2279）且被 tests/test_replan_context_and_skipped_outcome_r53c.py:190-206 逐字钉住——v3.0 反转该钉子（handoff-schemas §9.2），死因只能挂证据对象或取「未明」"
 ```
 
 **default-deny 声明（replan）**：本席可写面＝team-plan-v2.json＋落单步 GitHub 写（拆门后独立授权）；可读面＝墙/verdict/证据；**无证据不出因果结论——清单之外不存在，「未明」是唯一合法缺省**。
@@ -416,7 +416,7 @@ note = "无独立墙预算（承载席预算内执行）；首步落盘窗口=�
 
 [seat.recorder.verification]
 contract_tests = ["tests/test_salvage_verdict*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "缺席即事件负例：桩会话全程零 recorder 调用→告警必触发（59 轮四问题④必死样本，验收线归 F4）"
+probes = "缺席即事件负例：桩会话全程零 recorder 调用->告警必触发（59 轮四问题④必死样本，验收线归 F4）"
 probe_notes = "立席口径：recorder 的执法面=「必落字段与约定首步的机器可见性」，不是新增人类审批面；V-3 门（受控会话达标证明）保留为发版前置人工门，per-run 报警由本席 probes 承载"
 ```
 
