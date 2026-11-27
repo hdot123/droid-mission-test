@@ -1,0 +1,19 @@
+{
+  "id": "centroid",
+  "title": "实现 centroid.py 多边形带符号面积与重心与测试",
+  "state": "done",
+  "files": [
+    "centroid.py",
+    "tests/test_centroid.py"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_centroid.py -q",
+      "result": "23 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "160 passed, 1 skipped in 14.37s"
+    }
+  ]
+}

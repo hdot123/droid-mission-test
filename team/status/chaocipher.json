@@ -1,0 +1,21 @@
+{
+  "id": "chaocipher",
+  "title": "实现 chaocipher.py 双字母表演进密码与测试",
+  "state": "done",
+  "files": [
+    "chaocipher.py",
+    "tests/test_chaocipher.py",
+    "team/handoffs/chaocipher.md",
+    "team/status/chaocipher.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_chaocipher.py -q",
+      "result": "18 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "155 passed, 1 skipped (pre-existing skip, unrelated)"
+    }
+  ]
+}
