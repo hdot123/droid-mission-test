@@ -107,7 +107,27 @@ class TestDefaultDenyCharter:
 class TestTenHardRulesPlaced:
     @pytest.mark.parametrize("rule", FIXTURE["hard_rules"])
     def test_rule_has_placement_row(self, doc_text: str, rule: str):
-        assert f"| {rule} |" in doc_text, f"hard rule {rule} has no placement row"
+        # Key on the 1.3 mapping table specifically: a `| ① |` row must exist
+        # inside §1.3 itself. (round-1 finding: the bare `| {rule} |` check
+        # was shadowed by §3.2 rows; scoping to the section removes the
+        # shadow without assuming table order.)
+        mapping = _section(doc_text, "### 1.3 十条硬规则逐条落位映射")
+        assert f"| {rule} |" in mapping, f"hard rule {rule} has no placement row in §1.3"
+
+    @pytest.mark.parametrize("rule", FIXTURE["hard_rules"])
+    def test_rule_maps_to_own_samples(self, doc_text: str, rule: str):
+        # Per-rule keying (round-1 finding: a row count >= 10 let one rule's
+        # samples be deleted while a decoy `SL-` row kept the suite green).
+        # Each hard rule's own row must reference at least one SL-/RS- sample.
+        mapping = _section(doc_text, "### 1.3 十条硬规则逐条落位映射")
+        row = next(
+            (ln for ln in mapping.splitlines() if ln.startswith(f"| {rule} |")),
+            None,
+        )
+        assert row is not None, f"hard rule {rule} has no placement row in §1.3"
+        assert re.search(r"(SL|RS)-\d", row), (
+            f"hard rule {rule} row references no SL-/RS- sample: {row!r}"
+        )
 
     def test_every_rule_maps_to_samples(self, doc_text: str):
         mapping = _section(doc_text, "### 1.3 十条硬规则逐条落位映射")

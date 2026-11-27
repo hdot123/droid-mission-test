@@ -1,10 +1,10 @@
 # 形制基准（form-basis）——引擎墙形制十要点
 
-> 锚件 1/2（mission F1/design-inputs 产出）。领班面墙 API 设计稿 v3.0 的唯一形制基准：设计稿定义任何墙/门/守卫时，形制照抄本件十要点；本件每要点带引擎仓（infraro-core，本地只读参照仓）原物 file:line 锚，全部经实读核实（2026-11-27 快照）。
+> 锚件 1/2（mission F1/design-inputs 产出）。领班面墙 API 设计稿 v3.0 的唯一形制基准：设计稿定义任何墙/门/守卫时，形制照抄本件十要点；本件每要点带引擎仓（infraro-core，本地只读参照仓）原物 file:line 锚，全部经实读核实。**引擎锚基准：infraro-core main@460922c（2026-11-28 00:33 +0800，PR #883）**——本件按该树逐锚复验（2026-11-28 实读快照，替代初版 09a82fb 快照）；写作后引擎 main 再演化时按设计稿锚纪律头部条款重比对。
 >
 > **本文只引用引擎仓相对路径**；行号锚格式 `路径:行号`。锚点可解析判据＝文件在树、行号不越界、锚定内容含要点关键词。
 >
-> **禁抄项声明见 §11**——引擎墙自身的未闭合缺口不是形制，设计稿不得照抄。
+> **禁抄项声明见 §11**——引擎墙自身的未闭合缺口不是形制，设计稿不得照抄；其中 NEW-2 已于 main@460922c 上游闭合（§11.1 更新口径）。
 
 ---
 
@@ -58,8 +58,8 @@
 **形制**：守卫在 CI 恒跑（push 与 PR 两腿同面），接线步零条件门、零 continue-on-error；「守卫确实接在 CI 上」这个事实本身由契约测试锁住（接线锁测试）。
 
 **原物锚**：
-- 接线步：`.github/workflows/ci.yml:428-429`（`- name: Module wall guard` → `run: python scripts/check_module_wall.py --full-repo`）；同段注释 `:425-427` 明记 `--changes` 专属判词未接 CI（禁抄项，见 §11）
-- 接线锁：`tests/test_module_wall_ci_wiring.py`（恒跑恰一步/零 if/两腿门/success-only 聚合/接线目标在树）
+- 接线步：`.github/workflows/ci.yml:428-429`（`- name: Module wall guard` → `run: python scripts/check_module_wall.py --full-repo`）；changeset 步 `:439-458`（`Module wall changeset guard (PR only)` → `:458` `python scripts/check_module_wall.py --changes "$CHANGES_FILE"`——`--changes` 专属判词已接线 PR 腿，见 §11.1 更新口径）
+- 接线锁：`tests/test_module_wall_ci_wiring.py`（恒跑恰一步/零 if/两腿门/success-only 聚合/接线目标在树；`:99` `test_changes_guard_step_wired_pr_only` 钉住 changeset 步的 PR-only 条件门＋merge-base 三点 diff＋声明通道）
 
 **设计稿对位**：面墙守卫（caps-gate）接线进 foreman-wall-ci 恒跑；接线语义有契约测试；施工期任何判词不落 CI 即显式未闭合，不冒充已执法。
 
@@ -144,16 +144,17 @@
 
 > 以下两项是引擎墙**显式登记的未闭合缺口**（三态纪律下的「显式未闭合」），不是形制的一部分。领班面墙设计稿**禁止照抄其未闭合态**；对应面必须给出真实执法设计（「须执法，不允许纸面有门」）。设计稿引用引擎形制时，凡触及本节两点，一律以本节口径改写为执法设计。
 
-### 11.1 VAL-M4-004／VAL-M4-007 未闭合态
+### 11.1 VAL-M4-004／VAL-M4-007 未闭合态（main@460922c 复验更新）
 
 **原物锚**（历史档，只读不改写）：`evidence/step5-api-unification/closeout/01-closeout-pack.md:94`（VAL-M4-004 行原文「**显式未闭合**（CI 执法面）／CLI 拦截面已验证……**CI 面缺口＝NEW-1/2/3**」）、`:97`（VAL-M4-007 行原文「**显式未闭合**……(a) 契约三门 vs 实执法两门＝用户裁定面……(b) droid-review 面显式停用（用户 2026-11-24 裁定）……判词维持显式未闭合不冒充」）。
 
-**三个具体缺口（NEW-1/2/3）**：
-- NEW-1＝governance owner 门停用态（evolution-governance workflow 变量门未设＋disabled_manually）；
-- NEW-2＝`--changes` 专属判词（rename 改界、mixed-registry-change）未接 CI——引擎仓内自证：`.github/workflows/ci.yml:425-427` 注释原文「--changes 专属判词……为守卫 CLI 能力，本流水线未接线」；
-- NEW-3＝登记面不在 governance 保护面（修复中非已闭合：U-4 已扩 DEFAULT_PROTECTED_PATTERNS 至七模式，`src/infra_core/governance.py:26-33`；U-2/U-3 未落地）。
+**三个具体缺口在 main@460922c 的当前态（2026-11-28 实读复验）**：
 
-**设计稿义务**：领班面墙的登记面升级闸必须接 CI 恒跑判词；登记面保护必须是运行时执法（非页面开关）；不允许任何「守卫判词存在但不接 CI」的形制。
+- NEW-1＝governance owner 门停用态（evolution-governance workflow 变量门未设＋disabled_manually）——登记面保护面本体已扩：U-4 落地 DEFAULT_PROTECTED_PATTERNS 七模式（`src/infra_core/governance.py:26-34`，含 `docs/specs/**`＋`.github/workflows/**`＋守卫本体）；workflow 页面门态属引擎运营变量，不作为形制引用（编排器裁定口径：本项以证据文件登记的历史态为准，不按实况翻案）。
+- **NEW-2＝`--changes` 专属判词不接 CI——已上游闭合（main@460922c，PR #883，2026-11-28）**：`.github/workflows/ci.yml:439-458` 新增「Module wall changeset guard (PR only)」步实跑 `check_module_wall.py --changes`（`:458`），merge-base 三点 name-status diff 落盘 RUNNER_TEMP（`:445/:450/:452`）、声明通道在场（`:454-456` PR body 含 `wall-registry-change: true` 时向 changeset 首行注入声明注释行）；`ci.yml:425-427` 注释现文为「已接线 PR 腿 changeset 步」。接线语义由引擎接线锁测试钉住：`tests/test_module_wall_ci_wiring.py:99` `test_changes_guard_step_wired_pr_only`（恰一步 --changes 调用＋PR-only 条件门＋name-status 形态＋声明通道四语义锁）。历史自证文本「--changes 专属判词……本流水线未接线」（写作时点 09a82fb 前旧文）已不存在——**引用本缺口旧态的下游稿一律按本条更新口径改写**。
+- NEW-3＝登记面不在 governance 保护面——保护面扩展已随 U-4 落地（同 NEW-1 行）；整体闭合状态以引擎自身 closeout 台账为准，本件不再转抄中间态。
+
+**设计稿义务（更新后）**：领班面墙的登记面升级闸必须接 CI 恒跑判词；登记面保护必须是运行时执法（非页面开关）；不允许任何「守卫判词存在但不接 CI」的形制。**NEW-2 已闭合这件事本身入形制教训**：引擎用一次真接线（恒跑步＋PR 语境步分工＋接线锁测试三件套）闭合了「CLI-only 判词」缺口——领班侧更不允许复刻任何纸面门形态（含引用引擎历史缺口文本冒充「引擎也这样」）；对应面从第一天就按「须执法、禁纸面」设计。
 
 ### 11.2 R-29 两门口径演化（引用口径以两门为准）
 
@@ -185,7 +186,10 @@
 | `scripts/check_module_wall.py:131` | `REGISTRY_CHANGE_DECLARATION = "wall-registry-change: true"` |
 | `.github/workflows/ci.yml:428` | `Module wall guard` |
 | `.github/workflows/ci.yml:429` | `check_module_wall.py --full-repo` |
-| `.github/workflows/ci.yml:425` | `--changes 专属判词`（禁抄项 11.1 NEW-2 佐证） |
+| `.github/workflows/ci.yml:425` | `--changes 专属判词`（全引句判据——该行含「已接线 PR 腿 changeset 步」语境，NEW-2 闭合态佐证；判据用全句防前缀漂移存活） |
+| `.github/workflows/ci.yml:426` | `已接线 PR 腿 changeset 步`（NEW-2 闭合态锚，main@460922c） |
+| `.github/workflows/ci.yml:439` | `Module wall changeset guard (PR only)` |
+| `.github/workflows/ci.yml:458` | `check_module_wall.py --changes`（changeset 守卫调用行） |
 | `scripts/board_sync_parse.py:97` | `放行门单源=ruleset` |
 | `scripts/board_sync_parse.py:114` | `GATE_TO_WORKFLOW` |
 | `src/infra_core/governance.py:26` | `DEFAULT_PROTECTED_PATTERNS = (` |
@@ -227,4 +231,4 @@
 | `tests/test_lead_engine.py:794` | fake droid 桩 mode="hang" 分支 |
 | `tests/test_lead_engine.py:792` | 哨兵文件写入（sentinel_reason） |
 
-> 锚随引擎仓 main 演化可能漂移；后续 feature 引用引擎形制时以本件快照口径为准，重核实以实读为准（本件快照时点 2026-11-27）。
+> 锚随引擎仓 main 演化可能漂移；后续 feature 引用引擎形制时以本件快照口径为准，重核实以实读为准（本件快照时点：2026-11-28，基准 main@460922c）。

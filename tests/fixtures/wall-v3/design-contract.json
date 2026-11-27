@@ -66,7 +66,7 @@
     "extra": ["根治", "第 3 层", "不可施工"]
   },
   "invariants": ["INV-1", "INV-2", "INV-3", "INV-4", "INV-5", "INV-6", "INV-7"],
-  "sla_samples": ["SL-1", "SL-2", "SL-3", "SL-4", "SL-5", "SL-6", "SL-7", "SL-8", "SL-9"],
+  "sla_samples": ["SL-1", "SL-2", "SL-3", "SL-4", "SL-5", "SL-6", "SL-7", "SL-8", "SL-9", "SL-10", "SL-11", "SL-12"],
   "live_evidence_markers": [
     "没有活验数字不算建成",
     "必死样本全红率",
@@ -208,6 +208,12 @@
     {"repo": "test", "file": "tests/test_worker_salvage.py", "line": 293, "contains": "exit-0 + ok wall"},
     {"repo": "test", "file": "tests/fixtures/worker-r58d/worker-delta-wall-killed.json", "exists": true},
     {"repo": "test", "file": ".github/workflows/i8-zero-escape-live-c-fixture.yml", "exists": true},
+    {"repo": "test", "file": ".github/workflows/droid.yml", "line": 25, "contains": "Write BYOM settings"},
+    {"repo": "test", "file": ".github/workflows/droid.yml", "line": 62, "contains": "FACTORY_API_KEY"},
+    {"repo": "test", "file": ".github/workflows/droid-probe.yml", "line": 13, "contains": "Write BYOM settings"},
+    {"repo": "test", "file": ".github/workflows/droid-probe.yml", "line": 46, "contains": "FACTORY_API_KEY"},
+    {"repo": "test", "file": ".github/workflows/probe6.yml", "line": 10, "contains": "Write BYOM settings"},
+    {"repo": "test", "file": ".github/workflows/probe6.yml", "line": 44, "contains": "FACTORY_API_KEY"},
     {"repo": "test", "file": "docs/板面关单翻板-最小操作指引.md", "line": 12, "contains": "#761", "window": 3},
     {"repo": "test", "file": "docs/板面关单翻板-最小操作指引.md", "line": 20, "contains": "github-project-automation"},
     {"repo": "test", "file": "docs/板面关单翻板-最小操作指引.md", "line": 24, "contains": "无可拦截"},
@@ -245,7 +251,10 @@
     {"repo": "engine", "file": "scripts/check_module_wall.py", "line": 12, "contains": "single rule source"},
     {"repo": "engine", "file": "scripts/check_module_wall.py", "line": 90, "contains": "RULE_UNREGISTERED"},
     {"repo": "engine", "file": "scripts/check_module_wall.py", "line": 131, "contains": "REGISTRY_CHANGE_DECLARATION = \"wall-registry-change: true\""},
-    {"repo": "engine", "file": ".github/workflows/ci.yml", "line": 425, "contains": "--changes 专属判词", "window": 5},
+    {"repo": "engine", "file": ".github/workflows/ci.yml", "line": 425, "contains": "--changes 专属判词（rename 改界、", "window": 5},
+    {"repo": "engine", "file": ".github/workflows/ci.yml", "line": 426, "contains": "已接线 PR 腿 changeset 步"},
+    {"repo": "engine", "file": ".github/workflows/ci.yml", "line": 439, "contains": "Module wall changeset guard (PR only)"},
+    {"repo": "engine", "file": ".github/workflows/ci.yml", "line": 458, "contains": "check_module_wall.py --changes"},
     {"repo": "engine", "file": ".github/workflows/ci.yml", "line": 428, "contains": "Module wall guard"},
     {"repo": "engine", "file": "scripts/board_sync_parse.py", "line": 97, "contains": "放行门单源"},
     {"repo": "engine", "file": "scripts/board_sync_parse.py", "line": 114, "contains": "GATE_TO_WORKFLOW"},
@@ -274,7 +283,9 @@
     {"repo": "engine", "file": "tests/test_lead_engine.py", "line": 794, "contains": "mode == \"hang\""},
     {"repo": "engine", "file": "tests/test_lead_engine.py", "line": 1041, "contains": "TestRunLeadBoundedExitE2E"},
     {"repo": "engine", "file": "tests/test_lead_engine.py", "line": 1044, "contains": "soft_timeout"},
-    {"repo": "engine", "file": "tests/test_module_capabilities_contract.py", "line": 159, "contains": "只增不改"}
+    {"repo": "engine", "file": "tests/test_module_capabilities_contract.py", "line": 55, "contains": "MODULE_KEYS", "window": 14},
+    {"repo": "engine", "file": "tests/test_module_capabilities_contract.py", "line": 159, "contains": "只增不改"},
+    {"repo": "engine", "file": "tests/test_module_wall_ci_wiring.py", "line": 99, "contains": "test_changes_guard_step_wired_pr_only"}
   ],
   "excluded_from_anchors": [
     "memory/log/2026-11-27-sessions.md:586 —— memory-core 运行态（untracked，非契约面），设计稿只作证据指针引用，不入锚解析清单"

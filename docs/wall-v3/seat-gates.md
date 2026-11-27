@@ -1,6 +1,6 @@
 # 逐席位门清单＋对位表（seat-gates 底稿）
 
-> 底稿 1/2（mission F2/seat-gates 产出；主设计稿 §2 素材）。本件定义领班制 7 席位的**能力授权面**：每席一张门清单（TOML 段样例，形制照抄引擎 M-CAP 十一键）、与引擎 M-CAP 门清单的逐键对位表、工人席收进包装器设计。结构化交接物 schema 设计见姊妹底稿 `handoff-schemas.md`（§5 索引）。
+> 底稿 1/2（mission F2/seat-gates 产出；主设计稿 §2 素材）。本件定义领班制 7 席位的**能力授权面**：每席一张门清单（TOML 段样例，形制照抄引擎 M-CAP 12 键——MODULE_KEYS 实测）、与引擎 M-CAP 门清单的逐键对位表、工人席收进包装器设计。结构化交接物 schema 设计见姊妹底稿 `handoff-schemas.md`（§5 索引）。
 >
 > **真源声明**：引擎形制以 `docs/wall-v3/form-basis.md`（锚件 1）为准；测试仓现状行号以 `docs/wall-v3/as-is-capability-inventory.md`（锚件 2）为准——本件引用 team.yml 现状一律转引锚件 2，不直查 team.yml 重数行号。本件全部 file:line 锚经实读核实（2026-11-27 快照，测试仓 R58-D 收尾态）。
 >
@@ -42,7 +42,7 @@
 
 ForemanRun 墌字段（结算/审计用）与门清单分离，一个记结局一个记授权——两文件各自 schema 一次定死，互不越界。
 
-**1.2 键集一次定死**（form-basis 要点 2＋3）。每席位一段 `[seat.<id>]`，键集＝引擎 M-CAP 十一键照抄＋领班域扩展一键：
+**1.2 键集一次定死**（form-basis 要点 2＋3）。每席位一段 `[seat.<id>]`，键集＝引擎 M-CAP **12 键**照抄（MODULE_KEYS 实测：entry/api/guard_test/events_consumed/events_produced/artifacts/state_reads/local_uses/probes/callers/authorization/verification，引擎仓 `tests/test_module_capabilities_contract.py:55-68`；「十键＋三锚」「协作五键＋v5 三键」为历史别名，均指此 12 键集）＋领班域扩展一键：
 
 ```
 entry / api / guard_test / events_consumed / events_produced / artifacts /
@@ -94,9 +94,9 @@ entry = [
     "scripts/team/run_droid_session.py（会话唯一入口，零旁路；旁路=unregistered-tool-call）",
 ]
 api = [
-    "scripts/team.stitch_plan",
-    "scripts/team.build_lead_prompt",
-    "scripts/team.foreman_run_lib.wall_patch",
+    "scripts/team.lead_plan_segments.stitch_plan_file（分段卡缝合，lead_plan_segments.py:161）",
+    "scripts/team.run_droid_session.run_session（包装器会话执行体，含 prompt 组装；独立 build_lead_prompt 载体施工时新建——prompt 组装面现行住 run_droid_session.py）",
+    "scripts/team.foreman_run_patch.main（墙 patch 上墙，FOREMAN_RUN_PATCH=1 面；wall_patch 独立符号施工时新建或迁入）",
     { "scripts/team/run_droid_session.py" = ["main", "run_session"] },
 ]
 guard_test = [
@@ -117,7 +117,7 @@ callers = { internal = ["workers-wall-merge（读 lead.outputs.processes，team.
 [seat.lead.authorization]
 governance_face = "受保护路径面（docs/specs 类登记面与 .github/workflows/** 不可写；写=治理行为，走 wall-registry-change 通道）"
 audit_face = "caps-gate 全仓审计＋foreman-wall-ci 恒跑（接线锁契约测试在树）"
-token_scope = "GH_TOKEN=github.token（issues: write / PR: read / contents: read）＋BYOM 三件＋FACTORY_API_KEY（会话模型面）。现状锚：team.yml:120（WORKER_CI_KEY）、:157（FACTORY_API_KEY）、:79/:241（GH_TOKEN=github.token）。I8-B 假 PAT 夹具分支（:419 假值变量、:429-431 标题命中换 token）不在本门清单内=多出的门，默认删（收编方式见对位表 §3.5 与 F3）"
+token_scope = "GH_TOKEN=github.token（issues: write / PR: read / contents: read）＋BYOM 三件＋FACTORY_API_KEY（会话模型面）。现状锚：team.yml:120（WORKER_CI_KEY）、:157（FACTORY_API_KEY）、:79/:241（GH_TOKEN=github.token）。I8-B 假 PAT 夹具分支（:419 假值变量、:429-431 标题命中换 token）不在本门清单内=多出的门，默认删（收编方式见对位表 §3.4 多出的门总表与 F3）"
 
 [seat.lead.budgets]
 droid_wall_sec = 600
@@ -125,7 +125,7 @@ job_wall_min = 15
 # 软超时公式基座＝budgets 键的 job timeout（job_wall_min 推成秒），非 droid 墙：
 # 引擎口径 run_lead.sh:6「workflow 按 timeout−400s 公式推导注入」的 timeout 即 job
 # timeout（droid-review-lead.yml:35-37：margin 400s 保证哨兵先于 GitHub 硬杀）。
-# 本键对平引擎口径：软超时 = job_timeout − 400 ≈ 900 − 400 = 500s（lead job 15min）；
+# 本键对平引擎口径：软超时 = job_timeout − 400 = 900 − 400 = 500s（lead job 15min）；
 # droid 墙 600s 是包装器会话预算（T0 计时面），不进公式。
 soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min*60；引擎 run_lead.sh:6/droid-review-lead.yml:35-37 口径）"
 soft_timeout_sec = 500
@@ -154,7 +154,7 @@ api = [
 ]
 guard_test = [
     "tests/test_foreman_caps_contract.py（目标态新增）",
-    "tests/test_worker_wall_contract.py（既有 F-1/守卫面在树测试族）",
+    "tests/test_worker_wall_contract.py（工人墙守卫测试族——施工时新建并归集 F-1/守卫面负例；现树对应面散在 tests/test_foreman_wall_contract.py 等在树族，不以其现存口径引用）",
 ]
 events_consumed = { wall_outputs = ["lead.processes 矩阵"] }
 events_produced = { wall_patch = ["workers 切片（session_outcome/droid_exit_code/stream_tail_marker by-pid）", "handoff 评论（母单＋子单）"], issues = ["handoff 评论"], git = ["分支 team/issue-N/run-R/<pid> push"] }
@@ -205,8 +205,8 @@ entry = [
 ]
 api = [
     "scripts/team.worker_salvage（补卷器）",
-    "scripts/team.merge_worker_branches（候选分支合成面）",
-    { "scripts/team/worker_salvage.py" = ["main", "salvage_pack"], note = "守卫四条件机器判定 fail-closed（:13 docstring：merged true＋F-1 clean＋checks 全绿且 marker 按内容判红＋会话异常终止）" },
+    "scripts/team.merge_worker_deltas（delta 并集面，merge_worker_deltas.py）——候选分支合成面（team.yml:1093 git merge --no-ff 步）现状内嵌 prep job heredoc；merge_worker_branches 独立声明体施工时新建或由该步抽取",
+    { "scripts/team/worker_salvage.py" = ["main"], note = "守卫四条件机器判定 fail-closed（:13 docstring：merged true＋F-1 clean＋checks 全绿且 marker 按内容判红＋会话异常终止）；salvage_pack 独立符号施工时随声明体重构（现行聚合在 worker_salvage.py:430 salvage_packs）" },
 ]
 guard_test = ["tests/test_worker_salvage_*.py（在树测试族）", "tests/test_foreman_caps_contract.py（目标态新增）"]
 events_consumed = { wall_outputs = ["prep_should_run（team.yml:860）", "workers completed_pids（team.yml:885）"] }
@@ -275,11 +275,19 @@ token_scope = "**零 GitHub 令牌**：job 级与步级 GITHUB_TOKEN:\"\"/GH_TOK
 [seat.validator.budgets]
 droid_wall_sec = 480
 adopt_reserve_sec = 120
-job_wall_min = 12
-# 软超时基座=job timeout（720s−400=320s；口径同 lead/worker 注释，
-# 引擎 droid-review-lead.yml:36 LEAD_VALIDATOR_SOFT_TIMEOUT_SEC = validator_timeout−400s 同式）。
+job_wall_min = 15
+# 软超时公式基座＝budgets 键的 job timeout（job_wall_min=15 → 900s）：
+# 软超时 = job_timeout_sec − 400 = 500s。基座对平现状 workflow job envelope
+# （team.yml:1387 timeout-minutes: 15，与 lead/replan 同 15m 档）；口径同 lead/worker
+# 注释（引擎 run_lead.sh:6「timeout−400s」的 timeout 即 job timeout，
+# droid-review-lead.yml:35-37 margin 语义：哨兵先于 GitHub 硬杀）。
+# 与 budgets 键 480s 会话预算的关系（双 480 不混用）：droid_wall_sec=480 是包装器
+# 第一道墙（会话 T0 计时面，只杀 droid 会话进程组）；soft_timeout_sec=500 是体外
+# 监督者的外层哨兵线（job 预算口径，含 adopt 储备 120s 与收尾余量）。两条墙各守
+# 一层，禁止混同（对位 budget_resolve.py:57-59 注释纪律：ForemanRun 会话切片与
+# GitHub job envelope 两个口径不得互相冒充）。
 soft_timeout_formula = "job_timeout_sec - 400（基座=本键 job_wall_min*60；引擎口径）"
-soft_timeout_sec = 320
+soft_timeout_sec = 500
 
 [seat.validator.verification]
 contract_tests = ["tests/test_salvage_verdict*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
@@ -300,7 +308,7 @@ entry = [
 ]
 api = [
     "scripts/team.attribution_reason（归因面，死因叙事按墙面事实分支）",
-    "scripts/team.plan_v2_validator（落单步机器校验：覆盖集、claim 不相交、受保护路径）",
+    "scripts/team.plan_v2_validator（落单步机器校验：覆盖集、claim 不相交、受保护路径——施工时新建独立声明体；校验逻辑现状内嵌 team.yml:2420『Validate plan v2 and file the revision』步 heredoc，抽独立模块即本键对位物）",
     { "scripts/team/attribution_reason.py" = ["blocked_reason", "blocked_report_line", "neutral_attribution"] },
 ]
 guard_test = ["tests/test_replan_*.py（在树族）", "tests/test_foreman_caps_contract.py（目标态新增）"]
@@ -445,7 +453,7 @@ M-CAP 门清单段：`docs/specs/module-capabilities.toml:574`（`[module.M-CAP]
 | `authorization` | `:618`（governance_face `:619`、audit_face `:620`、token_scope `:621`） | 三面语义 |
 | `verification` | `:623`（contract_tests `:624-627`、probes `:630`、probe_notes `:631`） | 契约测试＋探针＋注记 |
 
-**键集口径声明**：本表键集＝entry / api / guard_test / events_consumed / events_produced / artifacts / state_reads / local_uses / probes / callers / authorization / verification 十一键（mission 文档通称「十键＋三锚」「协作五键＋v5 三键」皆指此显式集）；M-CAP 段内 events_produced/artifacts/local_uses 三键现状缺席属 v4 词表可选键的合法缺省（零消费面未写入，缺席≠删除），对位时按「形制同构（可选缺省）」判定，不按缺门处理。
+**键集口径声明**：本表键集＝entry / api / guard_test / events_consumed / events_produced / artifacts / state_reads / local_uses / probes / callers / authorization / verification 十二键（引擎 MODULE_KEYS 实测 12 键，`tests/test_module_capabilities_contract.py:55-68`；mission 文档通称「十键＋三锚」「协作五键＋v5 三键」「十一显式键」皆为历史别名，皆指此 12 键集）；M-CAP 段内 events_produced/artifacts/local_uses 三键现状缺席属 v4 词表可选键的合法缺省（零消费面未写入，缺席≠删除），对位时按「形制同构（可选缺省）」判定，不按缺门处理。
 
 ### 3.2 对位总矩阵（判定词：同构收编／多出默认删／多出呈裁／缺门补齐／可选缺省）
 
@@ -592,7 +600,7 @@ M-CAP 门清单段：`docs/specs/module-capabilities.toml:574`（`[module.M-CAP]
 
 | 席 | 现状 | 判定 | 说明 |
 |---|---|---|---|
-| lead/validator/replan | 包装器写墙预算（600/480/480，foreman_run_lib.py:37-40 区段起） | 同构收编 | 数值迁入门清单 budgets 键（唯一来源），包装器改读门清单（§4.2） |
+| lead/validator/replan | 包装器写墙预算（600/480/480，foreman_run_lib.py:37-40 区段起）＋job 墙（15/15/15m，team.yml:59/:1387/:2154） | 同构收编 | 数值迁入门清单 budgets 键（唯一来源），包装器改读门清单（§4.2）；validator 双预算对平口径=会话墙 480（包装器第一道墙）/软超时 500（job 15m−400s 外层哨兵线，§2.4 budgets 注） |
 | worker | 账面 900 不接线＋裸跑硬编码 | 缺门补齐 | 补齐=§4：预算从门清单读，workflow 文本零预算字面量 |
 | prep/assemble/recorder | 步级超时散布 | 同构收编 | 步级超时登记进 budgets 键 |
 

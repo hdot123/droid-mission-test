@@ -20,7 +20,7 @@
 2. **守卫在岗断言**：断言对象是**守卫本体的退出态**（退出码 1/判词点名/拒收行为），不是守卫源码存在性——每样本必须真跑守卫（与生产校验共用同一实现），红了才算过（负例绿=守卫死=样本红）。
 3. **必杀断言**（对执法类墙）：断言违约会话**被终结**（进程组不存在/哨兵在案/产物不采信），且终结证据上墙——不只断言「守卫报红」，还断言「违约者真死」。
 
-**常驻要求**：全部样本进 `pytest tests/ -q` 全套件门（现状 599 passed＋2 skipped 基线，锚件 2 §0）；红线=任何样本在本仓测试环境 flaky（网络/时序依赖超阈值）——桩设计必须确定性（时钟由注入、随机由种子、无外部服务）。
+**常驻要求**：全部样本进 `pytest tests/ -q` 全套件门（基线随批次增长，以 features.json/handoff 最新实测为准——当前 953 passed＋2 skipped 含设计契约测试；原 599+2 为 R58-D 收尾态历史值）；红线=任何样本在本仓测试环境 flaky（网络/时序依赖超阈值）——桩设计必须确定性（时钟由注入、随机由种子、无外部服务）。
 
 **对位先例**（引擎仓已验证形态，form-basis 附表锚）：`tests/test_lead_engine.py:1041` `TestRunLeadBoundedExitE2E`（吊死样本常驻 CI：mode="hang" 桩→必触发 soft_timeout 遗书；turn_spam→轮限哨兵；exit137→恰重试一次；哨兵在案→产物不采信）；`:794` fake droid 桩 mode="hang" 分支；`:792` 哨兵文件写入。**领班域 SL 族按此形制落**。
 
@@ -60,13 +60,38 @@
 |---|---|---|---|
 | 会话墙（lead/worker/validator/replan） | 包装器体外执法（哨兵→TERM 组→宽限→KILL 组） | SL-1（lead 恒挂）、SL-3（worker 恒挂＋孤儿拖管道） | RS-2（900s 不执法） |
 | 写目标门（F-1 判词化） | caps-gate `out-of-scope-write`＋包装器写预授权（事中守卫） | SL-3b（worker 越界写）、SL-4b（lead 图外写口） | RS-1（越界写结局面，机制面非叙事面） |
-| 证据授权门 | verdict v2/plan-v2 schema＋`narrative-without-evidence` 判词＋构造权单源（handoff-schemas §6/§8） | SL-2（validator 伪造叙事）、SL-3b'（replan 伪造死因） | RS-1（replan 虚构死因钉子反转） |
+| 证据授权门 | verdict v2/plan-v2 schema＋`narrative-without-evidence` 判词＋构造权单源（handoff-schemas §6/§8） | SL-2（validator 伪造叙事）、SL-3b'（replan 伪造死因）、SL-11a（构造权越权） | RS-1（replan 虚构死因钉子反转） |
 | 体外执法墙本身（工人席收编后） | 包装器执行体（预算从门清单读＋组信号） | SL-3（同上，兼测包装器接线） | RS-2 |
 | 补卷守卫（根治 1 倒影） | `worker_salvage.py:13` 四条件 fail-closed | SL-5（四条件逐条违约） | RS-2/RS-4 关联 |
 | 板面终态门 | assemble board_drift 对账＋PAT 单点 | SL-6（翻板回归）、SL-7（图外写口） | RS-3（板面翻板） |
-| 缺席即事件（recorder/verdict/delta/patch 面） | 包装器采样＋墙计数＋硬评论报警 | SL-8（缺席注入族） | RS-4（recorder 缺席报警） |
+| 缺席即事件（recorder/verdict/delta/patch/evidence manifest 面） | 包装器采样＋墙计数＋硬评论报警 | SL-8（缺席注入族 a-e） | RS-4（recorder 缺席报警） |
 | 令牌 scope 门 | validator 双置空＋replan 拆门＋caps-gate `token-scope-violation` | SL-4 族（越权令牌注入） | — |
 | 交接口枚举门 | worker-delta v2/verdict v2/plan-v2 v1/handoff v1 schema（handoff-schemas §2-§5 违约表 W-1..H-3） | SL-9（枚举外值/悬挂引用族） | RS-1 |
+| caps-gate 判词负例门（工具/制品/事件/状态读面） | caps-gate 文本断言层（`unregistered-tool-call`/`undeclared-artifact`/`undeclared-event`/`undeclared-state-read` 判词） | SL-10a/b/c/d | — |
+| 登记面升级闸门 | caps-gate `caps-schema-drift`＋`mixed-registry-change`＋`evidence-construct-violation` 判词 | SL-11a/b/c | — |
+| 钥匙面升级闸与旁路面 | 钥匙面守卫（`unregistered-bypass-surface`/`mixed-key-registry-change` 判词，out-of-graph §3.6 判词枚举） | SL-12a/b | — |
+
+**判词 × 样本满映射表（caps-gate 十判词＋钥匙面五判词 × SL 样本，逐判词至少一条必死样本设计；§2 的 SL 族是本表判据载体的展开）**：
+
+| # | 判词 | 样本 ID | 样本设计要点（注入面照既有 SL 族形制——文本级注入＋守卫在岗断言＋判词点名红＋干净对照绿） |
+|---|---|---|---|
+| 1 | `unregistered-tool-call` | SL-10a | 注入：workflow 文本夹具给席位步新增门清单 api/local_uses 白名单外的会话工具调用面（如 worker 步注入 gh api 写调用）；断言：caps-gate 判词点名红（席位×工具未登记）＋现状四文件原树绿 |
+| 2 | `out-of-scope-write` | SL-3b（会话层）＋SL-4b（文本层） | 既有族：SL-3b 卡面 allowed 外文件注入→守卫拒；SL-4b lead 步产物落点越登记面→判词红 |
+| 3 | `token-scope-violation` | SL-4 族 | 既有族：非授权席位步注入 `${{ secrets.PROJECTS_STATE_PAT }}`／validator 族注入 GH 写令牌→判词红；干净对照绿 |
+| 4 | `undeclared-artifact` | SL-10b | 注入：席位步新增登记 artifacts 面外产物落点（文本级：workflow 产物路径/write 面不在该席 artifacts 登记集）；断言：`undeclared-artifact` 判词点名红＋对照绿 |
+| 5 | `undeclared-event` | SL-10c | 注入：席位步新增登记 events_produced/consumed 名单外事件面（如 prep 步注入 issue close 调用——其 events_produced 无关单权）；断言：判词红＋对照绿 |
+| 6 | `undeclared-state-read` | SL-10d | 注入：席位步新增登记 state_reads 面外状态读取面（如 recorder 步注入跨席 packs 树读——其 state_reads=本会话中间态）；断言：判词红＋对照绿 |
+| 7 | `narrative-without-evidence` | SL-2（validator）＋SL-3b'（replan） | 既有族：cause 非空而 evidence_refs 空/叙事内嵌判定→判词红＋schema 拒 |
+| 8 | `evidence-construct-violation` | SL-11a | 注入：非核查环节构造证据对象（lead/worker/replan/assemble 会话产物内含 evidence 对象字段——构造权白名单外，handoff-schemas §6）；断言：判词红（构造权主体×对象不匹配）＋validator/机器守卫步合法构造对照绿 |
+| 9 | `caps-schema-drift` | SL-11b | 注入：内存变异 foreman-caps 登记段——增删键/改词表而不同批改契约测试（对位引擎要点 3 同批改锁）；断言：caps-gate schema 校验 exit 1 判词点名（漂移键/漂移词）＋合法登记对照绿 |
+| 10 | `mixed-registry-change` | SL-11c | 注入：变更集文本夹具改 `foreman-caps.v1.toml` 门清单行而不带 `wall-registry-change: true` 声明行；断言：判词红；带声明对照绿（对位引擎判词形制 `check_module_wall.py:131` 常量） |
+| 11 | `orphan-secret-expansion` | SL-7 第④注入 | 既有族：`${{ secrets.* }}` 展开位点≠台账锚集（位点扫描含 droid.yml/droid-probe.yml/probe6.yml 全生产树）→红 |
+| 12 | `anchor-drift` | SL-7 第④注入同面 | 锚集失配向（登记锚集含已消失位点）→红；与判据 11 同载体双向断言 |
+| 13 | `value-leak` | SL-7 第①注入 | 既有族：PAT 前缀族字面注入生产文本→红（例外位=件②夹具哑值显式登记，拆除批消除） |
+| 14 | `unregistered-bypass-surface` | SL-12a | 注入：台账 `[[external_face]]`/`[[orphan]]` 外新增旁路面（文本级：新增 workflow 直写 `~/.factory/settings.json` 或 verdict 白名单外落点而台账无登记行）；断言：判词红＋已登记面（memory 树/runner 会话配置/探针族）对照绿 |
+| 15 | `mixed-key-registry-change` | SL-12b | 注入：变更集改台账（foreman-keys.toml）或守卫本体而不带 `key-registry-change: true` 声明行；断言：判词红；带声明对照绿（升级闸常量对位引擎 `check_module_wall.py:131` 形制） |
+
+判词覆盖口径：caps-gate 十判词（seat-gates §1.3 表）在本表 1-10 行逐条有样本；钥匙面五判词（out-of-graph §3.6 判词枚举）在 11-15 行逐条有样本——**「每墙每门至少一条必死样本」对判词面满覆盖成立**；两个既有族样本（SL-7 第①/④注入）复用其 §2.7 设计不重复展开。缺席即事件五不变量面（INV-1..7 中可注入面）由 SL-8a-e 承载（§2.8），席位 probe 缺口（lead 三探针/validator schema 负例/replan 钉子反转/assemble 消费门/recorder 缺席负例——seat-gates §3.3 probes 行「缺门补齐」各席）的必死样本载体按行归入 SL-1（lead 三探针会话层）、SL-2/SL-9（validator schema 负例）、SL-3b'（replan 钉子）、SL-6/SL-7（assemble 单点与消费）、SL-8a（recorder 缺席）——逐席 probe 与判词样本的对应在 §2 各样本「执法体」列已点名，不再另立族号。
 
 ### 1.5 桩形态总登记（fake-droid 桩约定）
 
@@ -177,7 +202,7 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 
 ### 2.8 SL-8 缺席注入族（缺席即事件门；对应 failure-specs §7 判据①、§1 判据⑤、§3 判据③；59 轮四问题④回归；failure-specs §7 判据①引用的「缺席报警桩」＝本节 SL-8a）
 
-四变体（缺席面 × 承载席）：
+四变体（缺席面 × 承载席）＋一变体（evidence manifest 面，INV-7 承载——本批补齐使 §1.4 表缺席行与 INV 清单对齐）：
 
 | 变体 | 注入 | 执法体 | 断言 |
 |---|---|---|---|
@@ -185,6 +210,7 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 | SL-8b delta 缺席 | worker 会话死且零 delta 写出（fork-orphan 极端形态） | prep 门（prep_should_run 面按缺 delta 走缺件路径）＋缺席告警 | 缺件路径触发＋缺席事件上墙（delta 缺席≠会话 ok） |
 | SL-8c verdict 封章缺席 | partial 存在但 final=false（未封章） | adopt 采认步（adoptable 判据，`salvage_verdict.py:45-47`） | 不采认＋round 重验路径触发＋缺席告警（窗口截止时 sealed 缺席） |
 | SL-8d 收口 patch 缺席 | 桩链跑完但 final_status_card patch 未产 | foreman lint 静态面＋runtime 缺席告警（assemble 窗口） | lint 红（现状执法）＋v3.0 告警事件（补 per-run 面） |
+| SL-8e evidence manifest 缺席 | prep 产出 evidence.tar.gz 而 manifest sha 字段缺席（INV-7 面——packs 树不齐或 sha 链断裂） | validate 入口 manifest sha 门（fail-closed 拒）＋缺席告警 | sha 门拒（现状执法）＋v3.0 告警事件（prep→validate 交接窗口内 manifest 缺席必有人知道） |
 
 - **延迟采样**：缺席类=告警产出时延上界（§1.2 末段口径）。
 - **判据载体**：告警事件对象（墙缺席面字段＋硬评论 mock 面断言）。
@@ -199,17 +225,77 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 - **判据载体**：校验器异常面逐条点名。
 - **落位说明**：本族是 handoff-schemas 已设计违约表的验收线登记——**违约表定义归 handoff-schemas（F2 交付），本件只登记其常驻负例形态与判据载体**，不重复 schema 细节。
 
+### 2.10 SL-10 caps-gate 判词负例族（工具/制品/事件/状态读面判词；caps-gate 十判词的 1/4/5/6 号）
+
+> 注入面照既有文本层族（SL-4/SL-7）形制：workflow 文本夹具注入＋caps-gate 真跑（守卫在岗断言）＋判词点名红＋现状树干净对照绿。四样本与判词一一对应，判词枚举见 seat-gates §1.3 表。
+
+- **SL-10a（`unregistered-tool-call`）**：
+  - **注入**：workflow 文本夹具给某席位步新增门清单 `api`/`local_uses` 白名单外的会话工具调用面（例：worker 步注入 `gh api repos/.../issues --method POST` 写调用——worker 门清单工具面只有 prompt 单源/delta 写面，无 gh api）。
+  - **执法体**：caps-gate 文本断言层（席位步调用面 × 门清单 api/local_uses 集合比对）。
+  - **断言**：注入必红（判词点名：席位×工具未登记）；现状四文件原树同场跑=绿（守卫不冤枉现状）。
+  - **判据载体**：caps-gate 退出码＋判词输出（席位/工具/调用行锚）。
+- **SL-10b（`undeclared-artifact`）**：
+  - **注入**：席位步新增登记 artifacts 面外产物落点（例：replan 步直写 `team/status/<pid>.json`——其 artifacts 登记面只有 team-plan-v2.json；或 worker 步产物落点含顶层 verdict 路径——件④白名单外形态复用）。
+  - **执法体**：caps-gate 文本断言层（写面/上传面路径 × 该席 artifacts 登记集比对）。
+  - **断言**：注入必红（判词点名：席位×制品路径未登记）；对照绿。
+  - **判据载体**：caps-gate 退出码＋判词输出。
+- **SL-10c（`undeclared-event`）**：
+  - **注入**：席位步新增登记 events 名单外事件面（例：prep 步注入 issue close 调用——prep 门清单 events_produced 只有备料报告评论/墙 patch/git push，无关单权；validator 步注入 issue 评论调用——其 events_produced 只有墙 patch/files 面）。
+  - **执法体**：caps-gate 文本断言层（issue/comment/close 调用面 × 该席 events 登记集比对）。
+  - **断言**：注入必红（判词点名：席位×事件面未登记）；对照绿。
+  - **判据载体**：caps-gate 退出码＋判词输出。
+- **SL-10d（`undeclared-state-read`）**：
+  - **注入**：席位步新增登记 state_reads 面外状态读取面（例：recorder 承载步注入跨席 packs 树读调用——recorder 门清单 state_reads=本会话中间态；assemble 步注入 worker 分支树读——其 state_reads 只有墙）。
+  - **执法体**：caps-gate 文本断言层（读面路径 × 该席 state_reads 登记集比对）。
+  - **断言**：注入必红（判词点名：席位×读面未登记）；对照绿。
+  - **判据载体**：caps-gate 退出码＋判词输出。
+
+### 2.11 SL-11 登记面升级闸族（schema 漂移/声明缺失/构造权越权；caps-gate 十判词的 7/9/10 号）
+
+- **SL-11a（`evidence-construct-violation`）**：
+  - **注入**：内存对象构造违约交接物——lead/worker/replan/assemble 席产物内含证据对象字段（构造权白名单四主体：机器守卫步/validator 会话经 recorder 工具/prep 补卷器/adopt 采认步之外，handoff-schemas §6）。
+  - **执法体**：caps-gate 构造权校验（交接物 created_by × 构造权白名单比对）＋schema 侧构造权字段校验（verdict.v2 evidence 对象构造权标注）。
+  - **断言**：越权构造必红（判词点名：席位非构造权主体）；validator 会话合法构造对照绿。
+  - **判据载体**：caps-gate 退出码＋判词输出。
+  - **与 SL-2 的分工**：SL-2 测「无证据出叙事」（validator 面叙事门），SL-11a 测「越权造证据」（构造权门）——两门两判词，样本分立。
+- **SL-11b（`caps-schema-drift`）**：
+  - **注入**：内存变异 foreman-caps 登记段——增删键（如删 `authorization` 键）/改词表（如判词枚举加新值）而不同批改契约测试（对位引擎要点 3 同批改锁形制，form-basis 要点 3 原物锚 `key-registry.toml:14-16` 铁律）。
+  - **执法体**：caps-gate schema 校验器（键集/词表硬编码比对，负对照与生产共用同一实现）。
+  - **断言**：漂移必红（exit 1＋判词点名：漂移键名/漂移词值）；合法登记对照绿。
+  - **判据载体**：caps-gate 退出码＋漂移面点名。
+- **SL-11c（`mixed-registry-change`）**：
+  - **注入**：变更集文本夹具改 `foreman-caps.v1.toml` 门清单行（如改 lead 写目标路径）而不带 `wall-registry-change: true` 声明行。
+  - **执法体**：caps-gate 升级闸判词（登记面变更×声明行检测，常量对位引擎 `check_module_wall.py:131` `REGISTRY_CHANGE_DECLARATION` 形制）。
+  - **断言**：无声明变更必红（判词点名）；带声明行对照绿（声明通道畅通性正对照）。
+  - **判据载体**：caps-gate 退出码＋判词输出。
+  - **接线锁对位**：本样本的常驻载体本身接 foreman-wall-ci 恒跑（seat-gates §1.4 接线锁契约测试钉住）——对位引擎 NEW-2 闭合后形态（form-basis §11.1 更新口径）：判词存在且接线，两件事都有测试锁。
+
+### 2.12 SL-12 钥匙面判词族（旁路面/钥匙升级闸；钥匙面五判词的 4/5 号——判词枚举 out-of-graph §3.6）
+
+- **SL-12a（`unregistered-bypass-surface`）**：
+  - **注入**：文本夹具新增旁路面而台账无登记——生产 workflow 新增直写 `~/.factory/settings.json` 的位点（件③收口后声明体单点之外的第二写位），或 verdict 白名单外落点且 `[[orphan]]` 表无对应行。
+  - **执法体**：钥匙面守卫（旁路面清单 × 台账 `[[external_face]]`/`[[orphan]]`/`[[dangling_name]]` 三表比对）。
+  - **断言**：未登记旁路必红（判词点名：旁路面锚）；已登记面（memory 树/runner 会话配置/探针 workflow 族——`[[external_face]]` 现有三条）对照绿。
+  - **判据载体**：钥匙面守卫退出码＋判词输出。
+- **SL-12b（`mixed-key-registry-change`）**：
+  - **注入**：变更集文本夹具改台账文件（foreman-keys.toml 键行/词表行）或钥匙守卫本体而不带 `key-registry-change: true` 声明行。
+  - **执法体**：钥匙面守卫升级闸判词（台账变更×声明行检测，升级闸常量对位引擎 `check_module_wall.py:131` 形制，out-of-graph §3.7）。
+  - **断言**：无声明变更必红；带声明行对照绿。
+  - **判据载体**：钥匙面守卫退出码＋判词输出。
+
+**钥匙面五判词覆盖声明**：判词 1-3（`orphan-secret-expansion`/`anchor-drift`/`value-leak`）的必死样本=SL-7 第①/④注入（§2.7 既有设计，判据 1/2 的文本层）；判词 4-5=SL-12a/b（本节新增）——五判词逐条有样本，零「CLI-only 判词」类目（§0b 禁抄项义务：全部判词落 CI 恒跑腿）。
+
 ---
 
 ## §3 执法延迟实测口径落位（每面执法墙的采样矩阵）
 
 | 执法墙 | 预算面 | 采样源样本 | 设计上界（护栏） | CI 报告形态 |
 |---|---|---|---|---|
-| lead 会话墙 | droid_wall_sec=600（T0=会话预算到期；软超时=job_timeout−400≈500s 基座面） | SL-1 | 全样本 L ≤ 宽限(10s)＋SIGKILL 完成期(10s 采样护栏)=20s | `SL-1 enforcement-latency upper-bound=<n>s` |
+| lead 会话墙 | droid_wall_sec=600（T0=会话预算到期；软超时=job_timeout−400=500s 基座面，job 15m——seat-gates §2.1 budgets） | SL-1 | 全样本 L ≤ 宽限(10s)＋SIGKILL 完成期(10s 采样护栏)=20s | `SL-1 enforcement-latency upper-bound=<n>s` |
 | worker 会话墙（v3.0 包装器） | 900（T0=会话预算到期） | SL-3（fork-orphan 主采样） | 同上＋**孤儿整组收断言**（L 上界含 KILL 传播） | `SL-3 enforcement-latency upper-bound=<n>s（kill_path 逐采样）` |
-| validator 会话墙 | 480＋adopt 储备 120（`foreman_run_lib.py:42-45`） | SL-3 同构参数化 | 同上 | 同形态报告 |
+| validator 会话墙 | 480＋adopt 储备 120（`foreman_run_lib.py:42-45`；软超时=job 15m−400=500s 外层哨兵线——seat-gates §2.4 budgets 注：480 是包装器第一道墙、500 是体外监督者外层哨兵线，双预算各守一层） | SL-3 同构参数化 | 同上 | 同形态报告 |
 | replan 会话墙 | 480（`foreman_run_lib.py:48-50`） | SL-3 同构参数化 | 同上 | 同形态报告 |
-| 缺席即事件告警面 | 窗口=budgets 键（§4） | SL-8a-d | 告警时延≤窗口宽限＋上墙余量 | `SL-8x alert-latency upper-bound=<n>s` |
+| 缺席即事件告警面 | 窗口=budgets 键（§4） | SL-8a-e | 告警时延≤窗口宽限＋上墙余量 | `SL-8x alert-latency upper-bound=<n>s` |
 
 **采样纪律**（§1.2 细则的落位）：每墙 N≥5（三抗死形态各≥1＋普通≥2）；取上界；逐采样行落 `wall-v3-latency.json`（目标态 artifact）；实测超护栏=该墙建成判据红（§1.3 第 2 条）。
 
@@ -302,15 +388,18 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 | lead 会话墙 | SL-1 | §3 行 1 | — | — | v3.0 契约测试（F5） |
 | worker 会话墙＋体外执法 | SL-3 | §3 行 2（主采样源） | INV-4 | RS-2 | 在树守卫族＋v3.0 契约测试 |
 | 写目标门（F-1 判词化） | SL-3b | —（静态守卫无时间面） | — | RS-1（结局面） | 在树 F-1 族＋caps-gate |
-| 证据授权门 | SL-2、SL-3b' | — | INV-2/3 | RS-1 | v3.0 契约测试＋在树 salvage 族 |
+| 证据授权门 | SL-2、SL-3b'、SL-11a | — | INV-2/3 | RS-1 | v3.0 契约测试＋在树 salvage 族 |
 | 补卷守卫 | SL-5 | — | INV-4 关联 | RS-2/RS-4 关联 | 在树 `tests/test_worker_salvage.py` |
 | 板面终态门 | SL-6、SL-7 | — | — | RS-3 | v3.0 契约测试 |
 | 令牌 scope 门 | SL-4 族（越权令牌注入，SL-7 载体同面） | — | — | — | caps-gate |
 | 交接口枚举门 | SL-9（19 变体） | — | — | RS-1 | v3.0 契约测试 |
-| 缺席即事件门 | SL-8a-d | §3 末行（告警时延） | INV-1..7 | RS-4 | v3.0 契约测试 |
+| 缺席即事件门 | SL-8a-e | §3 末行（告警时延） | INV-1..7 | RS-4 | v3.0 契约测试 |
 | lead 图外写口 | SL-4b | — | INV-6 关联 | — | caps-gate 文本层 |
+| caps-gate 判词负例门（工具/制品/事件/状态读） | SL-10a/b/c/d | — | — | — | caps-gate 文本层 |
+| 登记面升级闸门（schema 漂移/声明缺失） | SL-11b/c | — | — | — | caps-gate（恒跑接线，§1.4 锁） |
+| 钥匙面升级闸与旁路面 | SL-12a/b、SL-7 第①④注入 | — | — | — | 钥匙面守卫（恒跑） |
 
-**门口径声明**：本表「墙/门」覆盖硬规则①③④⑤⑥⑦②的执法面；规则⑧（失败规范）载体=failure-specs 底稿本件不重复；规则⑨（钥匙）面 SL 样本=SL-7 第④注入（secrets 位点对账），延迟/缺席不适用；规则⑩（无兜底）面 SL-7 全部注入＋RS-3 板侧三态登记。十条硬规则与验收线的逐条对位随主设计稿总装（architecture §8 映射表为准绳）。
+**门口径声明**：本表「墙/门」覆盖硬规则①③④⑤⑥⑦②的执法面；规则⑧（失败规范）载体=failure-specs 底稿本件不重复；规则⑨（钥匙）面 SL 样本=SL-7 第④注入（secrets 位点对账）＋SL-12a/b（旁路面/升级闸），延迟/缺席不适用；规则⑩（无兜底）面 SL-7 全部注入＋SL-11c＋RS-3 板侧三态登记。十条硬规则与验收线的逐条对位随主设计稿总装（architecture §8 映射表为准绳）；判词×样本满映射表（§1.4 第二张表）是「每判词至少一条必死样本」的机器可查索引。
 
 ---
 
