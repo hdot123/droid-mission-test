@@ -31,6 +31,14 @@ PYTHONPATH=scripts/team python -m turn_metrics <流工件或目录>
 - **worker 预装依赖（U-10）**：worker / worker2 会话前预装 `requirements-dev.txt`（第 54 轮 12/12 worker 首测 `No module named pytest` 的环境根因）。
 - **V-3 上线门**：prompt 变更须先用真实证据包跑真会话验证 recorder 触发面（判据：流中 tool_call 的 parameters 含 `salvage_verdict` 且 tool_result 成功）。2026-11-26 重跑过门：A=4 / C=3 次 recorder tool_call；门证据与收档见 `docs/evidence/v3-gate-rerun/` 与 `docs/V-3-closeout-收档报告.md`。
 
+## 工人席落盘根治（v2.10，R58-D）
+
+第 58 轮 D 单暴露的「会话被机器墙杀死于落盘之前、已全绿工作作废＋二轮重做」死法，三个里程碑根治（全部机器判定，零模型参与）：
+
+- **结构化结局上墙**：team.yml delta 记录步与 `scripts/team/write_worker_delta.py` / `merge_worker_deltas.py` 把 worker 会话结局按 session_outcome（ok / wall_killed / job_wall_cancelled，含 exit 137 与非零退出无 completion 形态）/ droid_exit_code / stream_tail_marker 三字段确定性分类上墙。
+- **归责根治**：`scripts/team/attribution_reason.py` 让 validate/revalidate/validate2/revalidate2 四合并步按死因分支渲染——死因在场（wall_killed）输出中性归因措辞，死因不在场维持现行措辞逐字节不变（fail-closed）；replan 步把 worker-delta 死因事实注入输入面板（`compute_replan_gate.py` 消费），retry_note 不再把墙杀死工序错归为工人服从性问题。
+- **补卷与模板**：`scripts/team/worker_salvage.py` prep 步补卷器按守卫四条件（全部机器判定）为墙杀死工序补齐证据包缺件；worker prompt 抽成单源模板 `scripts/team/worker_prompt_template.py`（含 verify 步守卫）；`checks-failed.marker` 与 validator prompt 一律按内容判定红（`marker_verdict.py`，仅缺件为绿）。r58 死亡链 verbatim 证据夹具入仓：`tests/fixtures/worker-r58d/`（含 sha256 对账与 ok-缺件对照）。
+
 ## 测试
 
 ```bash
@@ -44,4 +52,4 @@ python3 scripts/team/lint_workflow_needs.py
 
 以上即 CI（foreman-wall contract workflow）在 push/PR 时运行的全部检查：契约测试子集＋五个 lint 脚本（foreman 接线、墙退出、Projects 解析、预算参数、needs 悬空引用）。
 
-当前基线：342 passed, 2 skipped。
+当前基线：599 passed, 2 skipped。
