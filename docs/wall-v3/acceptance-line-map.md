@@ -1,0 +1,357 @@
+# 验收线（acceptance-line-map 底稿）——每墙每门必死样本＋执法延迟实测口径
+
+> 底稿（mission F4/failure-specs 产出；主设计稿 §6 验收线章素材）。本件给**每道墙/每个门**配：①必死样本设计（常驻 pytest 负例——fake-droid 桩注入违约会话：恒挂/越界写/伪造叙事/图外写口，断言守卫必红必杀，零网络零真树污染）；②实测执法延迟口径（超时点到进程组真死的时间差，多次采样取上界，CI 每次跑出实测数）；③「没有活验数字不算建成」判据；④缺席即事件不变量检查设计；⑤59 轮四问题回归样本设计。逐席失败规范（判据侧）见姊妹底稿 `failure-specs.md`（本件 SL 样本与其判据经其附B 反向索引互锁）。
+>
+> **真源声明**：执法形制（终止序列/哨兵语义/预算公式）以 `docs/wall-v3/form-basis.md` §10 补遗（原物锚：引擎仓 `src/infra_core/engine/droid_review/run_lead.sh:9-10`/`:282`/`:286`/`:52-55`）为准；常驻必死形态先例以 form-basis 要点 7 补遗（`tests/test_lead_engine.py:1041`/`:1044`/`:794` hang 桩 E2E 族）为形制对位物。现状行号转引 `docs/wall-v3/as-is-capability-inventory.md`（锚件 2）。本件全部 file:line 锚经实读核实（2026-11-27 快照，测试仓 R58-D 收尾态基线 564ce30）。
+>
+> **CI 落位纪律**（承 NC-6 裁定口径，`docs/R58D-收尾决策留痕-NC6与遗留决策点.md:5`）：本件定义的常驻负例族目标态载体＝`tests/test_wall_v3_design_contract.py`（设计契约测试，F5 纯新增）＋ `tests/fixtures/wall-v3/`；既有守卫负例族（worker_salvage/worker_delta/attribution/f5 系在树测试）已在 `pytest tests/ -q` 全套件门内（257 用例，NC-6 留痕 §二表）。CI 子集扩面属 workflow 门清单变更，须单独呈裁——本件不预设扩面。
+>
+> **版本口径**：本件属设计稿 v3.0 体系，作废 v2.7~v2.10 账面墙口径。
+
+---
+
+## §1 口径总纲（读各节前必读）
+
+### 1.1 必死样本定义与硬性要求
+
+**必死样本**＝对一个墙/门注入**确定的违约输入**、断言执法体**必红必杀**的常驻自动化负例。「必死」三要素，缺一不成立：
+
+1. **确定性注入**：违约输入由桩（fake-droid / 内存变异 / 文本夹具）确定性地构造，不依赖网络、真树、真凭证、真实 droid 进程——**零网络、零真树污染**（零真树判据：写面全部在 tmp 探针 tree 或内存对象；对位引擎负例形制 form-basis 要点 3 负对照共用生产校验路径、`tests/test_module_wall.py` tmp 探针 tree 先例）。
+2. **守卫在岗断言**：断言对象是**守卫本体的退出态**（退出码 1/判词点名/拒收行为），不是守卫源码存在性——每样本必须真跑守卫（与生产校验共用同一实现），红了才算过（负例绿=守卫死=样本红）。
+3. **必杀断言**（对执法类墙）：断言违约会话**被终结**（进程组不存在/哨兵在案/产物不采信），且终结证据上墙——不只断言「守卫报红」，还断言「违约者真死」。
+
+**常驻要求**：全部样本进 `pytest tests/ -q` 全套件门（现状 599 passed＋2 skipped 基线，锚件 2 §0）；红线=任何样本在本仓测试环境 flaky（网络/时序依赖超阈值）——桩设计必须确定性（时钟由注入、随机由种子、无外部服务）。
+
+**对位先例**（引擎仓已验证形态，form-basis 附表锚）：`tests/test_lead_engine.py:1041` `TestRunLeadBoundedExitE2E`（吊死样本常驻 CI：mode="hang" 桩→必触发 soft_timeout 遗书；turn_spam→轮限哨兵；exit137→恰重试一次；哨兵在案→产物不采信）；`:794` fake droid 桩 mode="hang" 分支；`:792` 哨兵文件写入。**领班域 SL 族按此形制落**。
+
+### 1.2 执法延迟实测口径（硬规则④「没有活验数字不算建成」）
+
+**定义**（对位任务书口径逐字）：执法延迟 = **超时点到进程组真死的时间差**。三个时点全部机器可测：
+
+| 时点 | 定义 | 采样实现 |
+|---|---|---|
+| T0＝超时点 | 预算到期时刻：包装器预算计时器到期（软超时=droid_wall_sec−400 或墙=droid_wall_sec，由样本参数指定） | 桩会话内记录：包装器注入 `FAKE_DROID_BUDGET_EPOCH`，桩在收到 TERM 时读自身单调钟与该 epoch 差 |
+| T1＝终结发起 | 执法体发起终结：哨兵写入时刻（`lead-terminated.reason` 同形态哨兵，目标态 `session-terminated.reason`） | 包装器写哨兵时刻（哨兵文件 mtime 或哨兵内记录的单调钟值） |
+| T2＝进程组真死 | 被管进程组最后成员退出：waitpid(-pgid) 返回（对位引擎 `run_lead.sh:282` 负 PID 组信号→wait 收尸形态） | 监督者 wait 收尸时刻＋桩进程退出时向哨兵目录写 exit-stamp |
+
+**延迟 L ＝ T2 − T0**（含 T0→T1 的哨兵延迟＋T1→T2 的 TERM→宽限→KILL 序列耗时）。**口径细则**：
+
+- **多次采样取上界**：每类执法墙每次 CI 跑 **N≥5 个采样会话**（参数化桩：预算到期后分别以「立即死/TERM 后拖延/吞 TERM 靠 KILL」三种抗死形态各≥1 采样，另加 2 个普通采样），实测值取**最大值（上界）**为该墙本次执法延迟报告值——上界才暴露最坏抗死形态的执法成本，均值会掩埋 KILL 路径。
+- **CI 每次出实测数**：延迟报告落 CI 输出（pytest 报告段：`SL-x enforcement-latency upper-bound = <秒>`）＋可选落 artifact（目标态 `wall-v3-latency.json`：`{sample_id, wall, budget_sec, t0, t1, t2, latency_sec, kill_path: term|kill_after|grace}` 逐采样行）。**报告中数字必须来自本次运行的实测**，禁止常量断言（「延迟<10s」式断言只许作为 sanity 上限护栏，且必须与实测数同时报告）。
+- **上界预算护栏**：延迟实测值必须满足设计上界（软超时样本 L ≤ 400s 宽限余量；墙杀样本 L ≤ 宽限秒＋SIGKILL 传播余量，目标态宽限=10s 对位引擎 `LEAD_KILL_GRACE_SEC` 默认，`run_lead.sh:55`）。**实测超上界=墙建成失败**（判据 §1.3 第 3 条）。
+- **无真 droid 依赖**：延迟实测对象是**包装器执法路径**（哨兵→SIGTERM 组→宽限→SIGKILL 组），被杀者是桩进程组——桩表现抗死形态（忽略 TERM、睡眠、fork 孤儿持管道），执法通道特性（组信号整组收、不依赖被管进程配合）因此被真实 exercised。45B 孤儿拖管道形态（锚件 2 §10-②）在桩内复现：桩 fork 子进程继承管道后父吞 TERM，断言 KILL 后**整个进程组**（含孤儿）不存在。
+
+**缺席类事件的延迟口径**（§4）：缺席即事件无「超时点到真死」语义（没有可杀的对象），其延迟口径＝**告警事件产出时延**（窗口截止时点→告警事件上墙时点，同采样纪律：N≥5 取上界、CI 出实测数）。
+
+### 1.3 「没有活验数字不算建成」判据（硬规则④收口条款，入稿声明）
+
+> **墙的建成判据不是「守卫存在」「lint 全绿」「文档成文」，而是四条活验数字，缺一即未建成：**
+>
+> 1. **必死样本全红率**：SL 族每个样本对其目标守卫的红灯率＝100%（守卫对违约输入必红；守卫对合法输入必绿——红绿对照对全）。
+> 2. **执法延迟上界实测数**：每面执法墙本次 CI 的 L 上界数字存在且 ≤ 设计上界；**该数字是本次运行的实测值**（非历史值、非常量）。
+> 3. **哨兵在案不采信率**：违约会话的产物采认率＝0%（哨兵在案→delta/verdict/plan-v2 一律不采信，强制失败优先，对位引擎哨兵语义 `run_lead.sh:10`）。
+> 4. **缺席报警触发率**：缺席注入样本的告警触发率＝100%，且告警事件含可定位字段（席位/窗口/缺席面）。
+>
+> 四条全部由 CI 常驻测试输出数字，任何人复跑 `pytest tests/ -q` 可复现。**没有这四组数字的墙，一律按「未建成」登记**——纸面有门不执法的形态（引擎 VAL-M4-004/007 缺口，form-basis §11.1）在领班域按禁抄项处理。
+
+### 1.4 墙/门清单（SL 样本覆盖对象）
+
+| 墙/门 | 执法载体 | SL 样本 | 59 轮回归样本 |
+|---|---|---|---|
+| 会话墙（lead/worker/validator/replan） | 包装器体外执法（哨兵→TERM 组→宽限→KILL 组） | SL-1（lead 恒挂）、SL-3（worker 恒挂＋孤儿拖管道） | RS-2（900s 不执法） |
+| 写目标门（F-1 判词化） | caps-gate `out-of-scope-write`＋包装器写预授权（事中守卫） | SL-3b（worker 越界写）、SL-4b（lead 图外写口） | RS-1（越界写结局面，机制面非叙事面） |
+| 证据授权门 | verdict v2/plan-v2 schema＋`narrative-without-evidence` 判词＋构造权单源（handoff-schemas §6/§8） | SL-2（validator 伪造叙事）、SL-3b'（replan 伪造死因） | RS-1（replan 虚构死因钉子反转） |
+| 体外执法墙本身（工人席收编后） | 包装器执行体（预算从门清单读＋组信号） | SL-3（同上，兼测包装器接线） | RS-2 |
+| 补卷守卫（根治 1 倒影） | `worker_salvage.py:13` 四条件 fail-closed | SL-5（四条件逐条违约） | RS-2/RS-4 关联 |
+| 板面终态门 | assemble board_drift 对账＋PAT 单点 | SL-6（翻板回归）、SL-7（图外写口） | RS-3（板面翻板） |
+| 缺席即事件（recorder/verdict/delta/patch 面） | 包装器采样＋墙计数＋硬评论报警 | SL-8（缺席注入族） | RS-4（recorder 缺席报警） |
+| 令牌 scope 门 | validator 双置空＋replan 拆门＋caps-gate `token-scope-violation` | SL-4 族（越权令牌注入） | — |
+| 交接口枚举门 | worker-delta v2/verdict v2/plan-v2 v1/handoff v1 schema（handoff-schemas §2-§5 违约表 W-1..H-3） | SL-9（枚举外值/悬挂引用族） | RS-1 |
+
+### 1.5 桩形态总登记（fake-droid 桩约定）
+
+全部 SL 执法类样本共用一个 fake-droid 桩协议（形制对位引擎 `tests/test_lead_engine.py:794` FAKE_DROID_CONFIG 桩）：
+
+```
+fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
+  --mode hang|hang-ignore-term|fork-orphan|write-oob|exit <code>|quiet
+  --budget-epoch-env FAKE_DROID_BUDGET_EPOCH   # T0 采样面
+  --sentinel-dir <dir>                          # exit-stamp 写入面（T2 采样面）
+  --oob-path <path>                             # 越界写目标（SL-3b/SL-4b）
+  --narrative-file <file>                       # 伪造叙事注入面（SL-2/SL-3b'）
+```
+
+桩纪律：零网络；写面限 tmp；TERM 抗死形态显式参数化（`hang`=TERM 后 30s 内死、`hang-ignore-term`=吞 TERM 只死 KILL、`fork-orphan`=fork 孤儿持管道后父退出）；每次运行输出机器可读 trace（模式/时点/退出路径）供延迟采样聚合。
+
+---
+
+## §2 SL 必死样本设计（逐墙逐门，常驻 pytest 负例）
+
+> 每样本六要素：注入（桩形态）→执法体（被测守卫）→断言（必红＋必杀）→判据载体（机器可断言的退出态）→延迟采样（适用执法类墙）→59 轮/判据对位。目标态载体统一为 `tests/test_wall_v3_design_contract.py`＋`tests/fixtures/wall-v3/`（F5 落树）；标注「在树先例」的断言面已由既有测试承载（NC-6 留痕 §二表），v3.0 底稿对齐其断言面。
+
+### 2.1 SL-1 领班席会话墙恒挂桩（对应 failure-specs §2 lead 判据①⑤）
+
+- **注入**：fake-droid `--mode hang`（永挂，不产出分段卡）；包装器以 lead 门清单预算（600s，`foreman_run_lib.py:38`）启动，样本内预算按比例缩放（测试参数 wall_sec=2s 级，不真等 600s——预算值注入而非读取生产门清单值，生产接线由契约测试另钉）。
+- **执法体**：包装器体外执法（哨兵→SIGTERM 组→宽限→SIGKILL 组，引擎终止序列形制）。
+- **断言**：①软超时哨兵在案（reason=soft_timeout 同形态）；②进程组真死（waitpid(-pgid) 返回＋桩 exit-stamp 在）；③lead 产物不采信——分段卡缺失时 stitch 不产 team-plan.json（fail-closed，§1.3 判据 3）；④lead 预算 patch session_outcome≠ok 上墙。
+- **判据载体**：哨兵文件内容＋墙 budgets 切片字段＋stitch 退出码。
+- **延迟采样**：T0=预算到期，L 上界报告（§1.2）。
+- **在树先例**：`tests/test_lead_engine.py:1041`/`:1044`（引擎侧同形制 E2E——本样本是领班域对位物）。
+
+### 2.2 SL-2 验收席伪造叙事桩（对应 failure-specs §3 判据②④；59 轮四问题①validator 面）
+
+- **注入**：构造违约 verdict-partial——judged[].cause=checks_red 而 evidence_refs=[]；以及 judged[].cause=枚举外自由值（"pass with concerns"）；以及 reason 字段内嵌 `"verdict": "pass"` 试图以叙事承载判定（handoff-schemas §3.1 V-2/V-3/V-6 三注入同源）。
+- **执法体**：verdict v2 schema 校验（jsonschema 校验器，负对照与生产共用同一实现）＋caps-gate `narrative-without-evidence` 判词＋adopt 采认步 fail-closed。
+- **断言**：①schema 校验拒（三注入全拒）；②adopt 拒采（无 sealed 齐覆盖=不采认，`salvage_verdict.py:45-47` D-2 seal 语义）；③判定通道只读枚举与证据引用——V-6 注入不得翻转机器判定（负面断言）。
+- **判据载体**：schema 校验器异常＋adopt 退出码＋caps-gate 判词输出。
+- **在树先例**：红章判死机器面=`validator_prompt_template.py:97`（HARD RULE），v2 schema 载体归 handoff-schemas §3。
+
+### 2.3 SL-3 工人席恒挂＋孤儿拖管道桩（对应 failure-specs §1 判据①④⑤；59 轮四问题②回归底座）
+
+- **注入**：fake-droid `--mode fork-orphan`（fork 孤儿继承管道后父进程吞 TERM 不退，复现 45B 形态：孤儿子进程持管道使 step 活到 job 墙，锚件 2 §10-②）；预算注入 2s 级。
+- **执法体**：v3.0 工人席包装器（seat-gates §4 收编后形态——预算从门清单读、哨兵→TERM **进程组**→宽限→KILL **进程组**；对位引擎 `run_lead.sh:282/:286` 负 PID 组信号）。
+- **断言**：①**进程组整组收**：KILL 后父子进程与孤儿全部不存在（孤儿不存活=执法通道不依赖被管进程配合的真实证明）；②哨兵在案→worker-delta 不采信为 ok（强制失败优先）；③delta 三字段 wall_killed 分类正确（`write_worker_delta.py:45` 分类器对桩 trace 判 124/137→wall_killed）；④**缺席即事件**：会话死于落盘前→delta 仍上墙（机器分类不依赖会话配合）。
+- **判据载体**：进程存在性探针（os.killpg(pgid, 0) 抛 ProcessLookupError）＋哨兵＋墙 workers 切片。
+- **延迟采样**：本样本是延迟上界的**主采样源**（fork-orphan=最坏抗死形态）。
+- **在树先例**：`tests/test_worker_salvage.py:293`（exit-0+ok 墙不被补卷翻案的守卫负例）；墙杀夹具=`tests/fixtures/worker-r58d/worker-delta-wall-killed.json`（58-D 真实形态夹具，sha256 对账在 `tests/test_worker_r58d_fixtures.py`）。
+- **59 轮回归对位**：RS-2（§5）以本样本的执法形态为「反转后正解」——现状裸跑形态（`team.yml:599`）对同一注入必然拖到 job 墙（45B 实证），v3.0 包装器必须整组收。
+
+### 2.4 SL-3b 工人越界写桩＋SL-3b' replan 伪造死因桩（写目标门＋证据授权门；59 轮四问题①回归核心）
+
+**SL-3b（越界写，对应 failure-specs §1 判据③面）**：
+
+- **注入**：违约会话产物含卡面 allowed 集合外文件（越界路径注入 tmp 探针 tree）；以及 status.json files 字段含 F-1 拒过的路径（handoff-schemas §5.1 H-3 注入）。
+- **执法体**：F-1 守卫（现行载体逻辑，`team.yml:731` reset --soft 后逐文件比对面）＋v3.0 caps-gate `out-of-scope-write` 判词（事中守卫化，seat-gates §4.3 ②）。
+- **断言**：①越界写被拒（守卫退出码 1，拒绝清单点名越界文件）；②越界文件不得进入 delta files 面（H-3 双红）；③**红绿对照**：合法卡面产物同场跑=绿（守卫只对越界红）。
+- **判据载体**：守卫退出码＋拒绝清单。
+- **在树先例**：F-1 在树契约面（worker 守卫测试族，NC-6 留痕 §二表）。
+
+**SL-3b'（replan 伪造死因，对应 failure-specs §4 判据②③；RS-1 的断言面）**：
+
+- **注入**：worker-delta v2 cause=「F-1 检查拒绝」自由文本（枚举外，W-3 注入）；plan-v2 death_facts[].cause=f1_rejected_machine_confirmed 而证据登记无 origin=f1 对象（P-1 注入）；narrative 含「F-1 check rejected」字样而 cause=unknown（P-2 注入）。
+- **执法体**：worker-delta/plan-v2 schema 校验＋证据登记解析器（悬挂引用拒）＋caps-gate `narrative-without-evidence`。
+- **断言**：①枚举外 cause 拒；②无机器证据的 f1 断言拒（构造权：origin=machine_guard_record/f1 白名单外即红，handoff-schemas §6）；③cause=unknown＋F-1 字样=narrative-without-evidence 红；④**钉子反转正样本**：存在合法 origin=f1 证据对象时，prompt 含 F-1 文案且恰好一次（反转后真值条件成立）。
+- **判据载体**：schema 校验＋证据解析＋反转后契约测试（目标态载体改造 `tests/test_replan_context_and_skipped_outcome_r53c.py:190` 测试语义——现状 :198-:202 逐字行、:205 count==1 断言反转为条件断言，施工时与 schema 演进同批，handoff-schemas §9.2）。
+
+### 2.5 SL-5 补卷守卫四条件违约矩阵（根治 1 倒影；对应 failure-specs §5 判据③）
+
+- **注入**：对守卫四条件逐条构造违约 pack（4 变体）：①merged=false；②F-1 越界（pack 内有卡外文件）；③checks-exit.json 有非零 exit（红 checks）／marker 按内容红但 claims 绿（BLK-1 面违约）；④会话正常终止（exit-0＋outcome ok＋无 marker——control 形态）；另加组合违约（红 checks＋marker 内容红但缺 evidence 件=BLK-1 边界：marker problems 仅缺件不拒，守卫仍因③拒）。
+- **执法体**：`scripts/team/worker_salvage.py` 守卫本体（fail-closed，`worker_salvage.py:13` docstring 四条件）。
+- **断言**：①五变体全部**不补卷**（salvage 拒，pack 维持缺件）；②exit-0+ok 形态永不被翻案为 done（control 钉子，`tests/test_worker_salvage.py:293` 语义——补卷永不掩盖服从性失败）；③红 checks 工人永不被补成 done（NC-3）；④绿路对照：全条件满足的 pack=补卷成功且 manifest 标 salvaged_from_machine。
+- **判据载体**：salvage 退出码＋pack 状态。
+- **在树先例**：`tests/test_worker_salvage.py` 在树守卫正反例族（本样本对齐并扩组合违约变体）。
+
+### 2.6 SL-6 板面翻板回归桩（对应 failure-specs §6 判据③；59 轮四问题③回归）
+
+- **注入**：模拟「写板终态后板面漂移」输入——构造墙 closeout 切片（project_state_written=true＋终态枚举）＋板面读桩（返回 Status≠终态＝漂移态，模拟 Item closed 翻板后的板面，翻板实证三单 `docs/板面关单翻板-最小操作指引.md:12-14`）。
+- **执法体**：v3.0 board_drift 对账步（F3 §2.1 图内再同步：PAT 读板回查→记 board_drift→重写板→仍漂移硬评论报警）。
+- **断言**：①漂移态输入→board_drift 事件必产（对账步必红）；②重写板动作被调用（PAT 单点写终态一次）；③仍漂移→硬评论报警分支触发；④**零漂移对照**：板面读桩返回终态=零事件零重写（对账不误报）。
+- **判据载体**：对账步退出态＋board_drift 事件字段＋墙 closeout 切片。
+- **诚实边界**：本样本测的是**图内发现与纠正机制**（对真实板面零依赖、零写面——板面读全部桩化）；板侧翻板根因的禁绝（大哥板侧操作）不在 CI 可测面（结构盲区，failure-specs §8 第 3 条）——本样本不冒充「阻断翻板」，只证明「翻板必被发现必被纠正」。
+
+### 2.7 SL-7 图外写口桩（写入口收口门；对应 failure-specs §2 lead 判据③、§6）
+
+- **注入**：workflow 文本夹具注入四类图外写口形态：①生产 workflow 出现 PAT 前缀族字面（ghp_ 哑值）；②生产 workflow 出现 I8_LIVE_B 夹具分支残留；③verdict 系文件落点在白名单外路径（repo 树内）；④席位门清单外令牌展开位点（`${{ secrets.* }}` 位点≠台账锚集，out-of-graph §3.6 判据 1 形态）。
+- **执法体**：caps-gate 文本断言层（生产 workflow 四文件正文扫描）＋verdict 合法落点白名单校验＋secrets 位点对账（orphan-secret-expansion 判词）。
+- **断言**：四注入各自必红（判词点名）；干净对照（现状四文件原树）必绿——**现状树本身必须过本守卫**（守卫不冤枉现状，只对未来违约红）。
+- **判据载体**：caps-gate 退出码＋判词输出。
+- **在树先例**：图外件守卫负例指针（out-of-graph §2.2 守卫负例、§3.6 五判据）。
+
+### 2.8 SL-8 缺席注入族（缺席即事件门；对应 failure-specs §7 判据①、§1 判据⑤、§3 判据③；59 轮四问题④回归）
+
+四变体（缺席面 × 承载席）：
+
+| 变体 | 注入 | 执法体 | 断言 |
+|---|---|---|---|
+| SL-8a recorder 缺席 | 桩 validator 会话全程零 recorder 调用、零 partial 落盘 | 包装器采样器＋墙 recorder_call_count＋硬评论报警 | 告警事件必产（首步窗口与全程窗口各测）；告警含席位/窗口/缺席面字段；recorder_call_count=0 上墙 |
+| SL-8b delta 缺席 | worker 会话死且零 delta 写出（fork-orphan 极端形态） | prep 门（prep_should_run 面按缺 delta 走缺件路径）＋缺席告警 | 缺件路径触发＋缺席事件上墙（delta 缺席≠会话 ok） |
+| SL-8c verdict 封章缺席 | partial 存在但 final=false（未封章） | adopt 采认步（adoptable 判据，`salvage_verdict.py:45-47`） | 不采认＋round 重验路径触发＋缺席告警（窗口截止时 sealed 缺席） |
+| SL-8d 收口 patch 缺席 | 桩链跑完但 final_status_card patch 未产 | foreman lint 静态面＋runtime 缺席告警（assemble 窗口） | lint 红（现状执法）＋v3.0 告警事件（补 per-run 面） |
+
+- **延迟采样**：缺席类=告警产出时延上界（§1.2 末段口径）。
+- **判据载体**：告警事件对象（墙缺席面字段＋硬评论 mock 面断言）。
+
+### 2.9 SL-9 交接接口违约族（枚举门；handoff-schemas §2.1/§3.1/§4.1/§5.1 违约表的常驻化）
+
+- **注入**：四 schema 违约表全量注入（W-1..W-6 / V-1..V-6 / P-1..P-4 / H-1..H-3，共 19 变体——内存对象构造，零文件面）。
+- **执法体**：四 schema jsonschema 校验（负对照与生产共用同一校验器实现，handoff-schemas §7.2 牙齿一致纪律）＋证据登记解析（悬挂引用）＋构造权校验（§6 白名单）。
+- **断言**：19 变体全拒＋合法对照件（四 schema 各一合法样本）全绿。
+- **判据载体**：校验器异常面逐条点名。
+- **落位说明**：本族是 handoff-schemas 已设计违约表的验收线登记——**违约表定义归 handoff-schemas（F2 交付），本件只登记其常驻负例形态与判据载体**，不重复 schema 细节。
+
+---
+
+## §3 执法延迟实测口径落位（每面执法墙的采样矩阵）
+
+| 执法墙 | 预算面 | 采样源样本 | 设计上界（护栏） | CI 报告形态 |
+|---|---|---|---|---|
+| lead 会话墙 | droid_wall_sec=600（软超时=200s 差值面） | SL-1 | 软超时样本 L≤400s＋宽限；墙杀样本 L≤宽限(10s)＋KILL 余量 | `SL-1 enforcement-latency upper-bound=<n>s` |
+| worker 会话墙（v3.0 包装器） | 900（软超时=500s 差值面） | SL-3（fork-orphan 主采样） | 同上＋**孤儿整组收断言**（L 上界含 KILL 传播） | `SL-3 enforcement-latency upper-bound=<n>s（kill_path 逐采样）` |
+| validator 会话墙 | 480＋adopt 储备 120（`foreman_run_lib.py:42-45`） | SL-3 同构参数化 | 同上 | 同形态报告 |
+| replan 会话墙 | 480（`foreman_run_lib.py:48-50`） | SL-3 同构参数化 | 同上 | 同形态报告 |
+| 缺席即事件告警面 | 窗口=budgets 键（§4） | SL-8a-d | 告警时延≤窗口宽限＋上墙余量 | `SL-8x alert-latency upper-bound=<n>s` |
+
+**采样纪律**（§1.2 细则的落位）：每墙 N≥5（三抗死形态各≥1＋普通≥2）；取上界；逐采样行落 `wall-v3-latency.json`（目标态 artifact）；实测超护栏=该墙建成判据红（§1.3 第 2 条）。
+
+**诚实声明**：延迟实测测量的是**包装器执法路径**（桩进程组），不是生产 droid 会话的真实死亡时延——生产会话的死亡面由墙 patch 上墙字段承载（session_outcome 三字段），两者是不同测量对象。设计上界护栏值对桩与生产同构成立的前提=执法通道与被管进程形态解耦（组信号整组收），这正是桩要证明的。
+
+---
+
+## §4 缺席即事件不变量检查设计（硬规则⑥落位）
+
+### 4.1 不变量清单（逐席逐面）
+
+| # | 不变量 | 观察点 | 窗口 | 缺席后果 |
+|---|---|---|---|---|
+| INV-1 | recorder 调用数>0（validator/worker 会话） | 包装器采样器（tool_call 计数） | 首步窗口=会话开始后首个分析单元；全程窗口=budgets.droid_wall_sec | 告警事件＋recorder_call_count=0 上墙＋硬评论 |
+| INV-2 | verdict-partial 首步落盘（逐件纪律的机器面） | 落点存在性（PARTIAL_NAME，`salvage_verdict.py:18`） | 首步窗口 | 告警＋G-3 登记维度缺失标记 |
+| INV-3 | sealed 封章在窗口内达成 | adoptable 判据（`:45-47`） | droid_wall_sec＋adopt_reserve_sec | 不采认＋round 重验＋告警 |
+| INV-4 | worker-delta 每 pid 恰一条 | merge 面并集对账（`team.yml:885`） | workers-wall-merge 窗口 | 缺件路径＋缺席告警 |
+| INV-5 | plan-v2 落单（should_replan=true 时） | 落单步产物存在性（`team.yml:2420-2423` 面） | replan budgets 窗口 | 告警＋链终态 failure |
+| INV-6 | final_status_card patch | 墙 closeout 切片 | assemble 窗口 | lint 红＋v3.0 告警 |
+| INV-7 | evidence.tar.gz manifest 齐 | validate manifest sha 门（锚件 2 §3 入口面） | prep→validate 交接窗口 | sha 门拒＋告警 |
+
+### 4.2 不变量检查的执法形态
+
+- **观察点实现**：全部不变量的观察点只有两类——包装器采样（会话面：INV-1/2）与墙/产物存在性读取（产物面：INV-3..7）；**零 prompt 依赖**（措辞类约束无运行时效力，P-2 终裁口径 `V-3-closeout-收档报告.md:56`——缺席执法不得建立在措辞上）。
+- **窗口定义单一来源**：窗口值住席位门清单 `budgets` 键（seat-gates §2 各段），缺席检查器读门清单，不读 workflow 字面量（与预算同源纪律，seat-gates §4.2）。
+- **缺席≠失败豁免**：缺席告警不改变链采认语义（inv 缺席的链该 fail 仍 fail——例如 INV-3 缺席=不采认）；告警是**可见性执法**（从无人知道变必有人知道），不是替代处置。59 轮四问题④的教训正是「缺席既无处置也无可见」——v3.0 先补可见性，处置面由守卫既有 fail-closed 承载。
+- **告警必含定位字段**：席位/窗口名/缺席面/观测值——告警不可定位=告警无效（RS-4 断言面）。
+
+---
+
+## §5 59 轮四问题回归样本设计（RS 族；architecture §8 硬规则⑦落位）
+
+> 四问题机制级证据底座＝锚件 2 §10（①replan 虚构死因/②900s 不执法/③板面翻板/④recorder 缺席）。RS 样本设计原则：**每样本先钉死当年的错误行为，再断言反转后的正确行为**——「钉子反转」不仅是 replan 文案一处，四问题各有一个「当年被钉错/没人钉」的面，RS 逐个反转。回归样本常驻全套件门，四问题任何一处回退即红。
+
+### RS-1 replan 虚构死因钉子反转样本（四问题①）
+
+- **当年错误行为的钉子**：`tests/test_replan_context_and_skipped_outcome_r53c.py:190-205`——断言「F-1 检查拒绝」文案**必须逐字出现**于 replan prompt（分支缺席即推断 F-1 拒绝，无机器佐证；机制锚 `team.yml:2259` 起推断注释、`:2278-2279` 文案赋值，锚件 2 §10-①）。
+- **反转断言（三段，handoff-schemas §9.2 同批施工）**：
+  1. **无证据不出文案**：分支缺席＋无 origin=f1 机器证据 → prompt 死因面呈现「未明（无机器证据）」，F-1 文案零出现（反转 :198-:202 逐字断言为 count==0 条件断言）。
+  2. **有证据才出文案**：构造合法机器证据对象（origin=f1 的 machine_guard_record，F-1 拒绝事件发生时登记）→ prompt 含 F-1 文案且恰好一次（:205 count==1 断言保留但条件化——文案从「无条件推断」变「机器证实才可说」）。
+  3. **schema 面**：worker-delta v2/plan-v2 的 cause 枚举校验＋f1_rejected_machine_confirmed 构造权校验（SL-3b' 断言面复用）。
+- **归责面对位**：attribution_reason 分支（`attribution_reason.py:75` neutral_attribution）按 delta cause 枚举渲染——wall_kill↔中性归因措辞、self_crash↔非机器判定措辞、unknown↔缺料措辞（归责措辞与死亡事实对齐，根治第 4 层语义，`docs/第58轮-D单追认口径与replan归责缺陷立号.md:32` 表）。
+- **验收判据**：反转后三段断言全绿＋旧钉子测试不存在（同批删除/改造，不双轨）。
+
+### RS-2 900s 不执法反转样本（四问题②）
+
+- **当年错误行为**：执法与会话同体——裸跑 `timeout ... 900s droid exec`（`team.yml:599`；worker2 `:2784`），孤儿子进程持管道使 step 拖到 25m job 墙（45B 实测：名义 900s、实际 1800s，锚件 2 §10-②）；budgets lint 明文豁免该形态（`lint_workflow_budgets.py:43-51` worker/900s 豁免分支）。
+- **反转断言**：
+  1. **形态反转**：caps-gate BARE_DROID 探针——workflow 文本出现裸跑形态即红（豁免废止后对 7 席一律红，seat-gates §4.2 lint 同步反转）。
+  2. **执法反转**：SL-3 fork-orphan 桩对 v3.0 包装器——进程组整组收（孤儿不存活）＋延迟上界数字（§3 采样矩阵）；同一注入对裸跑形态的失败剖面已由 45B 实证登记（证据锚：任务书口径，机制证据=锚件 2 §10-②），本样本不重建裸跑对照（不施工旧形态），以 SL-3 正解面收口。
+  3. **预算反转**：预算从门清单读的接线断言——workflow 文本零 `900s` 字面量（BARE_DROID 正则同面）＋包装器读 `[seat.worker.budgets]` 的对平测试（session-config 与门清单逐键一致，seat-gates §4.3）。
+- **验收判据**：三段断言绿＋SL-3 延迟上界≤护栏（§3 行 2）。
+- **第 3 层边界**（不可施工面引用，failure-specs §0.4）：回合级熔断不在本仓施工——本样本的反转上限=会话级体外整组终止＋补卷回收；「回合预算/收束/续作」三能力为上游立项前置（登记件 :19-:24），任何把本样本解读为回合级执法承诺的表述即违反登记口径。
+
+### RS-3 板面翻板回归样本（四问题③）
+
+- **当年错误行为**：PAT 写板「已验收」→人工关单→1–2 秒 Status 被翻回「施工中」，演员 `github-project-automation`（三单实测 #761/#763/#764，`docs/板面关单翻板-最小操作指引.md:12-14`）；repo 侧零可拦截写入点（`:24` 结论）。
+- **反转断言**：
+  1. **发现面**：SL-6 漂移注入→board_drift 事件必产＋重写必发生＋仍漂移硬评论必报（§2.6）。
+  2. **板侧禁绝判据**（人工面，CI 不可测，登记判定）：板侧 Disable/终态选项改造完成后的 timeline 判据（专档 :37）——下一单关单后 1–2 分钟查 timeline 零 `github-project-automation` 翻板事件；env-check 探测项 WARN 登记面在树（F3 §2.1 第 2 步）。
+  3. **repo 侧写点收口**：板面写 PAT 单点断言（caps-gate：板面写非 project_state_write 单点=token-scope-violation 红，seat-gates §2.6 probes）。
+- **验收判据**：1 段常驻绿；2 段按三态纪律登记（板侧动作=blocked 待大哥，F3 §4 表①——**不虚称 cleared**）；3 段常驻绿。
+- **诚实边界**：repo 内机制是发现与纠正不是阻断（结构盲区，failure-specs §8 第 3 条）；「关单即终态」的完全解在板侧，呈裁清单随主设计稿（out-of-graph §2.1 选项 A/B）。
+
+### RS-4 recorder 缺席报警回归样本（四问题④）
+
+- **当年错误行为**：必落字段与约定首步静默缺席无人知晓——生产首验 4 会话中 2 个调用 recorder、逐件落盘服从率 0/4、墙杀场景回收 0/2（`docs/V-3-closeout-收档报告.md:11` Opus 终审引文）；工人席对应口径：13 次工具调用零次以 handoffs/status 为目标（`docs/第58轮-死亡账分型登记-58D归第1类.md`；机制链 `worker_salvage.py:4-9` docstring）；per-run 无 recorder 调用数墙字段、无报警（锚件 2 §10-④）。
+- **反转断言**：
+  1. **缺席必报警**：SL-8a 桩零调用→告警必产＋recorder_call_count=0 上墙（§2.8）。
+  2. **正样本门**（G-2 制度，`V-3-closeout-收档报告.md:15`——「让模型调用某工具才生效」的机制上线前必须有真实会话流 tool_call 正样本）：recorder 执法机制上线判据=受控会话正样本在案（V-3 门重跑面，发版前置人工门保留）＋离线重放只算回收链测试（本 RS 样本属机器面，不冒充正样本门）。
+  3. **死亡账登记维度**（G-3，`:44`）：validator 墙杀必记「结论是否已形成/recorder 调用数/删失尾秒数」——墙 validation 切片扩字段断言（施工随 schema 演进同批）。
+- **验收判据**：1、3 段常驻绿；2 段按 G-2 门登记（人工门状态显式，不虚称常驻自动化）。
+- **措辞边界**（P-2 终裁，`:56`）：措辞类约束无运行时效力——本 RS 的执法面是采样与告警（§4.2 零 prompt 依赖），prompt 单源增量落盘引导（根治第 2 层）只作边际压制、不入判据。
+
+### RS 族与 SL 族互锁
+
+| RS | 依赖的 SL 面 | 互锁断言 |
+|---|---|---|
+| RS-1 | SL-3b'（枚举/构造权/悬挂引用） | 钉子反转三段＋SL-3b' 四断言同批绿 |
+| RS-2 | SL-3（恒挂＋孤儿）＋SL-7（裸跑形态探针） | 整组收＋延迟上界＋零裸跑字面量 |
+| RS-3 | SL-6（翻板桩）＋SL-7（PAT 单点探针） | board_drift 必产＋单点违例必红 |
+| RS-4 | SL-8a-c（缺席族） | 告警必产＋字段可定位＋墙字段在 |
+
+---
+
+## §6 验收线总表（墙/门 × 必死样本 × 延迟口径 × 缺席不变量 × 回归样本）
+
+| 墙/门 | 必死样本 | 延迟口径 | 缺席不变量 | 回归样本 | 常驻载体 |
+|---|---|---|---|---|---|
+| lead 会话墙 | SL-1 | §3 行 1 | — | — | v3.0 契约测试（F5） |
+| worker 会话墙＋体外执法 | SL-3 | §3 行 2（主采样源） | INV-4 | RS-2 | 在树守卫族＋v3.0 契约测试 |
+| 写目标门（F-1 判词化） | SL-3b | —（静态守卫无时间面） | — | RS-1（结局面） | 在树 F-1 族＋caps-gate |
+| 证据授权门 | SL-2、SL-3b' | — | INV-2/3 | RS-1 | v3.0 契约测试＋在树 salvage 族 |
+| 补卷守卫 | SL-5 | — | INV-4 关联 | RS-2/RS-4 关联 | 在树 `tests/test_worker_salvage.py` |
+| 板面终态门 | SL-6、SL-7 | — | — | RS-3 | v3.0 契约测试 |
+| 令牌 scope 门 | SL-4 族（越权令牌注入，SL-7 载体同面） | — | — | — | caps-gate |
+| 交接口枚举门 | SL-9（19 变体） | — | — | RS-1 | v3.0 契约测试 |
+| 缺席即事件门 | SL-8a-d | §3 末行（告警时延） | INV-1..7 | RS-4 | v3.0 契约测试 |
+| lead 图外写口 | SL-4b | — | INV-6 关联 | — | caps-gate 文本层 |
+
+**门口径声明**：本表「墙/门」覆盖硬规则①③④⑤⑥⑦②的执法面；规则⑧（失败规范）载体=failure-specs 底稿本件不重复；规则⑨（钥匙）面 SL 样本=SL-7 第④注入（secrets 位点对账），延迟/缺席不适用；规则⑩（无兜底）面 SL-7 全部注入＋RS-3 板侧三态登记。十条硬规则与验收线的逐条对位随主设计稿总装（architecture §8 映射表为准绳）。
+
+---
+
+## 附A 本件 file:line 锚清单（供锚解析器）
+
+| 锚 | 解析判据（该行应含） | 来源 |
+|---|---|---|
+| `team.yml:599` | `900s`（裸跑行） | 转引 seat-gates 附A |
+| `team.yml:731` | `reset --soft` | 转引 |
+| `team.yml:885` | `merge_worker_deltas` | 转引 |
+| `team.yml:1223` | `worker_salvage`（接线区段起） | 转引 |
+| `team.yml:2420` | 落单步机器校验区段起 | 转引 handoff-schemas 附表 |
+| `team.yml:2784` | `900s`（worker2 裸跑） | 转引 |
+| `scripts/team/foreman_run_lib.py:38` | `"droid_wall_sec": 600`（lead） | ★ |
+| `scripts/team/foreman_run_lib.py:42` | `"validator": {` | 转引 failure-specs 附A |
+| `scripts/team/foreman_run_lib.py:48` | `"replan": {` | 转引 failure-specs 附A |
+| `scripts/team/worker_salvage.py:13` | `The guard is machine-judged and fail-closed` | 转引 |
+| `scripts/team/worker_salvage.py:4` | 死亡链机器侧重建 docstring（hslconv 案） | ★ |
+| `scripts/team/salvage_verdict.py:18` | `PARTIAL_NAME` | 转引 |
+| `scripts/team/salvage_verdict.py:45` | `final` is the D-2 seal 语义行 | 转引 failure-specs 附A（本件快照核实） |
+| `scripts/team/salvage_verdict.py:47` | adoptable 语义行 | 转引 failure-specs 附A |
+| `scripts/team/write_worker_delta.py:45` | `def classify_session_outcome` | 转引 |
+| `scripts/team/attribution_reason.py:75` | `def neutral_attribution` | 转引 failure-specs 附A |
+| `scripts/team/validator_prompt_template.py:97` | `HARD RULE — a red mandated check is never a pass` | 转引 failure-specs 附A |
+| `scripts/team/lint_workflow_budgets.py:43` | worker/900s 豁免分支 | 转引 failure-specs 附A |
+| `scripts/team/worker_prompt_template.py:13` | `Incremental persistence guidance` | 转引 failure-specs 附A |
+| `tests/test_replan_context_and_skipped_outcome_r53c.py:190` | 钉子测试定义 | 转引 failure-specs 附A |
+| `tests/test_replan_context_and_skipped_outcome_r53c.py:198` | F-1 文案逐字行 | 转引 failure-specs 附A |
+| `tests/test_replan_context_and_skipped_outcome_r53c.py:205` | `prompt.count(line) == 1` | 转引 failure-specs 附A |
+| `tests/test_worker_salvage.py:293` | exit-0+ok 墙不被补卷翻案守卫负例 | ★ |
+| `tests/fixtures/worker-r58d/worker-delta-wall-killed.json` | 墙杀夹具文件存在性 | ★ |
+| `docs/回合熔断上游特性需求登记-droidCLI.md:19` | 上游三能力表 | 转引 failure-specs 附A |
+| `docs/R58D-收尾决策留痕-NC6与遗留决策点.md:5` | 十文件子集维持现状裁定 | 转引 failure-specs 附A |
+| `docs/V-3-closeout-收档报告.md:11` | 服从率 0/4 终审引文 | 转引 failure-specs 附A |
+| `docs/V-3-closeout-收档报告.md:15` | G-2 触发面正样本上线门 | 转引 failure-specs 附A |
+| `docs/V-3-closeout-收档报告.md:44` | G-3 登记维度＋L-3 | 转引 failure-specs 附A |
+| `docs/V-3-closeout-收档报告.md:56` | P-2 措辞无运行时效力终裁行 | ★ |
+| `docs/第58轮-死亡账分型登记-58D归第1类.md:21` | hslconv 死法行 | 转引 failure-specs 附A |
+| `docs/第58轮-D单追认口径与replan归责缺陷立号.md:32` | 归责模板分支化表行 | 转引 failure-specs 附A |
+| `docs/板面关单翻板-最小操作指引.md:12` | 三单实测表 | 转引 out-of-graph 附A |
+| `docs/板面关单翻板-最小操作指引.md:24` | repo 不可拦截结论 | 转引 failure-specs 附A |
+| `docs/板面关单翻板-最小操作指引.md:37` | timeline 验证判据 | 转引 out-of-graph 附A |
+| 引擎：`src/infra_core/engine/droid_review/run_lead.sh:55` | LEAD_KILL_GRACE_SEC 默认值 | 转引 form-basis 附表（:52-:55 区段） |
+| 引擎：`src/infra_core/engine/droid_review/run_lead.sh:9` | 哨兵先行终止序列头注 | 转引 form-basis 附表 |
+| 引擎：`src/infra_core/engine/droid_review/run_lead.sh:282` | `kill -TERM "-$exec_pid"` | 转引 form-basis 附表 |
+| 引擎：`src/infra_core/engine/droid_review/run_lead.sh:286` | `kill -KILL` | 转引 form-basis 附表 |
+| 引擎：`tests/test_lead_engine.py:1041` | TestRunLeadBoundedExitE2E 类定义 | 转引 form-basis 附表 |
+| 引擎：`tests/test_lead_engine.py:1044` | hang→soft_timeout 遗书断言 | 转引 form-basis 附表 |
+| 引擎：`tests/test_lead_engine.py:794` | fake droid 桩 mode="hang" 分支 | 转引 form-basis 附表 |
+
+## 附B 十条硬规则 × 验收线索引（主设计稿 §6→§8 对位的底稿侧映射）
+
+| 硬规则 | 验收线承载 |
+|---|---|
+| ①逐席位门清单＋工人收进包装器 | SL-3＋RS-2（裸跑形态反转＋包装器接线对平） |
+| ②交接物全结构化＋证据引用 | SL-9＋SL-2/SL-3b'（枚举/证据/构造权全量负例） |
+| ③执法在体外 | SL-1/SL-3（进程组整组收断言＝体外性的行为证明） |
+| ④每墙必死样本＋执法延迟实测 | 全 SL 族＋§1.3 四条活验数字判据＋§3 采样矩阵 |
+| ⑤写入口收口 | SL-3b/SL-4b/SL-7（越界写＋图外写口必红） |
+| ⑥缺席即事件 | SL-8 族＋INV-1..7 |
+| ⑦事故样本回归＋V-3 口径正样本门 | RS-1..4＋G-2 门登记（RS-4 第 2 段） |
+| ⑧逐席位失败规范 | failure-specs 底稿（本件附B 反向索引互锁） |
+| ⑨钥匙总管理 | SL-7 第④注入（secrets 位点对账）＋out-of-graph §3.6 五判据 |
+| ⑩无兜底、不留图外 | SL-7 全注入＋RS-3 板侧三态登记（blocked 不虚称 cleared） |
