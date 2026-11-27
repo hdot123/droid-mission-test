@@ -1,0 +1,21 @@
+{
+  "id": "natsort",
+  "title": "实现 natsort.py 自然序排序与 tests/test_natsort.py",
+  "state": "done",
+  "files": [
+    "natsort.py",
+    "tests/test_natsort.py",
+    "team/handoffs/natsort.md",
+    "team/status/natsort.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_natsort.py -q",
+      "result": "PASS: 12 passed in 0.02s"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "PASS: 354 passed, 2 skipped in 19.71s"
+    }
+  ]
+}
