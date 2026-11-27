@@ -1,0 +1,21 @@
+{
+  "id": "fenwick",
+  "title": "实现 fenwick.py：Fenwick 树（树状数组）",
+  "state": "done",
+  "files": [
+    "fenwick.py",
+    "tests/test_fenwick.py",
+    "team/handoffs/fenwick.md",
+    "team/status/fenwick.json"
+  ],
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/test_fenwick.py -q",
+      "result": "18 passed"
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "result": "360 passed, 2 skipped"
+    }
+  ]
+}
