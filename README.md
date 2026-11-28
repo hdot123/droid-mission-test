@@ -53,3 +53,7 @@ python3 scripts/team/lint_workflow_needs.py
 以上即 CI（foreman-wall contract workflow）在 push/PR 时运行的全部检查：契约测试子集＋五个 lint 脚本（foreman 接线、墙退出、Projects 解析、预算参数、needs 悬空引用）。
 
 当前基线：599 passed, 2 skipped。
+
+## 领班面墙 API 设计稿（v3.0，2026-11-27）
+
+第 59 轮查实「组件手握无授权能力」一类问题后，本仓产出**设计稿 v3.0**（零施工）：`docs/领班制-面墙API设计稿-v3.md` 为唯一主稿，含 default-deny 总纲、十条硬规则逐条落位映射、三件套（逐席位门清单＋M-CAP 对位表／图外件清零清单＋钥匙台账／逐席位失败规范＋验收线）、换入判据、版本口径声明（v3.0 起版，作废 v2.7~v2.10 账面墙口径）、引擎未闭合项禁抄声明（VAL-M4-004/007、R-29 两门口径）与待大哥裁决清单。设计输入锚件在 `docs/wall-v3/`（form-basis／as-is-capability-inventory／seat-gates／handoff-schemas／out-of-graph-artifacts／failure-specs／acceptance-line-map）。设计稿自身的机器验证面是 `tests/test_wall_v3_design_contract.py`（结构断言＋锚点可解析断言，数据源 `tests/fixtures/wall-v3/design-contract.json`；引擎仓锚在该仓检出时本地验证，CI 自动跳过）。基线不变量全程保持：`pytest tests/ -q` 全绿＋五 lint 全绿；三席对抗审、大哥裁与施工另立后续流程。
