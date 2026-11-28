@@ -178,6 +178,8 @@
     {"repo": "test", "file": "scripts/team/foreman_run_lib.py", "line": 42, "contains": "\"validator\"", "window": 4},
     {"repo": "test", "file": "scripts/team/foreman_run_lib.py", "line": 48, "contains": "\"replan\"", "window": 3},
     {"repo": "test", "file": "scripts/team/foreman_run_lib.py", "line": 53, "contains": "\"worker\"", "window": 2},
+    {"repo": "test", "file": "scripts/team/foreman_run_lib.py", "line": 232, "contains": "human_stop\") or closeout.get(\"run_must_fail\")", "window": 2},
+    {"repo": "test", "file": "scripts/team/adopt_verdict.py", "line": 580, "contains": "human_stop + closeout", "window": 4},
     {"repo": "test", "file": "scripts/team/write_worker_delta.py", "line": 42, "contains": "SELF_EXIT_CODES"},
     {"repo": "test", "file": "scripts/team/write_worker_delta.py", "line": 45, "contains": "classify_session_outcome"},
     {"repo": "test", "file": "scripts/team/write_worker_delta.py", "line": 63, "contains": "job_wall_cancelled"},
