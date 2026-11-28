@@ -7,9 +7,13 @@ in the same change batch (schema-lock discipline).
 
 Anchor resolution: test-repo anchors resolve against the repo this test runs
 in; engine-repo anchors resolve against WALL_V3_ENGINE_REPO (default: the
-`infraro-core` checkout under the user home). The engine repo is a read-only
-reference that does not exist in CI, so engine anchors skip there — locally
-they must pass (VAL-MASTER-003: anchors verified on the real trees).
+`infraro-core` checkout under the user home), read from the pinned engine
+commit (ENGINE_PIN, main@460922c — the design doc's declared base). The pin
+tree is immutable, so engine main evolution never breaks these tests; main
+drift is disclosed (diff pin..main per anchored file), not gated. The engine
+repo is a read-only reference that does not exist in CI, so engine anchors
+skip there — locally they must pass (VAL-MASTER-003: anchors verified on the
+real trees).
 """
 
 from __future__ import annotations
@@ -32,6 +36,11 @@ ENGINE_REPO_ROOT = Path(
     os.environ.get("WALL_V3_ENGINE_REPO", str(Path.home() / "infraro-core"))
 ).expanduser()
 FIXTURE_PATH = REPO_ROOT / "tests/fixtures/wall-v3/design-contract.json"
+
+# Engine anchor base (same source as the design doc's line-5 declaration):
+# engine main@460922c, PR #883, 2026-11-28. Anchors were verified against this
+# tree; pinning keeps the contract tests stable when engine main moves on.
+ENGINE_PIN = "460922c"
 
 
 def _load_fixture() -> dict:
@@ -828,17 +837,25 @@ class TestAnchorResolvability:
     @staticmethod
     def _resolve(repo_root: Path, anchor: dict) -> str | None:
         # VAL-MASTER-003 defines engine anchors against the engine repo's
-        # committed main tree, not its worktree: the worktree can carry
-        # third-party in-flight edits (observed 2026-11-28: an unrelated
-        # session's uncommitted registry header line shifted every engine
-        # line by +1 and broke anchors that are intact on main).
+        # pinned commit (ENGINE_PIN), not its worktree or its live main: the
+        # worktree can carry third-party in-flight edits (observed 2026-11-28:
+        # an unrelated session's uncommitted registry header line shifted
+        # every engine line by +1 and broke anchors that are intact on main),
+        # and main itself evolves past the pin (observed: module-capabilities
+        # edits on main broke 12 anchors that are intact at the pin). The pin
+        # tree is immutable, so this resolver cannot be broken by engine
+        # evolution; main drift is disclosed via the design doc's anchor
+        # discipline, not gated here.
         if anchor["repo"] == "engine":
             out = subprocess.run(
-                ["git", "-C", str(repo_root), "show", f"main:{anchor['file']}"],
+                ["git", "-C", str(repo_root), "show", f"{ENGINE_PIN}:{anchor['file']}"],
                 capture_output=True, text=True,
             )
             if out.returncode != 0:
-                return f"engine file unreadable from main: {anchor['file']}: {out.stderr.strip()[:120]}"
+                return (
+                    f"engine file unreadable from pin {ENGINE_PIN}: "
+                    f"{anchor['file']}: {out.stderr.strip()[:120]}"
+                )
             lines = out.stdout.splitlines()
         else:
             path = repo_root / anchor["file"]
