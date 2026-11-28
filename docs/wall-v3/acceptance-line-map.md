@@ -70,7 +70,7 @@
 | caps-gate 判词负例门（工具/制品/事件/状态读面） | caps-gate 文本断言层（`unregistered-tool-call`/`undeclared-artifact`/`undeclared-event`/`undeclared-state-read` 判词） | SL-10a/b/c/d | — |
 | 登记面升级闸门 | caps-gate `caps-schema-drift`＋`mixed-registry-change`＋`evidence-construct-violation` 判词 | SL-11a/b/c | — |
 | 钥匙面升级闸与旁路面 | 钥匙面守卫（`unregistered-bypass-surface`/`mixed-key-registry-change` 判词，out-of-graph §3.6 判词枚举） | SL-12a/b | — |
-| 席位 probe 专属门（七 probe：lead 接线锁/worker 裸跑双载体/prep 候选分支越权＋droid 会话禁入/validator D-2 封章粘滞/assemble droid 会话禁入＋human_stop＋pick 变体） | 包装器 caps load＋caps-gate 文本层＋adopt/pick 执法本体 | SL-13a-f（逐 probe 映射表见本节末） | — |
+| 席位 probe 专属门（八 probe：lead 接线锁/worker 裸跑双载体/prep 候选分支越权＋droid 会话禁入/validator D-2 封章粘滞/assemble droid 会话禁入＋human_stop＋板面写单点＋pick 变体） | 包装器 caps load＋caps-gate 文本层＋adopt/pick 执法本体 | SL-13a-f＋SL-14（逐 probe 映射表见本节末） | — |
 
 **判词 × 样本满映射表（caps-gate 十判词＋钥匙面五判词 × SL 样本，逐判词至少一条必死样本设计；§2 的 SL 族是本表判据载体的展开）**：
 
@@ -108,10 +108,11 @@
 | 伪叙事钉子反转三负例 | replan | SL-3b' | §2.4 | worker-delta/plan-v2 违约构造（枚举外 F-1 文案/悬挂引用/无证据 f1 断言） | 拒＋钉子反转正样本成立 |
 | droid 会话禁入（assemble 面零 droid 席探针） | assemble | SL-13d 第①断言 | §2.13 | 桩注入 assemble 步 droid 会话调用面 | unregistered-tool-call 红（零 droid 席探针） |
 | human_stop 消费 | assemble | SL-13d | §2.13 | 墙注入 human_stop 事件而收口步桩化照常 pick | 提前停分支必被消费；未消费=红＋零板面写 |
+| 板面写单点性（非 project_state_write 写路径） | assemble | SL-14 | §2.13 | 文本层注入：assemble 步新增 gh project 直写或其他 automation 通道写板面（非 `team.yml:4441` project_state_write 调用面） | token-scope-violation 红（写板单点违例）＋现状树对照绿 |
 | pick fail-closed | assemble | SL-13e | §2.13 | 墙 validation 切片存在但整片 adoptable=false（全 partial 未封章） | pick 拒=零板面写/零 PR/零关单；缺切片正例同断言（在树） |
 | 缺席即事件采样 | recorder | SL-8a | §2.8 | 桩 validator 会话全程零 recorder 调用零落盘 | 告警必产＋recorder_call_count=0 上墙＋字段可定位 |
 
-（worker 席 probes——F-1 越界守卫＋裸跑探针——分别由 SL-3b/SL-3b' 与 SL-3/RS-2 承载，已在 §2.3/§2.4 逐样本展开，不另立行；裸跑形态探针归属 worker 席 BARE_DROID 判词（seat-gates §2.2 verification probes），非 SL-7 注入面——round-3 修正旧句「SL-7（裸跑形态探针）」。）
+（worker 席 probes——F-1 越界守卫＋裸跑探针——分别由 SL-3b/SL-3b' 与 SL-3＋caps-gate BARE_DROID 探针承载（BARE_DROID 判词载体行见 §5 RS-2 行，seat-gates §2.2 worker verification probes），已在 §2.3/§2.4 逐样本展开，不另立行；裸跑形态探针归属 worker 席 BARE_DROID 判词（seat-gates §2.2 verification probes），非 SL-7 注入面——round-3 修正旧句「SL-7（裸跑形态探针）」，round-6 修正互锁表「SL-3/RS-2 载体」自指表述。）
 
 ### 1.5 桩形态总登记（fake-droid 桩约定）
 
@@ -305,7 +306,7 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 
 **钥匙面五判词覆盖声明**：判词 1-3（`orphan-secret-expansion`/`anchor-drift`/`value-leak`）的必死样本=SL-7 第①/④注入（§2.7 既有设计，判据 1/2 的文本层）；判词 4-5=SL-12a/b（本节新增）——五判词逐条有样本，零「CLI-only 判词」类目（§0b 禁抄项义务：全部判词落 CI 恒跑腿）。
 
-### 2.13 SL-13 席位 probe 必死样本族（seat-gates §2 逐席 probe 的专属载体；round-2 补齐、round-3 拆原子——probe→SL 显式映射见 §1.4 第三张表）
+### 2.13 SL-13 席位 probe 必死样本族（seat-gates §2 逐席 probe 的专属载体；round-2 补齐、round-3 拆原子；SL-14 板面写单点违例桩随本节承载——probe→SL 显式映射见 §1.4 第三张表）
 
 > 样本各对应 seat-gates §2 一条原子 probe 子句（一子句一 probe 一载体，round-3 纪律：三合一 probe 拆条后零捆绑——round-3 实证：:370 一子句曾捆绑 droid 禁入/板面单点/human_stop 三 probe 而仅 human_stop 配载体）。现有六样本：lead 接线锁 / prep 候选分支越权 / validator D-2 封章粘滞 / assemble droid 会话禁入＋human_stop 消费 / assemble pick fail-closed 变体 / prep droid 会话禁入。形制同既有族：确定性注入＋守卫在岗断言＋现状树干净对照绿，零网络零真树污染；目标态载体=`tests/test_wall_v3_design_contract.py`＋`tests/fixtures/wall-v3/`（F5 落树）。
 
@@ -342,6 +343,13 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
   - **断言**：注入必红（判词点名：prep×droid 会话未登记）；现状树对照绿（prep 现状零 droid 步，守卫不冤枉现状）。
   - **判据载体**：caps-gate 退出码＋判词输出。
   - **与 SL-13d 第①断言的分工**：同族禁入探针两席各一——assemble 面随 SL-13d 变体①，prep 面独立本样本；两样本分立命名、分立点名，不共用编号（round-3 拆原子纪律）。
+- **SL-14（assemble 板面写单点性违例——经非 project_state_write 路径写板面→token-scope-violation 红；round-6 补齐，四轮漏 probe 收口）**：
+  - **注入**：workflow 文本夹具给 assemble 步新增非 `project_state_write.py` 调用面的板面写路径——两变体：①`gh project item-edit --status` 直写（gh CLI 绕过单点脚本）；②其他 automation 通道（例：注入 `gh api /projects/columns/...` REST 直调或第三方 automation 面调用行）。
+  - **执法体**：caps-gate 文本断言层（assemble 步板面写调用面 × 门清单 artifacts/authorization 登记集比对——`token-scope-violation` 判词：写板面=PROJECTS_STATE_PAT 专属能力，单点=`team.yml:4441` project_state_write 调用，未走该调用面的写路径即违例）。
+  - **断言**：两变体注入各自必红（判词点名：assemble×板面写非单点路径）；现状树对照绿（现状 assemble 写板仅 `:4441` 单点，守卫不冤枉现状）。
+  - **判据载体**：caps-gate 退出码＋判词输出。
+  - **与 SL-4 族/SL-13e 的分工**：SL-4 族钉「越权席位拿 PAT」（谁写），SL-13e 钉「切片不可采认即零写」（何时写），本样本钉「写路径单点」（怎么写）——三样本分立命名、注入面与断言各自独立，不共用编号。
+  - **在树先例**：写板调用单点=`team.yml:4431/:4441`（PAT 注入与 project_state_write 调用，Ledger ⑤consumes 同锚）；翻板演员专档 `docs/板面关单翻板-最小操作指引.md` 佐证板面存在多条非单点写路径（板侧 automation 面）。
 
 ---
 
@@ -414,7 +422,7 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 - **反转断言**：
   1. **发现面**：SL-6 漂移注入→board_drift 事件必产＋重写必发生＋仍漂移硬评论必报（§2.6）。
   2. **板侧禁绝判据**（人工面，CI 不可测，登记判定）：板侧 Disable/终态选项改造完成后的 timeline 判据（专档 :37）——下一单关单后 1–2 分钟查 timeline 零 `github-project-automation` 翻板事件；env-check 探测项 WARN 登记面在树（F3 §2.1 第 2 步）。
-  3. **repo 侧写点收口**：板面写 PAT 单点断言（caps-gate：板面写非 project_state_write 单点=token-scope-violation 红，seat-gates §2.6 probes）。
+  3. **repo 侧写点收口**：板面写 PAT 单点断言（caps-gate：板面写非 project_state_write 单点=token-scope-violation 红，seat-gates §2.6 probes；必死样本=SL-14——非 project_state_write 写路径注入如 gh project 直写/其他 automation 通道，§2.13）。
 - **验收判据**：1 段常驻绿；2 段按三态纪律登记（板侧动作=blocked 待大哥，F3 §4 表①——**不虚称 cleared**）；3 段常驻绿。
 - **诚实边界**：repo 内机制是发现与纠正不是阻断（结构盲区，failure-specs §8 第 3 条）；「关单即终态」的完全解在板侧，呈裁清单随主设计稿（out-of-graph §2.1 选项 A/B）。
 
@@ -433,8 +441,8 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 | RS | 依赖的 SL 面 | 互锁断言 |
 |---|---|---|
 | RS-1 | SL-3b'（枚举/构造权/悬挂引用） | 钉子反转三段＋SL-3b' 四断言同批绿 |
-| RS-2 | SL-3（恒挂＋孤儿）＋SL-3/RS-2 载体（裸跑形态探针=worker 席 BARE_DROID 判词，见上 2 段） | 整组收＋延迟上界＋零裸跑字面量 |
-| RS-3 | SL-6（翻板桩）＋SL-7（PAT 单点探针） | board_drift 必产＋单点违例必红 |
+| RS-2 | SL-3（恒挂＋孤儿）＋caps-gate BARE_DROID 裸跑形态探针（worker 席 probes 载体，seat-gates §2.2 worker verification probes） | 整组收＋延迟上界＋零裸跑字面量 |
+| RS-3 | SL-6（翻板桩）＋SL-14（板面写单点违例桩） | board_drift 必产＋单点违例必红 |
 | RS-4 | SL-8a-c（缺席族） | 告警必产＋字段可定位＋墙字段在 |
 
 ---
@@ -456,7 +464,7 @@ fake-droid（tests/fixtures/wall-v3/fake_droid.py，目标态）
 | caps-gate 判词负例门（工具/制品/事件/状态读） | SL-10a/b/c/d | — | — | — | caps-gate 文本层 |
 | 登记面升级闸门（schema 漂移/声明缺失） | SL-11b/c | — | — | — | caps-gate（恒跑接线，§1.4 锁） |
 | 钥匙面升级闸与旁路面 | SL-12a/b、SL-7 第①④注入 | — | — | — | 钥匙面守卫（恒跑） |
-| 席位 probe 专属门（lead 接线锁／worker 裸跑双载体／prep 候选分支越权＋droid 会话禁入／validator D-2 封章粘滞／assemble droid 会话禁入＋human_stop 消费＋pick 变体） | SL-13a-f（probe→SL 逐条映射见 §1.4 第三张表） | —（消费类无时间面） | INV-3 关联（SL-13c 封章缺席面） | — | 包装器 caps load＋caps-gate＋adopt/pick 在树执法本体 |
+| 席位 probe 专属门（lead 接线锁／worker 裸跑双载体／prep 候选分支越权＋droid 会话禁入／validator D-2 封章粘滞／assemble droid 会话禁入＋human_stop＋板面写单点＋pick 变体） | SL-13a-f＋SL-14（probe→SL 逐条映射见 §1.4 第三张表） | —（消费类无时间面） | INV-3 关联（SL-13c 封章缺席面） | — | 包装器 caps load＋caps-gate＋adopt/pick 在树执法本体 |
 
 **门口径声明**：本表「墙/门」覆盖硬规则①③④⑤⑥⑦②的执法面；规则⑧（失败规范）载体=failure-specs 底稿本件不重复；规则⑨（钥匙）面 SL 样本=SL-7 第④注入（secrets 位点对账）＋SL-12a/b（旁路面/升级闸），延迟/缺席不适用；规则⑩（无兜底）面 SL-7 全部注入＋SL-11c＋RS-3 板侧三态登记。十条硬规则与验收线的逐条对位随主设计稿总装（architecture §8 映射表为准绳）；判词×样本满映射表（§1.4 第二张表）是「每判词至少一条必死样本」的机器可查索引；席位 probe→SL 显式映射表（§1.4 第三张表）是「每 probe 至少一条专属或点名样本」的机器可查索引（毯式句废止，round-2 纪律）。
 

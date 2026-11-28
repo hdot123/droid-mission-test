@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import tomllib
 import unicodedata
 from pathlib import Path
@@ -519,9 +520,17 @@ class TestSeatProbeExplicitMapping:
         ("候选分支越权写探针", "SL-13b"),
         ("D-2 封章粘滞负例", "SL-13c"),
         ("human_stop 消费探针", "SL-13d"),
+        ("板面写单点性探针", "SL-14"),
         ("pick fail-closed 变体探针", "SL-13e"),
         ("droid 会话禁入探针", "SL-13"),
     ]
+
+    def test_prep_droid_probe_names_its_own_carrier(self):
+        """Round-6 RC-9: the prep droid-session-ban probe carries SL-13f (its
+        own carrier), not SL-13d — carrier names must agree with
+        acceptance-line-map §2.13 and the master §6.2 roster."""
+        gates = (REPO_ROOT / "docs/wall-v3/seat-gates.md").read_text(encoding="utf-8")
+        assert "载体=SL-13f" in gates, "prep droid-ban probe must name SL-13f"
 
     def test_seat_gates_probe_clauses_name_sl_carrier(self):
         gates = (REPO_ROOT / "docs/wall-v3/seat-gates.md").read_text(encoding="utf-8")
@@ -542,6 +551,69 @@ class TestSeatProbeExplicitMapping:
         assert "不再另立族号" not in table, "blanket probe-coverage sentence survived"
         for _, sl in self.PROBE_CLAUSES:
             assert f"| {sl}" in table or f"| {sl} " in table, f"{sl} has no explicit mapping row"
+
+
+class TestProbeClauseAtomicEnumeration:
+    """Round-6 RC-5' discipline (four rounds lost the same assemble probe by
+    counting `probes = ` clauses instead of atomic probe members): enumerate
+    every probe atom inside every per-seat probes clause — split by the
+    ①②③ markers / ＋ separators / distinct verdict names — and require each
+    atom to have a row in the acceptance-line-map explicit mapping table.
+    Clause-level presence checks cannot catch a missing member inside a
+    compound clause; this test counts atoms."""
+
+    ATOM_PROBES = [
+        # (seat, unique atom marker inside the clause, required SL carrier substring)
+        ("lead", "接线锁探针", "SL-13a"),
+        ("worker", "裸跑探针", "SL-3/RS-2"),
+        ("prep", "补卷守卫四条件负例", "SL-5"),
+        ("prep", "droid 会话禁入探针", "SL-13f"),
+        ("prep", "候选分支越权写探针", "SL-13b"),
+        ("validator", "GH 写调用=token-scope-violation", "SL-4"),
+        ("validator", "D-2 封章粘滞负例", "SL-13c"),
+        ("replan", "narrative-without-evidence", "SL-3b'"),
+        ("assemble", "droid 会话禁入探针", "SL-13d"),
+        ("assemble", "板面写单点性探针", "SL-14"),
+        ("assemble", "human_stop 消费探针", "SL-13d"),
+        ("assemble", "pick fail-closed 变体探针", "SL-13e"),
+        ("recorder", "缺席即事件", "SL-8a"),
+    ]
+
+    def _seat_region(self, gates: str, seat: str) -> str:
+        # the probes = clauses live anywhere inside the seat's TOML block
+        # (api-level probes for lead, verification probes for the rest);
+        # anchor on the fenced TOML header line, not the first inline mention
+        # (probes prose quotes "[seat.lead] 段缺席" earlier in the file)
+        import re as _re
+        m = _re.search(r"\n\[seat\.%s\]\s*\n" % seat, gates)
+        assert m, f"seat block header not found: [seat.{seat}]"
+        start = m.start()
+        nxt = _re.search(r"\n\[seat\.(?!%s\.)[a-z0-9_]+\]" % seat, gates[start + 1:])
+        return gates[start:start + 1 + nxt.start()] if nxt else gates[start:]
+
+    def test_every_probe_atom_names_a_carrier(self):
+        gates = (REPO_ROOT / "docs/wall-v3/seat-gates.md").read_text(encoding="utf-8")
+        alm = (REPO_ROOT / "docs/wall-v3/acceptance-line-map.md").read_text(encoding="utf-8")
+        table = alm[alm.index("席位 probe→SL 显式映射表"):]
+        for seat, atom, carrier in self.ATOM_PROBES:
+            region = self._seat_region(gates, seat)
+            assert atom in region, f"probe atom {atom!r} missing from [seat.{seat}] verification probes"
+            assert carrier in region, (
+                f"probe atom {atom!r} in [seat.{seat}] does not name carrier {carrier}"
+            )
+            assert carrier.split("／")[0].split("＋")[0] in table or carrier in table, (
+                f"probe atom {atom!r} carrier {carrier} has no mapping-table row"
+            )
+
+    def test_assemble_clause_atoms_individually_mapped(self):
+        """Round-3's three-in-one assemble clause is the exact failure this
+        guards: each of its three atoms must carry its own mapping row in
+        the explicit table (板面写单点性 was the member missed for four
+        rounds)."""
+        alm = (REPO_ROOT / "docs/wall-v3/acceptance-line-map.md").read_text(encoding="utf-8")
+        table = alm[alm.index("席位 probe→SL 显式映射表"):alm.index("### 1.5")]
+        for row_marker in ("| 板面写单点性", "| human_stop 消费", "| droid 会话禁入（assemble 面零 droid 席探针）"):
+            assert row_marker in table, f"assemble atom row missing from mapping table: {row_marker!r}"
 
 
 class TestKeyLedgerFullTreeScan:
@@ -605,25 +677,50 @@ class TestKeyLedgerFullTreeScan:
         assert 'nature = "use"' in sample, "ledger sample nature must be use"
         assert "触发凭证" in sample, "trigger-credential rationale missing"
 
+    def test_ledger_line4_row_carries_go_github_run_token_gate_anchor(self):
+        """Round-6 RC-1': ledger §3.3 row ④ cites env-check.yml:85 only
+        (:239 was the wrong WORKER_CI_KEY-line citation, deleted in round-6
+        after line-read verification)."""
+        oog = (REPO_ROOT / "docs/wall-v3/out-of-graph-artifacts.md").read_text(encoding="utf-8")
+        row4 = next(
+            ln for ln in oog.splitlines()
+            if ln.startswith("| ④ | GO_GITHUB_RUN_TOKEN")
+        )
+        assert "env-check.yml `:85`" in row4, "row ④ must cite env-check.yml :85"
+        assert ":239" not in row4, "row ④ must not cite the WORKER_CI_KEY wall-step line"
+
     def test_ledger_sample_anchor_lines_resolve(self):
-        """Round-3 RC-1: ledger [[key]] consumes anchor lines must resolve
-        with matching content (env-check.yml:240 was a WORKER_CI_KEY line —
-        wrong-anchor class)."""
+        """Round-3 RC-1 corrected by round-4/6 re-verification (lines read
+        before asserting — the round-5 version asserted a reversed fact).
+        Facts read from .github/workflows/env-check.yml 2026-11-28:
+        wall step :238 = S_FACTORY_API_KEY, :239 = S_WORKER_CI_KEY,
+        :240 = S_PROJECTS_STATE_PAT; gate step :85 = S_GO_GITHUB_RUN_TOKEN.
+        Ledger discipline: row ⑤ carries :240 (the PAT wall-step expansion,
+        a genuine ⑤ anchor pending its closeout), row ④ must not carry :239
+        (a WORKER_CI_KEY line, wrongly cited there in round-3)."""
         oog_text = (REPO_ROOT / "docs/wall-v3/out-of-graph-artifacts.md").read_text(encoding="utf-8")
         ledger = oog_text[oog_text.index("### 3.2 台账 schema"):oog_text.index("### 3.3")]
-        forbidden = "env-check.yml:240"
+        forbidden = "env-check.yml:239"
         assert forbidden not in ledger, (
-            "ledger carries env-check.yml:240 anchor — that line is wall-step "
-            "S_WORKER_CI_KEY expansion, not a PROJECTS_STATE_PAT consumption"
+            "ledger carries env-check.yml:239 anchor — that line is wall-step "
+            "S_WORKER_CI_KEY expansion, not a ④ GO_GITHUB_RUN_TOKEN consumption"
+        )
+        assert "env-check.yml:240" in ledger, (
+            "ledger lost env-check.yml:240 anchor — that line is wall-step "
+            "S_PROJECTS_STATE_PAT expansion (a genuine ⑤ anchor until wall-step "
+            "closeout deletes all three wall-step anchors)"
         )
         envcheck = (REPO_ROOT / ".github/workflows/env-check.yml").read_text(encoding="utf-8").splitlines()
         assert "S_PROJECTS_STATE_PAT" in envcheck[194], "env-check.yml:195 anchor content mismatch"
+        assert "S_PROJECTS_STATE_PAT" in envcheck[239], "env-check.yml:240 is the PROJECTS_STATE_PAT wall-step line"
         assert "S_WORKER_CI_KEY" in envcheck[238], "env-check.yml:239 is the WORKER_CI_KEY wall-step line"
+        assert "S_GO_GITHUB_RUN_TOKEN" in envcheck[84], "env-check.yml:85 is the GO_GITHUB_RUN_TOKEN gate-step line"
 
     def test_ledger_anchor_roster_in_fixture(self):
         """Round-3 RC-1 companion: the ledger anchor roster is registered in
         the design-contract fixture (ledger_anchor_sources) so ledger anchors
-        cannot drift unilaterally."""
+        cannot drift unilaterally. env-check lines: 85/86/195/240 per the
+        §3.3 table (85 = ④ GO_GITHUB_RUN_TOKEN gate-step; 86/195/240 = ⑤)."""
         fixture = json.loads(
             (REPO_ROOT / "tests/fixtures/wall-v3/design-contract.json").read_text(encoding="utf-8")
         )
@@ -632,6 +729,15 @@ class TestKeyLedgerFullTreeScan:
         files = [s.get("file") for s in sources if isinstance(s, dict) and "file" in s]
         assert "docs/wall-v3/out-of-graph-artifacts.md" in files, "ledger doc not registered"
         assert ".github/workflows/i8-zero-escape-live-orchestrator.yml" in files, "orchestrator anchor set not registered"
+        envcheck_lines = sorted(
+            ln
+            for s in sources
+            if isinstance(s, dict) and s.get("file") == ".github/workflows/env-check.yml"
+            for ln in s.get("lines", [])
+        )
+        assert envcheck_lines == [85, 86, 195, 240], (
+            f"fixture ledger env-check anchor set drifted: {envcheck_lines} != [85, 86, 195, 240]"
+        )
 
 
 class TestLiveEvidenceGate:
@@ -721,12 +827,26 @@ def _anchor_params() -> list:
 class TestAnchorResolvability:
     @staticmethod
     def _resolve(repo_root: Path, anchor: dict) -> str | None:
-        path = repo_root / anchor["file"]
-        if not path.is_file():
-            return f"file not found: {path}"
+        # VAL-MASTER-003 defines engine anchors against the engine repo's
+        # committed main tree, not its worktree: the worktree can carry
+        # third-party in-flight edits (observed 2026-11-28: an unrelated
+        # session's uncommitted registry header line shifted every engine
+        # line by +1 and broke anchors that are intact on main).
+        if anchor["repo"] == "engine":
+            out = subprocess.run(
+                ["git", "-C", str(repo_root), "show", f"main:{anchor['file']}"],
+                capture_output=True, text=True,
+            )
+            if out.returncode != 0:
+                return f"engine file unreadable from main: {anchor['file']}: {out.stderr.strip()[:120]}"
+            lines = out.stdout.splitlines()
+        else:
+            path = repo_root / anchor["file"]
+            if not path.is_file():
+                return f"file not found: {path}"
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         if anchor.get("exists"):
             return None
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         line = anchor["line"]
         if not (1 <= line <= len(lines)):
             return f"line {line} out of range ({len(lines)} lines) in {anchor['file']}"

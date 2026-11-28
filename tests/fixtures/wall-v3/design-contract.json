@@ -66,7 +66,7 @@
     "extra": ["根治", "第 3 层", "不可施工"]
   },
   "invariants": ["INV-1", "INV-2", "INV-3", "INV-4", "INV-5", "INV-6", "INV-7"],
-  "sla_samples": ["SL-1", "SL-2", "SL-3", "SL-4", "SL-5", "SL-6", "SL-7", "SL-8", "SL-9", "SL-10", "SL-11", "SL-12", "SL-13"],
+  "sla_samples": ["SL-1", "SL-2", "SL-3", "SL-4", "SL-5", "SL-6", "SL-7", "SL-8", "SL-9", "SL-10", "SL-11", "SL-12", "SL-13", "SL-14"],
   "live_evidence_markers": [
     "没有活验数字不算建成",
     "必死样本全红率",
@@ -307,8 +307,13 @@
     },
     {
       "file": ".github/workflows/env-check.yml",
-      "lines": [86, 195],
+      "lines": [86, 195, 240],
       "contains": ["S_PROJECTS_STATE_PAT"]
+    },
+    {
+      "file": ".github/workflows/env-check.yml",
+      "lines": [85],
+      "contains": ["S_GO_GITHUB_RUN_TOKEN"]
     },
     {
       "file": ".github/workflows/i8-zero-escape-live-orchestrator.yml",

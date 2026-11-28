@@ -276,6 +276,7 @@ consumes = [
     ".github/workflows/team.yml:4441",   # project_state_write 调用
     ".github/workflows/env-check.yml:86",# gate 步注入
     ".github/workflows/env-check.yml:195",# 板面探测真消费
+    ".github/workflows/env-check.yml:240",# wall 步再展开（⑤收口施工后删此锚）
     ".github/workflows/i8-zero-escape-live-orchestrator.yml:102",  # I8 编排器探针注入（五组面之一）
 ]
 notes = "全链唯一板面写令牌； PAT 时间线演员定性=第 50 轮口径（docs/W-14-写板活验通过判据-修订.md）"
@@ -327,7 +328,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 | ① | FACTORY_API_KEY | factory_cli_key | read | use | active | droid CLI 会话模型面（team.yml 8 席位会话步 env 直传＋droid/droid-probe/probe3/probe6/droid-probe2 探针面＋env-check gate/wall＋c-fixture 探针） | team.yml `:157/:568/:1501/:1916/:2209/:2757/:3738/:4147`＋`droid.yml:62`＋`droid-probe.yml:46`＋`droid-probe2.yml:17`＋`probe3.yml:40`＋`probe6.yml:44`＋env-check.yml `:82/:238`＋c-fixture `:41`——全树 16 行 |
 | ② | WORKER_CI_KEY | worker_gateway_key | read | use | active | BYOM headers `x-ci-key` 位＋probe 族网关鉴权 | 声明体位点：team.yml `:120/:531/:1463/:1883/:2178/:2725/:3705/:4115` 区段＋`droid.yml:25`＋`droid-probe.yml:13`＋`droid-probe2.yml:15`＋`probe3.yml:15/:38`＋`probe6.yml:10` 区段＋env-check.yml `:83/:239`＋c-fixture `:42`＋probe.yml `:16/:22`＋probe4.yml `:10`＋probe5.yml `:10`——全树 21 行；③收口后=1 声明体锚＋全树调用锚 |
 | ③ | GW_TOKEN_KNOWN | cf_ai_gateway_run_token | read | use | active | BYOM headers `cf-aig-authorization` 位 | 声明体位点：team.yml 8 位点区段＋`droid.yml:25`＋`probe6.yml:10` 区段（droid-probe.yml/droid-probe2.yml 无此件）＋env-check.yml `:84`＋probe5.yml `:11`——全树 12 行 |
-| ④ | GO_GITHUB_RUN_TOKEN | github_pat（kind 初判，装配盘点回填） | read | use | active | BYOM `apiKey` 位（模型网关鉴权）＋probe 族 | 声明体位点（同②11 位点区段＋`droid-probe2.yml:16`＋`probe3.yml:39`）＋env-check.yml `:85/:239`＋I8 编排器 `:101/:183/:257/:309/:346`＋probe4.yml `:11`＋probe6.yml `:13` 区段——全树 20 行 |
+| ④ | GO_GITHUB_RUN_TOKEN | github_pat（kind 初判，装配盘点回填） | read | use | active | BYOM `apiKey` 位（模型网关鉴权）＋probe 族 | 声明体位点（同②11 位点区段＋`droid-probe2.yml:16`＋`probe3.yml:39`）＋env-check.yml `:85`＋I8 编排器 `:101/:183/:257/:309/:346`＋probe4.yml `:11`＋probe6.yml `:13` 区段——全树 20 行 |
 | ⑤ | PROJECTS_STATE_PAT | github_pat | read_write | cap_change | active | 板面写（装配席单点）＋板面探测＋漂移对账读＋I8 编排器探针注入 | `team.yml:4431/:4441`＋env-check.yml `:86/:195/:240`＋I8 编排器 `:102/:184/:258/:310/:347`（样例见 §3.2）——全树 8 行 |
 | ⑥ | GITHUB_TOKEN（github.token） | platform_builtin | read_write | use | active | per-run 临时令牌，按席 token_scope 面（seat-gates §2 逐席已登记：lead `:79/:241`、worker commit `:710`、prep `:1321`、replan 落单 `:2423`、assemble `:4448/:4659` 等） | 参考条目不占编号（照引擎 GITHUB_TOKEN 先例 `key-registry.toml:36-37`） |
 | ⑥ | CI_KEY（备用件，2026-11-28 实测在列） | gateway_key（族初判，装配盘点回填） | read | use | zombie | 零消费（grep 全树零展开零调用；probe4/probe5 的 `CI_KEY` env 名实为 WORKER_CI_KEY 展开，非此件——`probe4.yml:10`/`probe5.yml:10`） | 零锚；gh secret list 备考名，施工盘点批裁定退役或回役 |
@@ -356,7 +357,7 @@ track_ref = "docs/wall-v3/out-of-graph-artifacts.md §2.2"
 
 ### 3.5 消费锚体系（8→1 收口后的锚形态）
 
-- **锚定义**：consumes 字段逐条 `file:line`；锚判据＝该行含 secrets 展开（`${{ secrets.X }}`）、env 注入键、或声明体调用行。台账行锚随批登记进设计契约 fixture（`tests/fixtures/wall-v3/design-contract.json` anchors 数组——round-3 起：台账 consumes 锚、§3.3 表 consumes 锚列、design-contract.json 三处同批增删，防台账锚单边漂移；round-3 实证：⑤行内 `env-check.yml:240` 锚实为 wall 步 `S_WORKER_CI_KEY` 展开行，内容不对应，已删——台账锚的内容核查与解析核查同纪律）。
+- **锚定义**：consumes 字段逐条 `file:line`；锚判据＝该行含 secrets 展开（`${{ secrets.X }}`）、env 注入键、或声明体调用行。台账行锚随批登记进设计契约 fixture（`tests/fixtures/wall-v3/design-contract.json` anchors 数组——round-3 起：台账 consumes 锚、§3.3 表 consumes 锚列、design-contract.json 三处同批增删，防台账锚单边漂移；round-3/4 实证口径（2026-11-28 实读复验）：env-check.yml wall 步三行 `:238`（S_FACTORY_API_KEY）/`:239`（S_WORKER_CI_KEY）/`:240`（S_PROJECTS_STATE_PAT）——行④曾错引 `:239`（WORKER_CI_KEY 行，非④的 GO_GITHUB_RUN_TOKEN 消费行），已删；round-5 曾误删⑤行 `:240` 真锚（该行确为 PROJECTS_STATE_PAT 展开），本批按「先实读再删」纪律恢复——台账锚的内容核查与解析核查同纪律，删改锚前必须实读该行）。
 - **收口前后形态**：现状②③④三件各 11 展开锚（team.yml 8＋droid.yml 1＋droid-probe.yml 1＋probe6.yml 1；GW_TOKEN_KNOWN 实为 10——droid-probe.yml 双件形态）＋内联变体面锚（droid-probe2/probe3）＋probe 族散点锚＋2 presence 锚＋I8 编排器锚（⑤/⑧ 面）；③收口后变「1 声明体行锚＋全树调用位锚＋presence 锚」——调用位是消费锚（真实消费），声明体是登记锚（唯一展开点）；内联变体位收口为声明体调用并入调用位锚集。⑤收口后 env-check 消费锚从「5+3」变「5」（wall 步三锚删除）。
 - **锚执法**：锚集对账进 caps-gate（§3.6 判据 1/2）；锚漂移（行号漂移、锚定内容失配）即红（判词 anchor-drift）——施工单改凭证接线必须同批改台账（对位引擎「文件增删不改语义（点名 workflow 即消费面）」口径，`key-registry.toml:19-20`）。
 

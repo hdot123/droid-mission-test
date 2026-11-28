@@ -113,7 +113,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙 artifact 下载面）"]
 local_uses = ["scripts/team/run_droid_session.py（包装器，FOREMAN_RUN_PATCH=1）"]
-probes = "caps-gate 负向三探针：会话写 team/lead-plan-segments/ 外文件->out-of-scope-write 必红；令牌越 token_scope->必红；未登记工具->必红（现状缺口：lead 会话写无机器 F-1 类守卫，锚件 2 §1——本门即补齐该缺口的执法设计）＋接线锁探针：包装器启动前置自检——会话配置生成时读门清单，键缺失（如 [seat.lead] 段缺席或 budgets 键不齐）即拒启（fail-loud exit 2，永不禁用默认放行）；必死样本=SL-13a（acceptance-line-map §2.13）"
+probes = "caps-gate 负向三探针：会话写 team/lead-plan-segments/ 外文件->out-of-scope-write 必红；令牌越 token_scope->必红；未登记工具->必红（现状缺口：lead 会话写无机器 F-1 类守卫，锚件 2 §1——本门即补齐该缺口的执法设计；必死样本=SL-4b＋SL-10a，acceptance-line-map §2.4b/§2.10）＋接线锁探针：包装器启动前置自检——会话配置生成时读门清单，键缺失（如 [seat.lead] 段缺席或 budgets 键不齐）即拒启（fail-loud exit 2，永不禁用默认放行）；必死样本=SL-13a（acceptance-line-map §2.13）"
 callers = { internal = ["workers-wall-merge（读 lead.outputs.processes，team.yml:851）"], external = ["无（领班席零仓外消费）"], workflow = [".github/workflows/team.yml:52"] }
 
 [seat.lead.authorization]
@@ -134,7 +134,7 @@ soft_timeout_sec = 500
 
 [seat.lead.verification]
 contract_tests = ["tests/test_foreman_caps_contract.py（目标态新增）", "tests/test_wall_v3_design_contract.py"]
-probes = "caps-gate 负向探针（见 probes 键）＋接线锁（caps-gate 步在 foreman-wall-ci 恒跑断言）"
+probes = "caps-gate 负向探针（见 probes 键，必死样本=SL-4b＋SL-10a，acceptance-line-map §2.4b/§2.10）＋接线锁（caps-gate 步在 foreman-wall-ci 恒跑断言；必死样本=SL-13a，acceptance-line-map §2.13）"
 probe_notes = "lead 现状经包装器（team.yml:203-204）——预算/接线已合规；本席 v3.0 的主收口是写目标机器守卫（workspace-write 面 F-1 化）与 token_scope 收窄"
 ```
 
@@ -168,7 +168,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙）", "卡面 checks 脚本面"]
 local_uses = ["scripts/team/run_droid_session.py（目标态包装器，零旁路）"]
-probes = "F-1 越界写守卫（现行载体 team.yml:712-743 区段，越界即拒）＋caps-gate 三探针（未登记工具/token 越界/裸跑 droid exec=unregistered-tool-call 必红）"
+probes = "F-1 越界写守卫（现行载体 team.yml:712-743 区段，越界即拒；必死样本=SL-3b，acceptance-line-map §2.4）＋caps-gate 三探针（未登记工具/token 越界/裸跑 droid exec=unregistered-tool-call 必红；必死样本=SL-10a 族＋SL-4 族＋SL-3/RS-2 裸跑载体，acceptance-line-map §2.10/§2.4b/§2.3+§5）"
 callers = { internal = ["workers-wall-merge（delta 并集，team.yml:885 merge_worker_deltas）", "prep（分支 merge 面）"], external = ["无"], workflow = [".github/workflows/team.yml:503"] }
 
 [seat.worker.authorization]
@@ -190,7 +190,7 @@ note = "预算唯一来源=本段（§4 接线设计）；现状墙上账面值 
 
 [seat.worker.verification]
 contract_tests = ["tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "caps-gate 裸跑探针：workflow 文本出现 BARE_DROID 形态（timeout…droid exec 不经包装器）即红——lint_workflow_budgets.py:43-51 的 worker/900s 豁免分支废止后，本探针与 budgets lint 同判词双载体；必死样本=SL-3/RS-2（acceptance-line-map §2.3/§5，工人席禁跑 probe 的独立载体行）"
+probes = "caps-gate 裸跑探针：workflow 文本出现 BARE_DROID 形态（timeout…droid exec 不经包装器）即红——lint_workflow_budgets.py:43-51 的 worker/900s 豁免分支废止后，本探针与 budgets lint 同判词双载体；必死样本=SL-3/RS-2（acceptance-line-map §2.3/§5，工人席禁跑 probe 的独立载体行；BARE_DROID 形态探针判词面=SL-3＋caps-gate 载体，互锁表 RS-2 行同口径）"
 probe_notes = "worker 是 59 轮四问题②的所在席：900s 执法与会话同体（45B 实证孤儿子进程拖到 25m job 墙）——收口=§4 包装器＋体外执法"
 ```
 
@@ -220,7 +220,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙）", "worker 分支树"]
 local_uses = ["git（merge/ls-remote）", "pytest（全量 600s 超时）", "卡面 checks 复跑（300s 超时）"]
-probes = "原子 probe 逐条登记（round-3 拆原子）：①补卷守卫四条件负例（任一不满足=不补卷，载体=SL-5）；②caps-gate droid 会话禁入探针：prep 出现 droid 会话=unregistered-tool-call 必红（纯脚本席禁 droid，载体=SL-13d 同族注入形态，acceptance-line-map §2.13 SL-13d 会话注入子面——零 droid 席探针复用其桩协议，席位换 prep）；③候选分支越权写探针（载体=SL-13b，round-2 已配行）"
+probes = "原子 probe 逐条登记（round-3 拆原子）：①补卷守卫四条件负例（任一不满足=不补卷，载体=SL-5）；②caps-gate droid 会话禁入探针：prep 出现 droid 会话=unregistered-tool-call 必红（纯脚本席禁 droid，载体=SL-13f，acceptance-line-map §2.13 SL-13f——零 droid 席探针独立载体，prep 面）；③候选分支越权写探针（载体=SL-13b，round-2 已配行）"
 callers = { internal = ["validate（needs.prep.result）"], external = ["无"], workflow = [".github/workflows/team.yml:936"] }
 
 [seat.prep.authorization]
@@ -235,7 +235,7 @@ job_wall_min = 20
 
 [seat.prep.verification]
 contract_tests = ["tests/test_worker_salvage_*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "补卷守卫四条件逐条负例（在树）＋候选分支越权写探针：非 prep 席（worker 会话步/lead 步/assemble 步）push `team/issue-N/candidate-R` 形态即 F 类守卫红（候选分支 git-push 权只登记在本席 artifacts 面；未登记者写入=caps-gate `undeclared-artifact`/`out-of-scope-write` 判词红）；必死样本=SL-13b（acceptance-line-map §2.13）"
+probes = "补卷守卫四条件逐条负例（在树；必死样本=SL-5，acceptance-line-map §2.5）＋候选分支越权写探针：非 prep 席（worker 会话步/lead 步/assemble 步）push `team/issue-N/candidate-R` 形态即 F 类守卫红（候选分支 git-push 权只登记在本席 artifacts 面；未登记者写入=caps-gate `undeclared-artifact`/`out-of-scope-write` 判词红）；必死样本=SL-13b（acceptance-line-map §2.13）"
 probe_notes = "prep 是补卷器（根治第 1 层）与 evidence manifest 防篡改的承载席；注意规格明文：补卷覆盖面 != 中性归因覆盖面（worker_salvage.py docstring）"
 ```
 
@@ -266,7 +266,7 @@ artifacts = [
 ]
 state_reads = ["packs/<id>/（证据包，只读）", "team/foreman-run.json（墙）"]
 local_uses = ["scripts/team/run_droid_session.py（包装器）", "recorder 工具（salvage_verdict CLI）"]
-probes = "会话可执行任意命令但零 GitHub 写权（双 token 显式置空）＋caps-gate：validator 出现 GH 写调用=token-scope-violation 必红；证据防篡改=事后 manifest sha 逐文件复验"
+probes = "会话可执行任意命令但零 GitHub 写权（双 token 显式置空）＋caps-gate：validator 出现 GH 写调用=token-scope-violation 必红（必死样本=SL-4 族越权令牌注入，acceptance-line-map §2.4b）；证据防篡改=事后 manifest sha 逐文件复验（必死样本=SL-13c 半套/晚期写翻动变体同面——verdict 粘滞注入即 tamper 面，acceptance-line-map §2.13）"
 callers = { internal = ["replan（should_replan 投影输入）", "assemble（墙 validation 切片）", "revalidate（should_revalidate）"], external = ["无"], workflow = [".github/workflows/team.yml:1382"] }
 
 [seat.validator.authorization]
@@ -294,7 +294,7 @@ soft_timeout_sec = 500
 
 [seat.validator.verification]
 contract_tests = ["tests/test_salvage_verdict*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "verdict schema 执法负例（枚举外值/无证据引用被拒，handoff-schemas §8）＋D-2 封章粘滞负例：verdict 半套注入（final=true 章在而部分 judged[].evidence_refs 为空/被晚期写翻动 partial 文件）->封章拒过（sealed 粘性保证 final 章不被晚期写翻掉，salvage_verdict.py:93-94；半套不达 adoptable 判据 adopt 拒采，`salvage_verdict.py:45-47`）——必死样本=SL-13c（acceptance-line-map §2.13）"
+probes = "verdict schema 执法负例（枚举外值/无证据引用被拒，handoff-schemas §8；必死样本=SL-2＋SL-9，acceptance-line-map §2.2/§2.9）＋D-2 封章粘滞负例：verdict 半套注入（final=true 章在而部分 judged[].evidence_refs 为空/被晚期写翻动 partial 文件）->封章拒过（sealed 粘性保证 final 章不被晚期写翻掉，salvage_verdict.py:93-94；半套不达 adoptable 判据 adopt 拒采，`salvage_verdict.py:45-47`）——必死样本=SL-13c（acceptance-line-map §2.13）"
 probe_notes = "validator 同时是证据对象构造权单源席（handoff-schemas §6）与 recorder 职能承载点①——v3.0 把 recorder 立为独立席（§2.7）后，本席保留核查与构造权，落盘执行面移交 recorder"
 ```
 
@@ -322,7 +322,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙）", "verdict.json（只读）", "evidence（只读）"]
 local_uses = ["scripts/team/run_droid_session.py（包装器）"]
-probes = "caps-gate：replan 输出因果结论无 evidence_ref= narrative-without-evidence 必红（59 轮四问题①的执法门，handoff-schemas §2/§9）；「F-1 检查拒绝」推断文案出现即红（钉子反转，handoff-schemas §9.2）"
+probes = "caps-gate：replan 输出因果结论无 evidence_ref= narrative-without-evidence 必红（59 轮四问题①的执法门，handoff-schemas §2/§9；必死样本=SL-3b'，acceptance-line-map §2.4）；「F-1 检查拒绝」推断文案出现即红（钉子反转，handoff-schemas §9.2；必死样本同 SL-3b' 三负例）"
 callers = { internal = ["worker2（plan-v2 矩阵）", "assemble（final 卡）"], external = ["无"], workflow = [".github/workflows/team.yml:2141"] }
 
 [seat.replan.authorization]
@@ -339,7 +339,7 @@ soft_timeout_sec = 500
 
 [seat.replan.verification]
 contract_tests = ["tests/test_replan_*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "死因叙事三负例：①无机器记录佐证的 F-1 推断文案->红；②evidence_ref 指向不存在锚->红；③blocked_cause 枚举外值->红（handoff-schemas §2 违约表）"
+probes = "死因叙事三负例：①无机器记录佐证的 F-1 推断文案->红；②evidence_ref 指向不存在锚->红；③blocked_cause 枚举外值->红（handoff-schemas §2 违约表；必死样本=SL-3b'，acceptance-line-map §2.4——replan 面伪造死因桩，同席同载体）"
 probe_notes = "replan 是 59 轮四问题①所在席：死因叙事含脚本内置推断（分支缺席->F-1 检查拒绝，team.yml:2259-2282，文案落 :2278-2279）且被 tests/test_replan_context_and_skipped_outcome_r53c.py:190-206 逐字钉住——v3.0 反转该钉子（handoff-schemas §9.2），死因只能挂证据对象或取「未明」"
 ```
 
@@ -369,7 +369,7 @@ artifacts = [
 ]
 state_reads = ["team/foreman-run.json（墙，pick 权威源）"]
 local_uses = ["git（PR 面）", "gh（issue close/comment，:4659）"]
-probes = "原子 probe 逐条登记（round-3 拆原子，一子句一 probe 一载体）：①droid 会话禁入探针：assemble 出现 droid 会话=unregistered-tool-call 必红；②板面写单点性探针：板面写非 project_state_write 单点=token-scope-violation 必红；③human_stop 消费探针：human_stop 在墙（schema :33）而 assemble 收口分支未走提前停路径、照常 pick/写板->red（现状缺口：human_stop 已上墙且机器面有消费（墙 W6 判定 foreman_run_lib.py:232、replan 重试面 adopt_verdict.py:580-583），但 assemble 收口分支的提前停消费缺席——锚件 2 §6/§9 风险 13 现状句按此精化——本探针即补齐该缺口；必死样本=SL-13d，acceptance-line-map §2.13）。SL-13d 会话注入子面（droid 会话禁入的收口步桩化形态）：acceptance-line-map §2.13 SL-13d 的注入步将 fake-droid 桩以 assemble 收口步会话形态注入（桩走 droid exec 调用面冒充收口执行体），断言未消费 human_stop 的收口路径被禁入探针点名红＋消费正对照零板面写——会话注入设计锚 round-2 版 seat-gates probes 子句（git show 888fca0:docs/wall-v3/seat-gates.md :370 原文）与 acceptance-line-map §2.13 注入行"
+probes = "原子 probe 逐条登记（round-3 拆原子，一子句一 probe 一载体）：①droid 会话禁入探针：assemble 出现 droid 会话=unregistered-tool-call 必红；②板面写单点性探针：板面写非 project_state_write 单点=token-scope-violation 必红（必死样本=SL-14，acceptance-line-map §2.13——覆盖非 project_state_write 写路径注入：gh project 直写/其他 automation 通道）；③human_stop 消费探针：human_stop 在墙（schema :33）而 assemble 收口分支未走提前停路径、照常 pick/写板->red（现状缺口：human_stop 已上墙且机器面有消费（墙 W6 判定 foreman_run_lib.py:232、replan 重试面 adopt_verdict.py:580-583），但 assemble 收口分支的提前停消费缺席——锚件 2 §6/§9 风险 13 现状句按此精化——本探针即补齐该缺口；必死样本=SL-13d，acceptance-line-map §2.13）。SL-13d 会话注入子面（droid 会话禁入的收口步桩化形态）：acceptance-line-map §2.13 SL-13d 的注入步将 fake-droid 桩以 assemble 收口步会话形态注入（桩走 droid exec 调用面冒充收口执行体），断言未消费 human_stop 的收口路径被禁入探针点名红＋消费正对照零板面写——会话注入设计锚 round-2 版 seat-gates probes 子句（git show 888fca0:docs/wall-v3/seat-gates.md :369 原文——888fca0 时该子句在 :369，round-4 验证登记）与 acceptance-line-map §2.13 注入行"
 callers = { internal = ["无下游席（链尾）"], external = ["human（状态卡/板面消费者）"], workflow = [".github/workflows/team.yml:4389"] }
 
 [seat.assemble.authorization]
@@ -382,7 +382,7 @@ job_wall_min = 10
 
 [seat.assemble.verification]
 contract_tests = ["tests/test_assemble_*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "墙权威 pick fail-closed 负例（缺 validation 切片=不写板）＋板面写单点性探针＋pick fail-closed 变体探针：墙 validation 切片存在但整片不可采认（adoptable=false：全部 partial 未封章）->pick 必拒=零板面写、零 PR、零关单（fail-closed 全链收口；必死样本=SL-13e，acceptance-line-map §2.13）"
+probes = "墙权威 pick fail-closed 负例（缺 validation 切片=不写板；必死样本同 SL-13e 缺切片断言在树，acceptance-line-map §2.13）＋板面写单点性探针（必死样本=SL-14，acceptance-line-map §2.13——板面写单点性注入面归 SL-14，见 §2.6 ②的映射）＋pick fail-closed 变体探针：墙 validation 切片存在但整片不可采认（adoptable=false：全部 partial 未封章）->pick 必拒=零板面写、零 PR、零关单（fail-closed 全链收口；必死样本=SL-13e，acceptance-line-map §2.13）"
 probe_notes = "assemble 是全链最强 GitHub 写面集中席（PAT 写板＋PR create＋issue close＋评论，锚件 2 §6）——v3.0 不削减其职能写面，但逐门登记＋令牌分面＋human_stop 消费门补齐"
 ```
 
@@ -414,7 +414,7 @@ artifacts = [
 ]
 state_reads = ["本会话分析中间态（零跨席读）"]
 local_uses = ["recorder CLI（salvage_verdict --process/--verdict/--final）"]
-probes = "**缺席即事件**：per-run recorder 调用数与首步落盘时点由包装器采样，窗口内零调用/零落盘=告警事件（墙上 recorder_call_count 字段，schema 演进归 handoff-schemas §8）——现状「prompt 文字无运行时效力、无 per-run 报警」（锚件 2 §7/§10-④）由此门收口"
+probes = "**缺席即事件**：per-run recorder 调用数与首步落盘时点由包装器采样，窗口内零调用/零落盘=告警事件（墙上 recorder_call_count 字段，schema 演进归 handoff-schemas §8）——现状「prompt 文字无运行时效力、无 per-run 报警」（锚件 2 §7/§10-④）由此门收口（必死样本=SL-8a，acceptance-line-map §2.8）"
 callers = { internal = ["validator（承载点①）", "worker（增量落盘引导）", "prep（承载点②机器兜底）"], external = ["无"], workflow = ["无独立 job（经承载席 job 出现）"] }
 
 [seat.recorder.authorization]
@@ -427,7 +427,7 @@ note = "无独立墙预算（承载席预算内执行）；首步落盘窗口=�
 
 [seat.recorder.verification]
 contract_tests = ["tests/test_salvage_verdict*.py", "tests/test_foreman_caps_contract.py（目标态新增）"]
-probes = "缺席即事件负例：桩会话全程零 recorder 调用->告警必触发（59 轮四问题④必死样本，验收线归 F4）"
+probes = "缺席即事件负例：桩会话全程零 recorder 调用->告警必触发（59 轮四问题④必死样本，验收线归 F4；必死样本=SL-8a，acceptance-line-map §2.8）"
 probe_notes = "立席口径：recorder 的执法面=「必落字段与约定首步的机器可见性」，不是新增人类审批面；V-3 门（受控会话达标证明）保留为发版前置人工门，per-run 报警由本席 probes 承载"
 ```
 
