@@ -57,3 +57,7 @@ python3 scripts/team/lint_workflow_needs.py
 ## 领班面墙 API 设计稿（v3.0，2026-11-27）
 
 第 59 轮查实「组件手握无授权能力」一类问题后，本仓产出**设计稿 v3.0**（零施工）：`docs/领班制-面墙API设计稿-v3.md` 为唯一主稿，含 default-deny 总纲、十条硬规则逐条落位映射、三件套（逐席位门清单＋M-CAP 对位表／图外件清零清单＋钥匙台账／逐席位失败规范＋验收线）、换入判据、版本口径声明（v3.0 起版，作废 v2.7~v2.10 账面墙口径）、引擎未闭合项禁抄声明（VAL-M4-004/007、R-29 两门口径）与待大哥裁决清单。设计输入锚件在 `docs/wall-v3/`（form-basis／as-is-capability-inventory／seat-gates／handoff-schemas／out-of-graph-artifacts／failure-specs／acceptance-line-map）。设计稿自身的机器验证面是 `tests/test_wall_v3_design_contract.py`（结构断言＋锚点可解析断言，数据源 `tests/fixtures/wall-v3/design-contract.json`；引擎仓锚在该仓检出时本地验证，CI 自动跳过）。基线不变量全程保持：`pytest tests/ -q` 全绿＋五 lint 全绿；三席对抗审、大哥裁与施工另立后续流程。
+
+## 三席对抗审交付（2026-11-29）
+
+设计稿 v3.0 的三席独立对抗审已完成（审查对象 main@4f4c53a，引擎锚基准 460922c；三席 glm53-worker/sonnet-auditor/ds4-auditor 互不读对方产出＋终审 glm54-auditor 逐项回读原物裁决），报告见 `docs/领班制-面墙API设计稿-v3-三席对抗审.md`：15 项编号发现＝成立 10／降级 2／不成立 3，呈裁清单三档＝阻断 0／非阻断 6／建议 6；上使命 21/21 验证结论无翻案，另登记 5 项验证覆盖缺口（键值对质、裸锚文件归属、全称量词事实性、验收子断言可判定性、硬规则失败分支覆盖）。报告呈大哥裁，批准后另立施工 mission 承接呈裁清单处置与契约测试补强；本仓设计稿仍为零施工目标态，未做任何修改。
